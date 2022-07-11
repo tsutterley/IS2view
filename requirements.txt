@@ -1,0 +1,6 @@
+boto3
+ipyleaflet
+matplotlib
+numpy
+rioxarray
+xarray
