@@ -15,6 +15,7 @@ import re
 import io
 import ssl
 import json
+import boto3
 import netrc
 import shutil
 import base64
@@ -50,6 +51,38 @@ def url_split(s):
     elif head in ('', posixpath.sep):
         return tail,
     return url_split(head) + (tail,)
+
+#-- PURPOSE: get AWS s3 client for NSIDC Cumulus
+def s3_client(HOST=None, timeout=None, region_name='us-west-2'):
+    """
+    Get AWS s3 client for NSIDC data in the cloud
+    https://data.nsidc.earthdatacloud.nasa.gov/s3credentials
+
+    Parameters
+    ----------
+    HOST: str
+        NSIDC AWS S3 credential host
+    timeout: int or NoneType, default None
+        timeout in seconds for blocking operations
+    region_name: str, default 'us-west-2'
+        AWS region name
+
+    Returns
+    -------
+    client: obj
+        AWS s3 client for NSIDC Cumulus
+    """
+    request = urllib2.Request(HOST)
+    response = urllib2.urlopen(request, timeout=timeout)
+    cumulus = json.loads(response.read())
+    #-- get AWS client object
+    client = boto3.client('s3',
+        aws_access_key_id=cumulus['accessKeyId'],
+        aws_secret_access_key=cumulus['secretAccessKey'],
+        aws_session_token=cumulus['sessionToken'],
+        region_name=region_name)
+    #-- return the AWS client for region
+    return client
 
 #-- PURPOSE: get a s3 bucket name from a presigned url
 def s3_bucket(presigned_url):
