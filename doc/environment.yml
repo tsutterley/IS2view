@@ -1,0 +1,23 @@
+name: is2view-docs
+channels:
+  - conda-forge
+dependencies:
+  - boto3
+  - docutils<0.18
+  - graphviz
+  - ipyleaflet
+  - ipywidgets
+  - matplotlib
+  - notebook
+  - numpy
+  - numpydoc
+  - pip
+  - python>=3.6
+  - rioxarray
+  - sphinx
+  - sphinx-argparse
+  - sphinx_rtd_theme
+  - texlive-core
+  - xarray
+  - pip:
+    - ..

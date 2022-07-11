@@ -15,6 +15,7 @@ import re
 import io
 import ssl
 import json
+import boto3
 import netrc
 import shutil
 import base64
@@ -51,6 +52,38 @@ def url_split(s):
         return tail,
     return url_split(head) + (tail,)
 
+#-- PURPOSE: get AWS s3 client for NSIDC Cumulus
+def s3_client(HOST=None, timeout=None, region_name='us-west-2'):
+    """
+    Get AWS s3 client for NSIDC data in the cloud
+    https://data.nsidc.earthdatacloud.nasa.gov/s3credentials
+
+    Parameters
+    ----------
+    HOST: str
+        NSIDC AWS S3 credential host
+    timeout: int or NoneType, default None
+        timeout in seconds for blocking operations
+    region_name: str, default 'us-west-2'
+        AWS region name
+
+    Returns
+    -------
+    client: obj
+        AWS s3 client for NSIDC Cumulus
+    """
+    request = urllib2.Request(HOST)
+    response = urllib2.urlopen(request, timeout=timeout)
+    cumulus = json.loads(response.read())
+    #-- get AWS client object
+    client = boto3.client('s3',
+        aws_access_key_id=cumulus['accessKeyId'],
+        aws_secret_access_key=cumulus['secretAccessKey'],
+        aws_session_token=cumulus['sessionToken'],
+        region_name=region_name)
+    #-- return the AWS client for region
+    return client
+
 #-- PURPOSE: get a s3 bucket name from a presigned url
 def s3_bucket(presigned_url):
     """
@@ -78,7 +111,7 @@ def s3_key(presigned_url):
     Parameters
     ----------
     presigned_url: str
-        s3 presigned url
+        s3 presigned url or https url
 
     Returns
     -------
@@ -86,7 +119,15 @@ def s3_key(presigned_url):
         s3 bucket key for object
     """
     host = url_split(presigned_url)
-    key = posixpath.join(*host[1:])
+    # check if url is https url or s3 presigned url
+    if presigned_url.startswith('http'):
+        # use NSIDC format for s3 keys from https
+        parsed = ['/'.join(host[h].split('.')) for h in range(-4,-1)]
+        key = posixpath.join(*parsed, host[-1])
+    else:
+        # join presigned url to form bucket key
+        key = posixpath.join(*host[1:])
+    # return the s3 bucket key for object
     return key
 
 # PURPOSE: returns the Unix timestamp value for a formatted date string
@@ -526,7 +567,7 @@ def cmr_filter_json(search_results, request_type="application/x-hdfeos"):
 # PURPOSE: cmr queries for orbital parameters
 def cmr(product=None, release=None, regions=None, resolutions=None,
     provider='NSIDC_ECS', request_type="application/x-hdfeos",
-    verbose=False, fid=sys.stdout):
+    opener=None, verbose=False, fid=sys.stdout):
     """
     Query the NASA Common Metadata Repository (CMR) for ICESat-2 data
 
@@ -544,6 +585,8 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
         CMR data provider
     request_type: str, default 'application/x-hdfeos'
         data type for reducing CMR query
+    opener: obj or NoneType, default None
+        OpenerDirector instance
     verbose: bool, default False
         print file transfer information
     fid: obj, default sys.stdout
@@ -559,15 +602,17 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
     # create logger
     loglevel = logging.INFO if verbose else logging.CRITICAL
     logging.basicConfig(stream=fid, level=loglevel)
-    # build urllib2 opener with SSL context
-    # https://docs.python.org/3/howto/urllib2.html#id5
-    handler = []
-    # Create cookie jar for storing cookies
-    cookie_jar = CookieJar()
-    handler.append(urllib2.HTTPCookieProcessor(cookie_jar))
-    handler.append(urllib2.HTTPSHandler(context=ssl.SSLContext()))
-    # create "opener" (OpenerDirector instance)
-    opener = urllib2.build_opener(*handler)
+    # attempt to build urllib2 opener
+    if opener is None:
+        # build urllib2 opener with SSL context
+        # https://docs.python.org/3/howto/urllib2.html#id5
+        handler = []
+        # Create cookie jar for storing cookies
+        cookie_jar = CookieJar()
+        handler.append(urllib2.HTTPCookieProcessor(cookie_jar))
+        handler.append(urllib2.HTTPSHandler(context=ssl.SSLContext()))
+        # create "opener" (OpenerDirector instance)
+        opener = urllib2.build_opener(*handler)
     # build CMR query
     cmr_format = 'json'
     cmr_page_size = 2000
