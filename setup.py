@@ -2,8 +2,9 @@ import os
 from setuptools import setup, find_packages
 
 # package description and keywords
-description = ('Viewer for ICESat-2 ATL14/15 Gridded Land Ice Height Products')
-keywords = 'ICESat-2, elevation, digital elevation models'
+description = ('Interactive viewer for ICESat-2 ATL14/15 Gridded '
+    'Land Ice Height Products')
+keywords = 'ICESat-2, elevation, digital elevation models, ipython, jupyter, graphics'
 # get long_description from README.rst
 with open('README.rst', mode='r', encoding='utf8') as fh:
     long_description = fh.read()

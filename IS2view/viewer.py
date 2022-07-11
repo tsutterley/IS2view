@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 u"""
-tools.py
+viewer.py
 Written by Tyler Sutterley (07/2022)
 Jupyter notebook, user interface and plotting tools
 
@@ -200,6 +200,35 @@ class widgets:
         return projections[self.region.value]
 
     @property
+    def center(self):
+        """return default central point latitude and longitude
+        for map based on region
+        """
+        centers = {}
+        centers['AA'] = (-90.0,0.0)
+        centers['CN'] = (79.0,-85.0)
+        centers['CS'] = (70.0,-73.0)
+        centers['GL'] = (72.5,-45.0)
+        centers['IS'] = (64.5,-18.5)
+        centers['SV'] = (79.0,19.0)
+        centers['RA'] = (79.0,78.0)
+        return centers[self.region.value]
+
+    @property
+    def zoom(self):
+        """return default zoom level for map based on region
+        """
+        zooms = {}
+        zooms['AA'] = 1
+        zooms['CN'] = 2
+        zooms['CS'] = 2
+        zooms['GL'] = 1
+        zooms['IS'] = 3
+        zooms['SV'] = 3
+        zooms['RA'] = 2
+        return zooms[self.region.value]
+
+    @property
     def _r(self):
         """return string for reversed Matplotlib colormaps
         """
@@ -316,7 +345,6 @@ projections['EPSG:3031'] = dict(
     ]
 )
 
-
 # draw ipyleaflet map
 class leaflet:
     def __init__(self, projection, **kwargs):
@@ -328,17 +356,18 @@ class leaflet:
         kwargs.setdefault('cursor_control', True)
         kwargs.setdefault('layer_control', True)
         kwargs.setdefault('center', (0,0))
+        kwargs.setdefault('zoom', 1)
         # create basemap in projection
         if (projection == 'North'):
-            self.map = ipyleaflet.Map(center=(72.5,-45),
-                zoom=1, max_zoom=5,
+            self.map = ipyleaflet.Map(center=kwargs['center'],
+                zoom=kwargs['zoom'], max_zoom=5,
                 attribution_control=kwargs['attribution'],
                 basemap=ipyleaflet.basemaps.NASAGIBS.BlueMarble3413,
                 crs=projections['EPSG:3413'])
             self.crs = 'EPSG:3413'
         elif (projection == 'South'):
-            self.map = ipyleaflet.Map(center=(-90,0),
-                zoom=1, max_zoom=5,
+            self.map = ipyleaflet.Map(center=kwargs['center'],
+                zoom=kwargs['zoom'], max_zoom=5,
                 attribution_control=kwargs['attribution'],
                 basemap=ipyleaflet.basemaps.NASAGIBS.BlueMarble3031,
                 crs=projections['EPSG:3031'])
@@ -435,17 +464,17 @@ class leaflet:
 @xr.register_dataset_accessor('leaflet')
 class LeafletMap(HasTraits):
 
-    south = Float(-90)
     north = Float(90)
-    east = Float(-180)
-    west = Float(180)
-    @observe('south', 'north', 'east', 'west')
+    east = Float(180)
+    south = Float(-90)
+    west = Float(-180)
+    @observe('north', 'east', 'south', 'west')
     def boundary_change(self, change):
         # add image object to map
         if self.image is not None:
             self.map.remove(self.image)
             self.image = ipyleaflet.ImageService(name=self.variable,
-                crs=self.crs, endpoint='local')
+                crs=self.crs, update_interval=100, endpoint='local')
         self.set_image_url()
         self.map.add(self.image)
 
@@ -514,7 +543,7 @@ class LeafletMap(HasTraits):
         # wait for changes
         asyncio.ensure_future(self.async_wait_for_bounds())
         self.image = ipyleaflet.ImageService(name=self.variable,
-            crs=self.crs, endpoint='local')
+            crs=self.crs, update_interval=100, endpoint='local')
         self.set_image_url()
         # add image object to map
         self.map.add(self.image)
@@ -553,7 +582,7 @@ class LeafletMap(HasTraits):
         self.east = np.max(lon)
         self.south = np.min(lat)
         self.west = np.min(lon)
-        self.bounds = ((self.south,self.west),(self.north,self.east))
+        self.bounds = ((self.south, self.west),(self.north, self.east))
 
     def clip_image(self, ds):
         self.map.get_bounds()
@@ -570,10 +599,10 @@ class LeafletMap(HasTraits):
         padded = ds.rio.pad_box(minx=minx, maxx=maxx, miny=miny, maxy=maxy)
         # get affine transform of padded image
         pad_transform = padded.rio.transform()
-        west = int((minx - pad_transform.c)//pad_transform.a)
-        east = int((maxx - pad_transform.c)//pad_transform.a) + 1
         north = int((maxy - pad_transform.f)//pad_transform.e)
+        east = int((maxx - pad_transform.c)//pad_transform.a) + 1
         south = int((miny - pad_transform.f)//pad_transform.e) + 1
+        west = int((minx - pad_transform.c)//pad_transform.a)
         # clip image to map bounds
         return padded.isel(x=slice(west,east), y=slice(north,south))
 

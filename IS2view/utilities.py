@@ -526,7 +526,7 @@ def cmr_filter_json(search_results, request_type="application/x-hdfeos"):
 # PURPOSE: cmr queries for orbital parameters
 def cmr(product=None, release=None, regions=None, resolutions=None,
     provider='NSIDC_ECS', request_type="application/x-hdfeos",
-    verbose=False, fid=sys.stdout):
+    opener=None, verbose=False, fid=sys.stdout):
     """
     Query the NASA Common Metadata Repository (CMR) for ICESat-2 data
 
@@ -544,6 +544,8 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
         CMR data provider
     request_type: str, default 'application/x-hdfeos'
         data type for reducing CMR query
+    opener: obj or NoneType, default None
+        OpenerDirector instance
     verbose: bool, default False
         print file transfer information
     fid: obj, default sys.stdout
@@ -559,15 +561,17 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
     # create logger
     loglevel = logging.INFO if verbose else logging.CRITICAL
     logging.basicConfig(stream=fid, level=loglevel)
-    # build urllib2 opener with SSL context
-    # https://docs.python.org/3/howto/urllib2.html#id5
-    handler = []
-    # Create cookie jar for storing cookies
-    cookie_jar = CookieJar()
-    handler.append(urllib2.HTTPCookieProcessor(cookie_jar))
-    handler.append(urllib2.HTTPSHandler(context=ssl.SSLContext()))
-    # create "opener" (OpenerDirector instance)
-    opener = urllib2.build_opener(*handler)
+    # attempt to build urllib2 opener
+    if opener is None:
+        # build urllib2 opener with SSL context
+        # https://docs.python.org/3/howto/urllib2.html#id5
+        handler = []
+        # Create cookie jar for storing cookies
+        cookie_jar = CookieJar()
+        handler.append(urllib2.HTTPCookieProcessor(cookie_jar))
+        handler.append(urllib2.HTTPSHandler(context=ssl.SSLContext()))
+        # create "opener" (OpenerDirector instance)
+        opener = urllib2.build_opener(*handler)
     # build CMR query
     cmr_format = 'json'
     cmr_page_size = 2000
