@@ -121,9 +121,11 @@ def s3_key(presigned_url):
     host = url_split(presigned_url)
     # check if url is https url or s3 presigned url
     if presigned_url.startswith('http'):
+        # use NSIDC format for s3 keys from https
         parsed = ['/'.join(host[h].split('.')) for h in range(-4,-1)]
         key = posixpath.join(*parsed, host[-1])
     else:
+        # join presigned url to form bucket key
         key = posixpath.join(*host[1:])
     # return the s3 bucket key for object
     return key
