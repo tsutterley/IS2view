@@ -111,7 +111,7 @@ def s3_key(presigned_url):
     Parameters
     ----------
     presigned_url: str
-        s3 presigned url
+        s3 presigned url or https url
 
     Returns
     -------
@@ -119,7 +119,13 @@ def s3_key(presigned_url):
         s3 bucket key for object
     """
     host = url_split(presigned_url)
-    key = posixpath.join(*host[1:])
+    # check if url is https url or s3 presigned url
+    if presigned_url.startswith('http'):
+        parsed = ['/'.join(host[h].split('.')) for h in range(-4,-1)]
+        key = posixpath.join(*parsed, host[-1])
+    else:
+        key = posixpath.join(*host[1:])
+    # return the s3 bucket key for object
     return key
 
 # PURPOSE: returns the Unix timestamp value for a formatted date string
