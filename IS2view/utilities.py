@@ -52,15 +52,45 @@ def url_split(s):
         return tail,
     return url_split(head) + (tail,)
 
-#-- PURPOSE: get AWS s3 client for NSIDC Cumulus
-def s3_client(HOST=None, timeout=None, region_name='us-west-2'):
+# PURPOSE: returns the Unix timestamp value for a formatted date string
+def get_unix_time(time_string, format='%Y-%m-%d %H:%M:%S'):
+    """
+    Get the Unix timestamp value for a formatted date string
+
+    Parameters
+    ----------
+    time_string: str
+        formatted time string to parse
+    format: str, default '%Y-%m-%d %H:%M:%S'
+        format for input time string
+    """
+    try:
+        parsed_time = time.strptime(time_string.rstrip(), format)
+    except (TypeError, ValueError):
+        pass
+    else:
+        return calendar.timegm(parsed_time)
+
+# NASA Cumulus AWS S3 credential endpoints
+_s3_endpoints = {
+    'gesdisc': 'https://data.gesdisc.earthdata.nasa.gov/s3credentials',
+    'ghrcdaac': 'https://data.ghrc.earthdata.nasa.gov/s3credentials',
+    'lpdaac': 'https://data.lpdaac.earthdatacloud.nasa.gov/s3credentials',
+    'nsidc': 'https://data.nsidc.earthdatacloud.nasa.gov/s3credentials',
+    'ornldaac': 'https://data.ornldaac.earthdata.nasa.gov/s3credentials',
+    'podaac':'https://archive.podaac.earthdata.nasa.gov/s3credentials'
+}
+
+# PURPOSE: get AWS s3 client for NSIDC Cumulus
+def s3_client(HOST=_s3_endpoints['nsidc'],
+    timeout=None, region_name='us-west-2'):
     """
     Get AWS s3 client for NSIDC data in the cloud
     https://data.nsidc.earthdatacloud.nasa.gov/s3credentials
 
     Parameters
     ----------
-    HOST: str
+    HOST: str, default
         NSIDC AWS S3 credential host
     timeout: int or NoneType, default None
         timeout in seconds for blocking operations
@@ -75,16 +105,16 @@ def s3_client(HOST=None, timeout=None, region_name='us-west-2'):
     request = urllib2.Request(HOST)
     response = urllib2.urlopen(request, timeout=timeout)
     cumulus = json.loads(response.read())
-    #-- get AWS client object
+    # get AWS client object
     client = boto3.client('s3',
         aws_access_key_id=cumulus['accessKeyId'],
         aws_secret_access_key=cumulus['secretAccessKey'],
         aws_session_token=cumulus['sessionToken'],
         region_name=region_name)
-    #-- return the AWS client for region
+    # return the AWS client for region
     return client
 
-#-- PURPOSE: get a s3 bucket name from a presigned url
+# PURPOSE: get a s3 bucket name from a presigned url
 def s3_bucket(presigned_url):
     """
     Get a s3 bucket name from a presigned url
@@ -103,7 +133,7 @@ def s3_bucket(presigned_url):
     bucket = re.sub(r's3:\/\/', r'', host[0], re.IGNORECASE)
     return bucket
 
-#-- PURPOSE: get a s3 bucket key from a presigned url
+# PURPOSE: get a s3 bucket key from a presigned url
 def s3_key(presigned_url):
     """
     Get a s3 bucket key from a presigned url
@@ -130,35 +160,20 @@ def s3_key(presigned_url):
     # return the s3 bucket key for object
     return key
 
-# PURPOSE: returns the Unix timestamp value for a formatted date string
-def get_unix_time(time_string, format='%Y-%m-%d %H:%M:%S'):
-    """
-    Get the Unix timestamp value for a formatted date string
-
-    Parameters
-    ----------
-    time_string: str
-        formatted time string to parse
-    format: str, default '%Y-%m-%d %H:%M:%S'
-        format for input time string
-    """
-    try:
-        parsed_time = time.strptime(time_string.rstrip(), format)
-    except (TypeError, ValueError):
-        pass
-    else:
-        return calendar.timegm(parsed_time)
-
 # PURPOSE: attempt to build an opener with netrc
-def attempt_login(urs, context=ssl.SSLContext(),
-    password_manager=True, get_ca_certs=False, redirect=False,
-    authorization_header=False, **kwargs):
+def attempt_login(urs='urs.earthdata.nasa.gov',
+    context=ssl.SSLContext(),
+    password_manager=True,
+    get_ca_certs=False,
+    redirect=False,
+    authorization_header=False,
+    **kwargs):
     """
     attempt to build a urllib opener for NASA Earthdata
 
     Parameters
     ----------
-    urs: str
+    urs: str, default urs.earthdata.nasa.gov
         Earthdata login URS 3 host
     context: obj, default ssl.SSLContext()
         SSL context for url opener object
