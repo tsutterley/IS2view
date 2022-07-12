@@ -676,6 +676,9 @@ class LeafletMap(HasTraits):
             self.units = self._ds[self.variable].attrs['units'][0]
             for i,t in enumerate(self._ds.time):
                 self.point[i] = self._ds[self.variable].sel(x=x, y=y, time=t, method='nearest')
+            # only create plot if valid
+            if np.all(np.isnan(self.point)):
+                return
             # create time series plot
             fig, ax = plt.subplots(figsize=(kwargs['width'], kwargs['height']))
             fig.patch.set_facecolor('white')
