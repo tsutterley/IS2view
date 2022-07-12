@@ -473,8 +473,16 @@ class LeafletMap(HasTraits):
         # add image object to map
         if self.image is not None:
             self.map.remove(self.image)
-            self.image = ipyleaflet.ImageService(name=self.variable,
-                crs=self.crs, update_interval=100, endpoint='local')
+            self.image = ipyleaflet.ImageService(
+                name=self.variable,
+                crs=self.crs,
+                interactive=True,
+                update_interval=100,
+                endpoint='local')
+        # add click handler for popups
+        if self.enable_popups:
+            self.image.on_click(self.handle_click)
+        # set the image url
         self.set_image_url()
         self.map.add(self.image)
 
@@ -484,6 +492,9 @@ class LeafletMap(HasTraits):
         # initialize data and colorbars
         self.image = None
         self.colorbar = None
+        # initialize point for time series plot
+        self.point = None
+        self.popup = None
 
     # add imagery data to leaflet map
     def plot(self, m, **kwargs):
@@ -498,6 +509,7 @@ class LeafletMap(HasTraits):
         vmax : float, maximum value for normalization
         norm : obj, matplotlib color normalization object
         opacity : float, opacity of image plot
+        enable_popups : bool, enable contextual popups
         colorbar : bool, show colorbar for rendered variable
         position : str, position of colorbar on leaflet map
         """
@@ -508,16 +520,20 @@ class LeafletMap(HasTraits):
         kwargs.setdefault('vmax', None)
         kwargs.setdefault('norm', None)
         kwargs.setdefault('opacity', 0.5)
+        kwargs.setdefault('enable_popups', False)
         kwargs.setdefault('colorbar', True)
         kwargs.setdefault('position', 'topright')
         # set map
         self.map = m
         self.crs = projections[m.crs]
         (self.left, self.top), (self.right, self.bottom) = self.map.pixel_bounds
+        # enable contextual popups
+        self.enable_popups = kwargs['enable_popups']
         # reduce to variable and lag
         self.variable = kwargs['variable']
         if (self._ds[self.variable].ndim == 3) and ('time' in self._ds[self.variable].dims):
             self._ds_selected = self._ds[self.variable].sel(time=self._ds.time[kwargs['lag']])
+            self._time = 2018.0 + (self._ds.time)/365.25
         elif (self._ds[self.variable].ndim == 3) and ('band' in self._ds[self.variable].dims):
             self._ds_selected = np.squeeze(self._ds[self.variable])
         else:
@@ -542,8 +558,16 @@ class LeafletMap(HasTraits):
         self.cmap = copy.copy(cm.get_cmap(kwargs['cmap']))
         # wait for changes
         asyncio.ensure_future(self.async_wait_for_bounds())
-        self.image = ipyleaflet.ImageService(name=self.variable,
-            crs=self.crs, update_interval=100, endpoint='local')
+        self.image = ipyleaflet.ImageService(
+            name=self.variable,
+            crs=self.crs,
+            interactive=True,
+            update_interval=100,
+            endpoint='local')
+        # add click handler for popups
+        if self.enable_popups:
+            self.image.on_click(self.handle_click)
+        # set the image url
         self.set_image_url()
         # add image object to map
         self.map.add(self.image)
@@ -625,6 +649,64 @@ class LeafletMap(HasTraits):
         self.get_bounds()
         self.get_image_url()
         self.image.url = self.url
+
+    # functional calls for click events
+    def handle_click(self, **kwargs):
+        """callback for handling mouse clicks
+        """
+        lat,lon = kwargs.get('coordinates')
+        kwargs.setdefault('color', 'red')
+        kwargs.setdefault('width', 4.0)
+        kwargs.setdefault('height', 3.0)
+        # remove any prior instances of popup
+        if self.popup is not None:
+            self.map.remove(self.popup)
+        # attempt to get the coordinate reference system of the dataset
+        try:
+            crs = self._ds.rio.crs
+        except Exception as e:
+            crs = self._ds.Polar_Stereographic.attrs['crs_wkt']
+        # get the clicked point in dataset coordinate reference system
+        x,y = rasterio.warp.transform('EPSG:4326', crs, [lon], [lat])
+        # create figure or textual popup
+        if (self._ds[self.variable].ndim == 3) and ('time' in self._ds[self.variable].dims):
+            self.point = np.zeros_like(self._ds.time)
+            self._time = 2018.0 + (self._ds.time)/365.25
+            long_name = self._ds.delta_h.attrs['long_name'].replace('  ', ' ')
+            self.units = self._ds[self.variable].attrs['units'][0]
+            for i,t in enumerate(self._ds.time):
+                self.point[i] = self._ds[self.variable].sel(x=x, y=y, time=t, method='nearest')
+            # create time series plot
+            fig, ax = plt.subplots(figsize=(kwargs['width'], kwargs['height']))
+            fig.patch.set_facecolor('white')
+            ax.plot(self._time, self.point, color=kwargs['color'])
+            ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
+            ax.set_ylabel('{0} [{1}]'.format(long_name, self.units))
+            # save time series plot to in-memory png object
+            png = io.BytesIO()
+            plt.savefig(png, bbox_inches='tight', format='png')
+            png.seek(0)
+            plt.close()
+            # create output widget
+            child = ipywidgets.Image(value=png.getvalue(), format='png')
+            self.popup = ipyleaflet.Popup(location=(lat,lon), child=child,
+                min_width=300, max_width=300, min_height=300, max_height=300,
+                name='popup')
+            self.map.add(self.popup)
+        elif (self._ds[self.variable].ndim == 3) and ('band' in self._ds[self.variable].dims):
+            self.point = self._ds[self.variable].sel(x=x, y=y, band=0, method='nearest').data[0]
+            self.units = self._ds[self.variable].attrs['units'][0]
+            child = ipywidgets.HTML()
+            child.value = '{0:0.1f} {1}'.format(np.squeeze(self.point), self.units)
+            self.popup = ipyleaflet.Popup(location=(lat,lon), child=child, name='popup')
+            self.map.add(self.popup)
+        else:
+            self.point = self._ds[self.variable].sel(x=x, y=y, method='nearest').data[0]
+            self.units = self._ds[self.variable].attrs['units']
+            child = ipywidgets.HTML()
+            child.value = '{0:0.1f} {1}'.format(np.squeeze(self.point), self.units)
+            self.popup = ipyleaflet.Popup(location=(lat,lon), child=child, name='popup')
+            self.map.add(self.popup)
 
     # add colorbar widget to leaflet map
     def add_colorbar(self, **kwargs):
