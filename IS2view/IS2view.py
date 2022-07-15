@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 u"""
-viewer.py
+IS2view.py
 Written by Tyler Sutterley (07/2022)
-Jupyter notebook, user interface and plotting tools
+Jupyter notebook, user interface and plotting tools for visualizing
+    rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
     numpy: Scientific Computing Tools For Python
@@ -26,6 +27,7 @@ import asyncio
 import logging
 import warnings
 import numpy as np
+import collections.abc
 import matplotlib
 import matplotlib.cm as cm
 import matplotlib.colorbar
@@ -418,52 +420,44 @@ class leaflet:
         # convert phi from radians to degrees
         return phi*180.0/np.pi
 
-    @property
-    def z(self):
-        return int(self.map.zoom)
-
-    @property
-    def resolution(self):
-        return self.map.crs['resolutions'][self.z]
-
-    @property
-    def bounds(self):
-        return self.map.bounds
-
-    @property
-    def pixel_bounds(self):
-        return self.map.pixel_bounds
-
-    def get_bounds(self):
-        # get SW and NE corners in map coordinates
-        (self.left, self.top), (self.right, self.bottom) = self.pixel_bounds
-        self.sw = dict(x=(self.map.crs['origin'][0] + self.left*self.resolution),
-            y=(self.map.crs['origin'][1] - self.bottom*self.resolution))
-        self.ne = dict(x=(self.map.crs['origin'][0] + self.right*self.resolution),
-            y=(self.map.crs['origin'][1] - self.top*self.resolution))
-        return self
-
     def add(self, obj):
         """wrapper function for adding layers and controls to leaflet maps
         """
-        try:
-            self.map.add(obj)
-        except ipyleaflet.LayerException as e:
-            logging.info(f"{obj} already on map")
-            pass
+        if isinstance(obj, collections.abc.Iterable):
+            for o in obj:
+                try:
+                    self.map.add(o)
+                except ipyleaflet.LayerException as e:
+                    logging.info(f"{o} already on map")
+                    pass
+        else:
+            try:
+                self.map.add(obj)
+            except ipyleaflet.LayerException as e:
+                logging.info(f"{obj} already on map")
+                pass
 
     def remove(self, obj):
         """wrapper function for removing layers and controls to leaflet maps
         """
-        try:
-            self.map.remove(obj)
-        except ipyleaflet.LayerException as e:
-            logging.info(f"{obj} already removed from map")
-            pass
+        if isinstance(obj, collections.abc.Iterable):
+            for o in obj:
+                try:
+                    self.map.remove(o)
+                except ipyleaflet.LayerException as e:
+                    logging.info(f"{o} already removed from map")
+                    pass
+        else:
+            try:
+                self.map.remove(obj)
+            except ipyleaflet.LayerException as e:
+                logging.info(f"{obj} already removed from map")
+                pass
 
 @xr.register_dataset_accessor('leaflet')
 class LeafletMap(HasTraits):
-
+    """A xarray.DataArray extension for interactive map plotting, based on ipyleaflet
+    """
     north = Float(90)
     east = Float(180)
     south = Float(-90)
@@ -472,7 +466,9 @@ class LeafletMap(HasTraits):
     def boundary_change(self, change):
         # add image object to map
         if self.image is not None:
-            self.map.remove(self.image)
+            # attempt to remove layer
+            self.remove(self.image)
+            # create new image service layer
             self.image = ipyleaflet.ImageService(
                 name=self.variable,
                 crs=self.crs,
@@ -484,7 +480,7 @@ class LeafletMap(HasTraits):
             self.image.on_click(self.handle_click)
         # set the image url
         self.set_image_url()
-        self.map.add(self.image)
+        self.add(self.image)
 
     def __init__(self, ds):
         self._ds = ds
@@ -502,7 +498,7 @@ class LeafletMap(HasTraits):
 
         Parameters
         ----------
-        column_name : str, xarray column to plot
+        variable : str, xarray variable to plot
         lag : int, time lag to plot if 3-dimensional
         cmap : str, matplotlib colormap
         vmin : float, minimum value for normalization
@@ -519,20 +515,22 @@ class LeafletMap(HasTraits):
         kwargs.setdefault('vmin', None)
         kwargs.setdefault('vmax', None)
         kwargs.setdefault('norm', None)
-        kwargs.setdefault('opacity', 0.5)
+        kwargs.setdefault('opacity', 1.0)
         kwargs.setdefault('enable_popups', False)
         kwargs.setdefault('colorbar', True)
         kwargs.setdefault('position', 'topright')
-        # set map
+        # set map and map coordinate reference system
         self.map = m
-        self.crs = projections[m.crs]
+        crs = m.crs['name']
+        self.crs = projections[crs]
         (self.left, self.top), (self.right, self.bottom) = self.map.pixel_bounds
         # enable contextual popups
-        self.enable_popups = kwargs['enable_popups']
+        self.enable_popups = bool(kwargs['enable_popups'])
         # reduce to variable and lag
-        self.variable = kwargs['variable']
+        self.variable = copy.copy(kwargs['variable'])
+        self.lag = int(kwargs['lag'])
         if (self._ds[self.variable].ndim == 3) and ('time' in self._ds[self.variable].dims):
-            self._ds_selected = self._ds[self.variable].sel(time=self._ds.time[kwargs['lag']])
+            self._ds_selected = self._ds[self.variable].sel(time=self._ds.time[self.lag])
             self._time = 2018.0 + (self._ds.time)/365.25
         elif (self._ds[self.variable].ndim == 3) and ('band' in self._ds[self.variable].dims):
             self._ds_selected = np.squeeze(self._ds[self.variable])
@@ -556,6 +554,8 @@ class LeafletMap(HasTraits):
             self.norm = copy.copy(kwargs['norm'])
         # get colormap
         self.cmap = copy.copy(cm.get_cmap(kwargs['cmap']))
+        # get opacity
+        self.opacity = float(kwargs['opacity'])
         # wait for changes
         asyncio.ensure_future(self.async_wait_for_bounds())
         self.image = ipyleaflet.ImageService(
@@ -570,12 +570,16 @@ class LeafletMap(HasTraits):
         # set the image url
         self.set_image_url()
         # add image object to map
-        self.map.add(self.image)
+        self.add(self.image)
         # add colorbar
         if kwargs['colorbar']:
-            self.add_colorbar(label=self.variable,
-                cmap=self.cmap, norm=self.norm,
-                position=kwargs['position'])
+            self.add_colorbar(
+                label=self.variable,
+                cmap=self.cmap,
+                opacity=self.opacity,
+                norm=self.norm,
+                position=kwargs['position']
+            )
 
     def wait_for_change(self, widget, value):
         future = asyncio.Future()
@@ -587,20 +591,63 @@ class LeafletMap(HasTraits):
 
     async def async_wait_for_bounds(self):
         if len(self.map.bounds) == 0:
-            await self.wait_for_change(self.map.map, 'bounds')
+            await self.wait_for_change(self.map, 'bounds')
         # check that bounds are close
         while True:
             self.get_bounds()
-            await self.wait_for_change(self.map.map, 'bounds')
+            await self.wait_for_change(self.map, 'bounds')
             if np.isclose(self.bounds, self.map.bounds).all():
                 break
         # will update map
 
+    def add(self, obj):
+        """wrapper function for adding layers and controls to leaflet maps
+        """
+        try:
+            self.map.add(obj)
+        except ipyleaflet.LayerException as e:
+            logging.info(f"{obj} already on map")
+            pass
+
+    def remove(self, obj):
+        """wrapper function for removing layers and controls to leaflet maps
+        """
+        try:
+            self.map.remove(obj)
+        except ipyleaflet.LayerException as e:
+            logging.info(f"{obj} already removed from map")
+            pass
+
+    @property
+    def z(self):
+        """get the map zoom level
+        """
+        return int(self.map.zoom)
+
+    @property
+    def resolution(self):
+        """get the map resolution for a given zoom level
+        """
+        return self.map.crs['resolutions'][self.z]
+
+    def map_bounds(self):
+        """get the bounds of the leaflet map in projected coordinates
+        """
+        # get SW and NE corners in map coordinates
+        (self.left, self.top), (self.right, self.bottom) = self.map.pixel_bounds
+        self.sw = dict(x=(self.map.crs['origin'][0] + self.left*self.resolution),
+            y=(self.map.crs['origin'][1] - self.bottom*self.resolution))
+        self.ne = dict(x=(self.map.crs['origin'][0] + self.right*self.resolution),
+            y=(self.map.crs['origin'][1] - self.top*self.resolution))
+        return self
+
     def get_bounds(self):
-        self.map.get_bounds()
-        lon,lat = rasterio.warp.transform(self.map.crs, 'EPSG:4326',
-            [self.map.sw['x'], self.map.ne['x']],
-            [self.map.sw['y'], self.map.ne['y']])
+        """get the bounds of the leaflet map in geographical coordinates
+        """
+        self.map_bounds()
+        lon,lat = rasterio.warp.transform(self.crs['name'], 'EPSG:4326',
+            [self.sw['x'], self.ne['x']],
+            [self.sw['y'], self.ne['y']])
         # calculate bounds in latitude/longitude
         self.north = np.max(lat)
         self.east = np.max(lon)
@@ -609,16 +656,17 @@ class LeafletMap(HasTraits):
         self.bounds = ((self.south, self.west),(self.north, self.east))
 
     def clip_image(self, ds):
-        self.map.get_bounds()
+        """clip xarray image to bounds of leaflet map
+        """
+        self.map_bounds()
         # attempt to get the coordinate reference system of the dataset
         try:
             crs = self._ds.rio.crs
         except Exception as e:
             crs = self._ds.Polar_Stereographic.attrs['crs_wkt']
         # convert map bounds to coordinate reference system of image
-        minx,miny,maxx,maxy = rasterio.warp.transform_bounds(self.map.crs,
-            crs, self.map.sw['x'], self.map.sw['y'],
-            self.map.ne['x'], self.map.ne['y'])
+        minx,miny,maxx,maxy = rasterio.warp.transform_bounds(self.crs['name'],
+            crs, self.sw['x'], self.sw['y'], self.ne['x'], self.ne['y'])
         # pad input image to map bounds
         padded = ds.rio.pad_box(minx=minx, maxx=maxx, miny=miny, maxy=maxy)
         # get affine transform of padded image
@@ -627,25 +675,43 @@ class LeafletMap(HasTraits):
         east = int((maxx - pad_transform.c)//pad_transform.a) + 1
         south = int((miny - pad_transform.f)//pad_transform.e) + 1
         west = int((minx - pad_transform.c)//pad_transform.a)
+        # image extents
+        self.extent = np.array([minx, maxx, miny, maxy])
         # clip image to map bounds
         return padded.isel(x=slice(west,east), y=slice(north,south))
 
     def get_image_url(self):
+        """create the image url for the imageservice
+        """
         fig, ax = plt.subplots(1, figsize=(15, 8))
         fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
         visible = self.clip_image(self._ds_selected)
-        ax.imshow(visible, norm=self.norm, interpolation="nearest", cmap=self.cmap)
+        visible.plot.imshow(ax=ax,
+            norm=self.norm,
+            interpolation="nearest",
+            cmap=self.cmap,
+            alpha=self.opacity,
+            add_colorbar=False,
+            add_labels=False
+        )
+        # set image extent
+        ax.set_xlim(self.extent[0], self.extent[1])
+        ax.set_ylim(self.extent[2], self.extent[3])
         ax.axis("tight")
         ax.axis("off")
+        # save as in-memory png
         png = io.BytesIO()
         plt.savefig(png, format='png')
         plt.close()
         png.seek(0)
+        # encode to base64 and get url
         data = base64.b64encode(png.read()).decode("ascii")
         self.url = "data:image/png;base64," + data
         return self
 
     def set_image_url(self, *args, **kwargs):
+        """set the url for the imageservice
+        """
         self.get_bounds()
         self.get_image_url()
         self.image.url = self.url
@@ -660,7 +726,7 @@ class LeafletMap(HasTraits):
         kwargs.setdefault('height', 3.0)
         # remove any prior instances of popup
         if self.popup is not None:
-            self.map.remove(self.popup)
+            self.remove(self.popup)
         # attempt to get the coordinate reference system of the dataset
         try:
             crs = self._ds.rio.crs
@@ -695,21 +761,21 @@ class LeafletMap(HasTraits):
             self.popup = ipyleaflet.Popup(location=(lat,lon), child=child,
                 min_width=300, max_width=300, min_height=300, max_height=300,
                 name='popup')
-            self.map.add(self.popup)
+            self.add(self.popup)
         elif (self._ds[self.variable].ndim == 3) and ('band' in self._ds[self.variable].dims):
             self.point = self._ds[self.variable].sel(x=x, y=y, band=0, method='nearest').data[0]
             self.units = self._ds[self.variable].attrs['units'][0]
             child = ipywidgets.HTML()
             child.value = '{0:0.1f} {1}'.format(np.squeeze(self.point), self.units)
             self.popup = ipyleaflet.Popup(location=(lat,lon), child=child, name='popup')
-            self.map.add(self.popup)
+            self.add(self.popup)
         else:
             self.point = self._ds[self.variable].sel(x=x, y=y, method='nearest').data[0]
             self.units = self._ds[self.variable].attrs['units']
             child = ipywidgets.HTML()
             child.value = '{0:0.1f} {1}'.format(np.squeeze(self.point), self.units)
             self.popup = ipyleaflet.Popup(location=(lat,lon), child=child, name='popup')
-            self.map.add(self.popup)
+            self.add(self.popup)
 
     # add colorbar widget to leaflet map
     def add_colorbar(self, **kwargs):
@@ -719,7 +785,7 @@ class LeafletMap(HasTraits):
         ----------
         cmap : str, matplotlib colormap
         norm : obj, matplotlib color normalization object
-        alpha : float, opacity of colormap
+        opacity : float, opacity of colormap
         orientation : str, orientation of colorbar
         label : str, label for colorbar
         position : str, position of colorbar on leaflet map
@@ -728,7 +794,7 @@ class LeafletMap(HasTraits):
         """
         kwargs.setdefault('cmap', 'viridis')
         kwargs.setdefault('norm', None)
-        kwargs.setdefault('alpha', 1.0)
+        kwargs.setdefault('opacity', 1.0)
         kwargs.setdefault('orientation', 'horizontal')
         kwargs.setdefault('label', 'delta_h')
         kwargs.setdefault('position', 'topright')
@@ -736,13 +802,13 @@ class LeafletMap(HasTraits):
         kwargs.setdefault('height', 0.4)
         # remove any prior instances of a colorbar
         if self.colorbar is not None:
-            self.map.remove(self.colorbar)
+            self.remove(self.colorbar)
         # create matplotlib colorbar
         _, ax = plt.subplots(figsize=(kwargs['width'], kwargs['height']))
         cbar = matplotlib.colorbar.ColorbarBase(ax,
             cmap=kwargs['cmap'],
             norm=kwargs['norm'],
-            alpha=kwargs['alpha'],
+            alpha=kwargs['opacity'],
             orientation=kwargs['orientation'],
             label=kwargs['label'])
         cbar.solids.set_rasterized(True)
@@ -756,5 +822,5 @@ class LeafletMap(HasTraits):
         self.colorbar = ipyleaflet.WidgetControl(widget=output,
             transparent_bg=True, position=kwargs['position'])
         # add colorbar
-        self.map.add(self.colorbar)
+        self.add(self.colorbar)
         plt.close()
