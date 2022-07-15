@@ -436,10 +436,16 @@ class leaflet:
                 except ipyleaflet.LayerException as e:
                     logging.info(f"{o} already on map")
                     pass
+                except ipyleaflet.ControlException as e:
+                    logging.info(f"{o} already on map")
+                    pass
         else:
             try:
                 self.map.add(obj)
             except ipyleaflet.LayerException as e:
+                logging.info(f"{obj} already on map")
+                pass
+            except ipyleaflet.ControlException as e:
                 logging.info(f"{obj} already on map")
                 pass
 
@@ -453,10 +459,16 @@ class leaflet:
                 except ipyleaflet.LayerException as e:
                     logging.info(f"{o} already removed from map")
                     pass
+                except ipyleaflet.ControlException as e:
+                    logging.info(f"{o} already removed from map")
+                    pass
         else:
             try:
                 self.map.remove(obj)
             except ipyleaflet.LayerException as e:
+                logging.info(f"{obj} already removed from map")
+                pass
+            except ipyleaflet.ControlException as e:
                 logging.info(f"{obj} already removed from map")
                 pass
 
@@ -614,6 +626,9 @@ class LeafletMap(HasTraits):
         except ipyleaflet.LayerException as e:
             logging.info(f"{obj} already on map")
             pass
+        except ipyleaflet.ControlException as e:
+            logging.info(f"{obj} already on map")
+            pass
 
     def remove(self, obj):
         """wrapper function for removing layers and controls to leaflet maps
@@ -621,6 +636,9 @@ class LeafletMap(HasTraits):
         try:
             self.map.remove(obj)
         except ipyleaflet.LayerException as e:
+            logging.info(f"{obj} already removed from map")
+            pass
+        except ipyleaflet.ControlException as e:
             logging.info(f"{obj} already removed from map")
             pass
 
