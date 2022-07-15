@@ -88,8 +88,9 @@ class widgets:
         )
 
         # dropdown menu for selecting group to read from file
+        group_list = ['delta_h','dhdt_lag1','dhdt_lag4','dhdt_lag8']
         self.group = ipywidgets.Dropdown(
-            options=['delta_h','dhdt_lag1','dhdt_lag4','dhdt_lag8'],
+            options=group_list,
             description='Group:',
             description_tooltip="Group: ATL15 data group to read from file",
             disabled=False,
@@ -97,7 +98,9 @@ class widgets:
         )
 
         # dropdown menu for selecting variable to draw on map
+        variable_list = ['delta_h','dhdt']
         self.variable = ipywidgets.Dropdown(
+            options=variable_list,
             description='Variable:',
             description_tooltip="Variable: variable to display on leaflet map",
             disabled=False,
@@ -255,19 +258,22 @@ class widgets:
         """
         return self.range.value[1]
 
+
+    def set_atl14_defaults(self, *args, **kwargs):
+        """sets the default widget parameters for ATL14 variables
+        """
+        self.dynamic.value = True
+
     def set_atl15_defaults(self, *args, **kwargs):
         """sets the default widget parameters for ATL15 variables
         """
-        group = self.group.value
+        group = copy.copy(self.group.value)
         variables = {}
         variables['delta_h'] = 'delta_h'
         variables['dhdt_lag1'] = 'dhdt'
         variables['dhdt_lag4'] = 'dhdt'
         variables['dhdt_lag8'] = 'dhdt'
         self.variable.value = variables[group]
-
-    def set_atl14_defaults(self, *args, **kwargs):
-        self.dynamic.value = True
 
     def set_variables(self, ds):
         self.variable.options = sorted(ds.keys())
@@ -738,7 +744,7 @@ class LeafletMap(HasTraits):
         if (self._ds[self.variable].ndim == 3) and ('time' in self._ds[self.variable].dims):
             self.point = np.zeros_like(self._ds.time)
             self._time = 2018.0 + (self._ds.time)/365.25
-            long_name = self._ds.delta_h.attrs['long_name'].replace('  ', ' ')
+            long_name = self._ds[self.variable].attrs['long_name'].replace('  ', ' ')
             self.units = self._ds[self.variable].attrs['units'][0]
             for i,t in enumerate(self._ds.time):
                 self.point[i] = self._ds[self.variable].sel(x=x, y=y, time=t, method='nearest')
