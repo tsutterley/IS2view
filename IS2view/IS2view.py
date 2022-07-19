@@ -125,7 +125,6 @@ class widgets:
         )
 
         # watch widgets for changes
-        self.group.observe(self.set_atl15_defaults)
         self.dynamic.observe(self.set_dynamic)
         self.variable.observe(self.set_lag_visibility)
 
@@ -275,10 +274,19 @@ class widgets:
         variables['dhdt_lag8'] = 'dhdt'
         self.variable.value = variables[group]
 
-    def set_variables(self, ds):
-        self.variable.options = sorted(ds.keys())
+    def set_variables(self, *args):
+        """sets the list of available variables in a group
+        """
+        if any(args):
+            # set list of available variables
+            self.variable.options = sorted(args[0].keys())
+        else:
+            # return to temporary defaults
+            self.variable.options = ['delta_h','dhdt']
 
     def set_dynamic(self, *args, **kwargs):
+        """sets variable normalization range if dynamic
+        """
         if self.dynamic.value:
             self.range.min = -100
             self.range.max = 100
@@ -291,15 +299,19 @@ class widgets:
             self.range.layout.display = 'inline-flex'
 
     def set_lags(self, ds):
+        """sets available time range for lags
+        """
         self.timelag.value = 1
         self.timelag.min = 1
         # try setting the max lag
         try:
             self.timelag.max = len(ds['time'])
         except Exception as e:
-            self.timelag.max = 0
+            self.timelag.max = 1
 
     def set_lag_visibility(self, sender):
+        """updates the visibility of the time lag widget
+        """
         # check if setting an invariant variable
         if self.variable.value in ('cell_area','ice_mask'):
             self.timelag.layout.display = 'none'
@@ -308,6 +320,8 @@ class widgets:
 
     @property
     def lag(self):
+        """return the 0-based index for the time lag
+        """
         return self.timelag.value - 1
 
 # map projections
@@ -685,9 +699,9 @@ class LeafletMap(HasTraits):
         """
         return self.map.crs['resolutions'][self.z]
 
-    # get map bounds in projected coordinates
-    def map_bounds(self):
-        """get the bounds of the leaflet map in projected coordinates
+    # get map bounding box in projected coordinates
+    def get_bbox(self):
+        """get the bounding box of the leaflet map in projected coordinates
         """
         # get SW and NE corners in map coordinates
         (self.left, self.top), (self.right, self.bottom) = self.map.pixel_bounds
@@ -701,7 +715,7 @@ class LeafletMap(HasTraits):
     def get_bounds(self):
         """get the bounds of the leaflet map in geographical coordinates
         """
-        self.map_bounds()
+        self.get_bbox()
         lon,lat = rasterio.warp.transform(self.crs['name'], 'EPSG:4326',
             [self.sw['x'], self.ne['x']],
             [self.sw['y'], self.ne['y']])
@@ -716,7 +730,7 @@ class LeafletMap(HasTraits):
     def clip_image(self, ds):
         """clip xarray image to bounds of leaflet map
         """
-        self.map_bounds()
+        self.get_bbox()
         # attempt to get the coordinate reference system of the dataset
         try:
             grid_mapping = self._ds[self.variable].attrs['grid_mapping']
@@ -777,6 +791,27 @@ class LeafletMap(HasTraits):
         self.get_image_url()
         self.image.url = self.url
 
+    def set_lag(self, sender):
+        """update the time lag for the selected variable
+        """
+        # only update lag if a new final
+        if isinstance(sender['new'], int):
+            self.lag = sender['new'] - 1
+        else:
+            return
+        # try to update the selected dataset
+        try:
+            self._ds_selected = self._ds[self.variable].sel(time=self._ds.time[self.lag])
+            self.get_image_url()
+        except:
+            pass
+        else:
+            # update image url
+            self.image.url = self.url
+            # force redrawing of map by removing and adding layer
+            self.remove(self.image)
+            self.add(self.image)
+
     # functional calls for click events
     def handle_click(self, **kwargs):
         """callback for handling mouse clicks
@@ -817,6 +852,8 @@ class LeafletMap(HasTraits):
             ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
             ax.set_ylabel('{0} [{1}]'.format(long_name, self.units))
             ax.set_title(self.variable)
+            # set axis ticks to not use constant offset
+            ax.xaxis.get_major_formatter().set_useOffset(False)
             # save time series plot to in-memory png object
             png = io.BytesIO()
             plt.savefig(png, bbox_inches='tight', format='png')

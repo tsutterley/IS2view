@@ -3,4 +3,5 @@ ipyleaflet
 matplotlib
 numpy
 rioxarray
+s3fs
 xarray

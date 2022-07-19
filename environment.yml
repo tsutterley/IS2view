@@ -11,4 +11,5 @@ dependencies:
   - python>=3.6
   - numpy
   - rioxarray
+  - s3fs
   - xarray
