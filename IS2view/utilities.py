@@ -2,7 +2,7 @@
 u"""
 utilities.py
 Written by Tyler Sutterley (07/2022)
-Download and management utilities for syncing time and auxiliary files
+Download and management utilities
 
 UPDATE HISTORY:
     Written 07/2022

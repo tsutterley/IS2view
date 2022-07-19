@@ -28,6 +28,7 @@ _*.c
 *.h5
 *.hdf
 *.tif
+*.zarr
 # Logs and databases #
 ######################
 *.log

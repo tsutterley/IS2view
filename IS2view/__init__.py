@@ -8,6 +8,7 @@ Land Ice Height Products
 Documentation is available at https://is2view.readthedocs.io
 """
 from IS2view.IS2view import widgets, leaflet
+from IS2view.convert import convert
 import IS2view.utilities
 import IS2view.version
 # get version

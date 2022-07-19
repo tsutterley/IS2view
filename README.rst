@@ -4,6 +4,8 @@ IS2view
 
 |Language|
 |License|
+|Documentation Status|
+|Binder|
 |Pangeo|
 
 .. |Language| image:: https://img.shields.io/badge/python-v3.8-green.svg
@@ -11,6 +13,12 @@ IS2view
 
 .. |License| image:: https://img.shields.io/badge/license-MIT-green.svg
    :target: https://github.com/tsutterley/IS2view/blob/main/LICENSE
+
+.. |Documentation Status| image:: https://readthedocs.org/projects/is2view/badge/?version=latest
+   :target: https://is2view.readthedocs.io/en/latest/?badge=latest
+
+.. |Binder| image:: https://mybinder.org/badge_logo.svg
+   :target: https://mybinder.org/v2/gh/tsutterley/IS2view/main
 
 .. |Pangeo| image:: https://img.shields.io/static/v1.svg?logo=Jupyter&label=PangeoBinderAWS&message=us-west-2&color=orange
    :target: https://aws-uswest2-binder.pangeo.io/v2/gh/tsutterley/IS2view/main?urlpath=lab

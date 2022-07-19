@@ -33,7 +33,7 @@ import matplotlib.cm as cm
 import matplotlib.colorbar
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
-from traitlets import HasTraits, Float, observe
+from traitlets import HasTraits, Float, Tuple, observe
 
 # attempt imports
 try:
@@ -310,6 +310,7 @@ class widgets:
     def lag(self):
         return self.timelag.value - 1
 
+# map projections
 projections = {}
 projections['EPSG:3857'] = dict(name='EPSG3857',custom=False),
 projections['EPSG:3413'] = dict(
@@ -422,6 +423,8 @@ class leaflet:
 
     # fix longitudes to be -180:180
     def wrap_longitudes(self, lon):
+        """Fix longitudes to be within -180 and 180
+        """
         phi = np.arctan2(np.sin(lon*np.pi/180.0),np.cos(lon*np.pi/180.0))
         # convert phi from radians to degrees
         return phi*180.0/np.pi
@@ -476,12 +479,12 @@ class leaflet:
 class LeafletMap(HasTraits):
     """A xarray.DataArray extension for interactive map plotting, based on ipyleaflet
     """
-    north = Float(90)
-    east = Float(180)
-    south = Float(-90)
-    west = Float(-180)
-    @observe('north', 'east', 'south', 'west')
+
+    bounds = Tuple(Tuple(Float(), Float()), Tuple(Float(), Float()))
+    @observe('bounds')
     def boundary_change(self, change):
+        """Update image on boundary change
+        """
         # add image object to map
         if self.image is not None:
             # attempt to remove layer
@@ -501,14 +504,30 @@ class LeafletMap(HasTraits):
         self.add(self.image)
 
     def __init__(self, ds):
+        # initialize map
+        self.map = None
+        self.crs = None
+        self.left, self.top = (None, None)
+        self.right, self.bottom = (None, None)
+        self.sw = {}
+        self.ne = {}
+        # initialize dataset
         self._ds = ds
         self._ds_selected = None
-        # initialize data and colorbars
+        self.variable = None
+        # initialize image and colorbars
         self.image = None
+        self.cmap = None
+        self.norm = None
+        self.opacity = None
         self.colorbar = None
         # initialize point for time series plot
         self.point = None
+        self.time = None
+        self.units = None
         self.popup = None
+        # initialize options
+        self.enable_popups = False
 
     # add imagery data to leaflet map
     def plot(self, m, **kwargs):
@@ -516,16 +535,28 @@ class LeafletMap(HasTraits):
 
         Parameters
         ----------
-        variable : str, xarray variable to plot
-        lag : int, time lag to plot if 3-dimensional
-        cmap : str, matplotlib colormap
-        vmin : float, minimum value for normalization
-        vmax : float, maximum value for normalization
-        norm : obj, matplotlib color normalization object
-        opacity : float, opacity of image plot
-        enable_popups : bool, enable contextual popups
-        colorbar : bool, show colorbar for rendered variable
-        position : str, position of colorbar on leaflet map
+        m : obj
+            leaflet map to add the layer
+        variable : str, default delta_h
+            xarray variable to plot
+        lag : int, default 0
+            Time lag to plot if 3-dimensional
+        cmap : str, default 'viridis'
+            matplotlib colormap
+        vmin : float or NoneType
+            Minimum value for normalization
+        vmax : float or NoneType
+            Maximum value for normalization
+        norm : obj or NoneType
+            matplotlib color normalization object
+        opacity : float, default 1.0
+            Opacity of image plot
+        enable_popups : bool, default False
+            Enable contextual popups
+        colorbar : bool, decault True
+            show colorbar for rendered variable
+        position : str, default 'topright'
+            Position of colorbar on leaflet map
         """
         kwargs.setdefault('variable', 'delta_h')
         kwargs.setdefault('lag', 0)
@@ -654,6 +685,7 @@ class LeafletMap(HasTraits):
         """
         return self.map.crs['resolutions'][self.z]
 
+    # get map bounds in projected coordinates
     def map_bounds(self):
         """get the bounds of the leaflet map in projected coordinates
         """
@@ -665,6 +697,7 @@ class LeafletMap(HasTraits):
             y=(self.map.crs['origin'][1] - self.top*self.resolution))
         return self
 
+    # get map bounds in geographic coordinates
     def get_bounds(self):
         """get the bounds of the leaflet map in geographical coordinates
         """
@@ -673,11 +706,12 @@ class LeafletMap(HasTraits):
             [self.sw['x'], self.ne['x']],
             [self.sw['y'], self.ne['y']])
         # calculate bounds in latitude/longitude
-        self.north = np.max(lat)
-        self.east = np.max(lon)
-        self.south = np.min(lat)
-        self.west = np.min(lon)
-        self.bounds = ((self.south, self.west),(self.north, self.east))
+        north = np.max(lat)
+        east = np.max(lon)
+        south = np.min(lat)
+        west = np.min(lon)
+        # update bounds
+        self.bounds = ((south, west), (north, east))
 
     def clip_image(self, ds):
         """clip xarray image to bounds of leaflet map
@@ -685,9 +719,12 @@ class LeafletMap(HasTraits):
         self.map_bounds()
         # attempt to get the coordinate reference system of the dataset
         try:
-            crs = self._ds.rio.crs
+            grid_mapping = self._ds[self.variable].attrs['grid_mapping']
+            crs = self._ds[grid_mapping].attrs['crs_wkt']
         except Exception as e:
-            crs = self._ds.Polar_Stereographic.attrs['crs_wkt']
+            crs = self._ds.rio.crs
+        else:
+            self._ds.rio.set_crs(crs)
         # convert map bounds to coordinate reference system of image
         minx,miny,maxx,maxy = rasterio.warp.transform_bounds(self.crs['name'],
             crs, self.sw['x'], self.sw['y'], self.ne['x'], self.ne['y'])
@@ -753,9 +790,12 @@ class LeafletMap(HasTraits):
             self.remove(self.popup)
         # attempt to get the coordinate reference system of the dataset
         try:
-            crs = self._ds.rio.crs
+            grid_mapping = self._ds[self.variable].attrs['grid_mapping']
+            crs = self._ds[grid_mapping].attrs['crs_wkt']
         except Exception as e:
-            crs = self._ds.Polar_Stereographic.attrs['crs_wkt']
+            crs = self._ds.rio.crs
+        else:
+            self._ds.rio.set_crs(crs)
         # get the clicked point in dataset coordinate reference system
         x,y = rasterio.warp.transform('EPSG:4326', crs, [lon], [lat])
         # create figure or textual popup
@@ -766,15 +806,17 @@ class LeafletMap(HasTraits):
             self.units = self._ds[self.variable].attrs['units'][0]
             for i,t in enumerate(self._ds.time):
                 self.point[i] = self._ds[self.variable].sel(x=x, y=y, time=t, method='nearest')
-            # only create plot if valid
+            # only create plot if a valid point
             if np.all(np.isnan(self.point)):
                 return
             # create time series plot
             fig, ax = plt.subplots(figsize=(kwargs['width'], kwargs['height']))
             fig.patch.set_facecolor('white')
             ax.plot(self._time, self.point, color=kwargs['color'])
+            # set labels and title
             ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
             ax.set_ylabel('{0} [{1}]'.format(long_name, self.units))
+            ax.set_title(self.variable)
             # save time series plot to in-memory png object
             png = io.BytesIO()
             plt.savefig(png, bbox_inches='tight', format='png')
