@@ -5,7 +5,6 @@ dependencies:
   - boto3
   - docutils<0.18
   - graphviz
-  - ipyleaflet
   - ipywidgets
   - matplotlib
   - notebook
@@ -13,11 +12,9 @@ dependencies:
   - numpydoc
   - pip
   - python>=3.6
-  - rioxarray
   - sphinx
   - sphinx-argparse
   - sphinx_rtd_theme
   - texlive-core
-  - xarray
   - pip:
     - ..
