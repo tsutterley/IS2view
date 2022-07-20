@@ -3,12 +3,16 @@ channels:
   - conda-forge
 dependencies:
   - boto3
+  - bottleneck
+  - dask
   - ipyleaflet
   - ipywidgets
   - matplotlib
+  - netCDF4
   - notebook
   - pip
   - python>=3.6
   - numpy
   - rioxarray
+  - s3fs
   - xarray

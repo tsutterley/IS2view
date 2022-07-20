@@ -1,6 +1,10 @@
 boto3
+bottleneck
+dask
 ipyleaflet
 matplotlib
+netCDF4
 numpy
 rioxarray
+s3fs
 xarray

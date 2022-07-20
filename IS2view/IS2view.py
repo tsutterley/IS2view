@@ -125,7 +125,6 @@ class widgets:
         )
 
         # watch widgets for changes
-        self.group.observe(self.set_atl15_defaults)
         self.dynamic.observe(self.set_dynamic)
         self.variable.observe(self.set_lag_visibility)
 
@@ -275,10 +274,19 @@ class widgets:
         variables['dhdt_lag8'] = 'dhdt'
         self.variable.value = variables[group]
 
-    def set_variables(self, ds):
-        self.variable.options = sorted(ds.keys())
+    def set_variables(self, *args):
+        """sets the list of available variables in a group
+        """
+        if any(args):
+            # set list of available variables
+            self.variable.options = sorted(args[0].keys())
+        else:
+            # return to temporary defaults
+            self.variable.options = ['delta_h','dhdt']
 
     def set_dynamic(self, *args, **kwargs):
+        """sets variable normalization range if dynamic
+        """
         if self.dynamic.value:
             self.range.min = -100
             self.range.max = 100
@@ -291,15 +299,19 @@ class widgets:
             self.range.layout.display = 'inline-flex'
 
     def set_lags(self, ds):
+        """sets available time range for lags
+        """
         self.timelag.value = 1
         self.timelag.min = 1
         # try setting the max lag
         try:
             self.timelag.max = len(ds['time'])
         except Exception as e:
-            self.timelag.max = 0
+            self.timelag.max = 1
 
     def set_lag_visibility(self, sender):
+        """updates the visibility of the time lag widget
+        """
         # check if setting an invariant variable
         if self.variable.value in ('cell_area','ice_mask'):
             self.timelag.layout.display = 'none'
@@ -308,6 +320,8 @@ class widgets:
 
     @property
     def lag(self):
+        """return the 0-based index for the time lag
+        """
         return self.timelag.value - 1
 
 # map projections
@@ -364,6 +378,8 @@ class leaflet:
         kwargs.setdefault('scale_control', False)
         kwargs.setdefault('cursor_control', True)
         kwargs.setdefault('layer_control', True)
+        kwargs.setdefault('draw_control', False)
+        kwargs.setdefault('draw_color','blue')
         kwargs.setdefault('center', (0,0))
         kwargs.setdefault('zoom', 1)
         # create basemap in projection
@@ -410,6 +426,32 @@ class leaflet:
             self.map.add(cursor_control)
             # keep track of cursor position
             self.map.on_interaction(self.handle_interaction)
+        # add draw control
+        if kwargs['draw_control']:
+            # add control for drawing polygons or bounding boxes
+            draw_control = ipyleaflet.DrawControl(
+                polyline={},
+                circlemarker={},
+                edit=False)
+            shapeOptions = {'color':kwargs['draw_color'],
+                'fill_color':kwargs['draw_color']}
+            draw_control.marker = dict(
+                shapeOptions=shapeOptions
+            )
+            draw_control.rectangle = dict(
+                shapeOptions=shapeOptions,
+                metric=['km','m']
+            )
+            draw_control.polygon = dict(
+                shapeOptions=shapeOptions,
+                allowIntersection=False,
+                showArea=True,
+                metric=['km','m']
+            )
+            # add control to map
+            self.geometries = []
+            draw_control.on_draw(self.handle_draw)
+            self.map.add(draw_control)
 
     # handle cursor movements for label
     def handle_interaction(self, **kwargs):
@@ -420,6 +462,17 @@ class leaflet:
             lon = self.wrap_longitudes(lon)
             self.cursor.value = u"""Latitude: {d[0]:8.4f}\u00B0,
                 Longitude: {d[1]:8.4f}\u00B0""".format(d=[lat,lon])
+
+    # keep track of objects drawn on map
+    def handle_draw(self, obj, action, geo_json):
+        """callback for handling draw events
+        """
+        # append geojson geometry to list
+        if (action == 'created'):
+            self.geometries.append(geo_json['geometry'])
+        elif (action == 'deleted'):
+            self.geometries.remove(geo_json['geometry'])
+        return self
 
     # fix longitudes to be -180:180
     def wrap_longitudes(self, lon):
@@ -491,7 +544,7 @@ class LeafletMap(HasTraits):
             self.remove(self.image)
             # create new image service layer
             self.image = ipyleaflet.ImageService(
-                name=self.variable,
+                name=self._variable,
                 crs=self.crs,
                 interactive=True,
                 update_interval=100,
@@ -514,7 +567,7 @@ class LeafletMap(HasTraits):
         # initialize dataset
         self._ds = ds
         self._ds_selected = None
-        self.variable = None
+        self._variable = None
         # initialize image and colorbars
         self.image = None
         self.cmap = None
@@ -522,9 +575,9 @@ class LeafletMap(HasTraits):
         self.opacity = None
         self.colorbar = None
         # initialize point for time series plot
-        self.point = None
-        self.time = None
-        self.units = None
+        self._data = None
+        self._time = None
+        self._units = None
         self.popup = None
         # initialize options
         self.enable_popups = False
@@ -576,15 +629,15 @@ class LeafletMap(HasTraits):
         # enable contextual popups
         self.enable_popups = bool(kwargs['enable_popups'])
         # reduce to variable and lag
-        self.variable = copy.copy(kwargs['variable'])
+        self._variable = copy.copy(kwargs['variable'])
         self.lag = int(kwargs['lag'])
-        if (self._ds[self.variable].ndim == 3) and ('time' in self._ds[self.variable].dims):
-            self._ds_selected = self._ds[self.variable].sel(time=self._ds.time[self.lag])
+        if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
+            self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
             self._time = 2018.0 + (self._ds.time)/365.25
-        elif (self._ds[self.variable].ndim == 3) and ('band' in self._ds[self.variable].dims):
-            self._ds_selected = np.squeeze(self._ds[self.variable])
+        elif (self._ds[self._variable].ndim == 3) and ('band' in self._ds[self._variable].dims):
+            self._ds_selected = np.squeeze(self._ds[self._variable])
         else:
-            self._ds_selected = self._ds[self.variable]
+            self._ds_selected = self._ds[self._variable]
         # set colorbar limits to 2-98 percentile
         # if not using a defined plot range
         clim = self._ds_selected.quantile((0.02, 0.98)).values
@@ -608,7 +661,7 @@ class LeafletMap(HasTraits):
         # wait for changes
         asyncio.ensure_future(self.async_wait_for_bounds())
         self.image = ipyleaflet.ImageService(
-            name=self.variable,
+            name=self._variable,
             crs=self.crs,
             interactive=True,
             update_interval=100,
@@ -623,7 +676,7 @@ class LeafletMap(HasTraits):
         # add colorbar
         if kwargs['colorbar']:
             self.add_colorbar(
-                label=self.variable,
+                label=self._variable,
                 cmap=self.cmap,
                 opacity=self.opacity,
                 norm=self.norm,
@@ -685,9 +738,9 @@ class LeafletMap(HasTraits):
         """
         return self.map.crs['resolutions'][self.z]
 
-    # get map bounds in projected coordinates
-    def map_bounds(self):
-        """get the bounds of the leaflet map in projected coordinates
+    # get map bounding box in projected coordinates
+    def get_bbox(self):
+        """get the bounding box of the leaflet map in projected coordinates
         """
         # get SW and NE corners in map coordinates
         (self.left, self.top), (self.right, self.bottom) = self.map.pixel_bounds
@@ -701,7 +754,7 @@ class LeafletMap(HasTraits):
     def get_bounds(self):
         """get the bounds of the leaflet map in geographical coordinates
         """
-        self.map_bounds()
+        self.get_bbox()
         lon,lat = rasterio.warp.transform(self.crs['name'], 'EPSG:4326',
             [self.sw['x'], self.ne['x']],
             [self.sw['y'], self.ne['y']])
@@ -716,10 +769,10 @@ class LeafletMap(HasTraits):
     def clip_image(self, ds):
         """clip xarray image to bounds of leaflet map
         """
-        self.map_bounds()
+        self.get_bbox()
         # attempt to get the coordinate reference system of the dataset
         try:
-            grid_mapping = self._ds[self.variable].attrs['grid_mapping']
+            grid_mapping = self._ds[self._variable].attrs['grid_mapping']
             crs = self._ds[grid_mapping].attrs['crs_wkt']
         except Exception as e:
             crs = self._ds.rio.crs
@@ -777,6 +830,27 @@ class LeafletMap(HasTraits):
         self.get_image_url()
         self.image.url = self.url
 
+    def set_lag(self, sender):
+        """update the time lag for the selected variable
+        """
+        # only update lag if a new final
+        if isinstance(sender['new'], int):
+            self.lag = sender['new'] - 1
+        else:
+            return
+        # try to update the selected dataset
+        try:
+            self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
+            self.get_image_url()
+        except:
+            pass
+        else:
+            # update image url
+            self.image.url = self.url
+            # force redrawing of map by removing and adding layer
+            self.remove(self.image)
+            self.add(self.image)
+
     # functional calls for click events
     def handle_click(self, **kwargs):
         """callback for handling mouse clicks
@@ -790,7 +864,7 @@ class LeafletMap(HasTraits):
             self.remove(self.popup)
         # attempt to get the coordinate reference system of the dataset
         try:
-            grid_mapping = self._ds[self.variable].attrs['grid_mapping']
+            grid_mapping = self._ds[self._variable].attrs['grid_mapping']
             crs = self._ds[grid_mapping].attrs['crs_wkt']
         except Exception as e:
             crs = self._ds.rio.crs
@@ -799,24 +873,26 @@ class LeafletMap(HasTraits):
         # get the clicked point in dataset coordinate reference system
         x,y = rasterio.warp.transform('EPSG:4326', crs, [lon], [lat])
         # create figure or textual popup
-        if (self._ds[self.variable].ndim == 3) and ('time' in self._ds[self.variable].dims):
-            self.point = np.zeros_like(self._ds.time)
+        if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
+            self._data = np.zeros_like(self._ds.time)
             self._time = 2018.0 + (self._ds.time)/365.25
-            long_name = self._ds[self.variable].attrs['long_name'].replace('  ', ' ')
-            self.units = self._ds[self.variable].attrs['units'][0]
+            long_name = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+            self._units = self._ds[self._variable].attrs['units'][0]
             for i,t in enumerate(self._ds.time):
-                self.point[i] = self._ds[self.variable].sel(x=x, y=y, time=t, method='nearest')
+                self._data[i] = self._ds[self._variable].sel(x=x, y=y, time=t, method='nearest')
             # only create plot if a valid point
-            if np.all(np.isnan(self.point)):
+            if np.all(np.isnan(self._data)):
                 return
             # create time series plot
             fig, ax = plt.subplots(figsize=(kwargs['width'], kwargs['height']))
             fig.patch.set_facecolor('white')
-            ax.plot(self._time, self.point, color=kwargs['color'])
+            ax.plot(self._time, self._data, color=kwargs['color'])
             # set labels and title
             ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
-            ax.set_ylabel('{0} [{1}]'.format(long_name, self.units))
-            ax.set_title(self.variable)
+            ax.set_ylabel('{0} [{1}]'.format(long_name, self._units))
+            ax.set_title(self._variable)
+            # set axis ticks to not use constant offset
+            ax.xaxis.get_major_formatter().set_useOffset(False)
             # save time series plot to in-memory png object
             png = io.BytesIO()
             plt.savefig(png, bbox_inches='tight', format='png')
@@ -828,18 +904,18 @@ class LeafletMap(HasTraits):
                 min_width=300, max_width=300, min_height=300, max_height=300,
                 name='popup')
             self.add(self.popup)
-        elif (self._ds[self.variable].ndim == 3) and ('band' in self._ds[self.variable].dims):
-            self.point = self._ds[self.variable].sel(x=x, y=y, band=0, method='nearest').data[0]
-            self.units = self._ds[self.variable].attrs['units'][0]
+        elif (self._ds[self._variable].ndim == 3) and ('band' in self._ds[self._variable].dims):
+            self._data = self._ds[self._variable].sel(x=x, y=y, band=0, method='nearest').data[0]
+            self._units = self._ds[self._variable].attrs['units'][0]
             child = ipywidgets.HTML()
-            child.value = '{0:0.1f} {1}'.format(np.squeeze(self.point), self.units)
+            child.value = '{0:0.1f} {1}'.format(np.squeeze(self._data), self._units)
             self.popup = ipyleaflet.Popup(location=(lat,lon), child=child, name='popup')
             self.add(self.popup)
         else:
-            self.point = self._ds[self.variable].sel(x=x, y=y, method='nearest').data[0]
-            self.units = self._ds[self.variable].attrs['units']
+            self._data = self._ds[self._variable].sel(x=x, y=y, method='nearest').data[0]
+            self._units = self._ds[self._variable].attrs['units']
             child = ipywidgets.HTML()
-            child.value = '{0:0.1f} {1}'.format(np.squeeze(self.point), self.units)
+            child.value = '{0:0.1f} {1}'.format(np.squeeze(self._data), self._units)
             self.popup = ipyleaflet.Popup(location=(lat,lon), child=child, name='popup')
             self.add(self.popup)
 
@@ -890,3 +966,106 @@ class LeafletMap(HasTraits):
         # add colorbar
         self.add(self.colorbar)
         plt.close()
+
+@xr.register_dataset_accessor('timeseries')
+class TimeSeries(HasTraits):
+    """A xarray.DataArray extension for extracting and plotting a time series
+    """
+
+    def __init__(self, ds):
+        # initialize geometry
+        self.geometry = None
+        self.crs = None
+        # initialize dataset
+        self._ds = ds
+        self._ds_selected = None
+        self._variable = None
+        # initialize data for time series plot
+        self._data = None
+        self._time = None
+        self._units = None
+        self._plot = None
+
+    # create time series plot
+    def plot(self, geo,
+        variable='delta_h',
+        crs='epsg:4326',
+        ax=None,
+        figsize=(6,4),
+        **kwargs
+        ):
+        """Creates a time series of an extracted geometry
+
+        Parameters
+        ----------
+        geo : obj
+            GeoJSON geometry to extract
+        variable : str, default delta_h
+            xarray variable to plot
+        crs : str, default 'epsg:4326'
+            coordinate reference system of geometry
+        ax : obj or NoneType, default None
+            Figure axis to plot
+        figsize : tuple, default (6,4)
+            Dimensions of figure to create
+        kwargs : dict, default {}
+            Keyword arguments for time series plot
+        """
+        # set geometry
+        self.geometry = geo
+        self.crs = crs
+        # list of optional error variables
+        error_variables = ('delta_h_sigma','misfit_rms','misfit_rms_scaled','dhdt_sigma')
+        # set figure axis
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize)
+            fig.patch.set_facecolor('white')
+        # attempt to get the coordinate reference system of the dataset
+        try:
+            grid_mapping = self._ds[self._variable].attrs['grid_mapping']
+            ds_crs = self._ds[grid_mapping].attrs['crs_wkt']
+        except Exception as e:
+            ds_crs = self._ds.rio.crs
+        else:
+            self._ds.rio.set_crs(ds_crs)
+        # reduce to variable
+        self._variable = copy.copy(variable)
+        if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
+            self._ds_selected = self._ds[self._variable]
+        else:
+            return
+        # convert time to units
+        self._time = 2018.0 + (self._ds.time)/365.25
+        # extract units
+        long_name = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+        self._units = self._ds[self._variable].attrs['units'][0]
+        # reduce dataset to geometry
+        self._data = np.zeros_like(self._ds.time)
+        if (self.geometry['type'].lower() == 'point'):
+            # convert point to dataset coordinate reference system
+            lon,lat = self.geometry['coordinates']
+            x,y = rasterio.warp.transform(self.crs, ds_crs, [lon], [lat])
+            for i,t in enumerate(self._ds.time):
+                self._data[i] = self._ds_selected.sel(x=x, y=y, time=t, method='nearest')
+        else:
+            # clip variable and cell area to geometry
+            cell_area =  self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
+            for i,t in enumerate(self._ds.time):
+                reduced = self._ds_selected.sel(time=t)
+                clipped = reduced.rio.clip([self.geometry], self.crs, drop=False)
+                if self._variable in error_variables:
+                    self._data[i] = np.sqrt(np.sum(cell_area*clipped**2)/np.sum(cell_area))
+                else:
+                    self._data[i] = np.sum(cell_area*clipped)/np.sum(cell_area)
+        # only create plot if valid
+        if np.all(np.isnan(self._data)):
+            return
+        # create time series plot
+        self._plot, = ax.plot(self._time, self._data, **kwargs)
+        # set labels and title
+        ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
+        ax.set_ylabel('{0} [{1}]'.format(long_name, self._units))
+        ax.set_title(self._variable)
+        # set axis ticks to not use constant offset
+        ax.xaxis.get_major_formatter().set_useOffset(False)
+        return self
