@@ -1,15 +1,10 @@
-# Install bleeding edge ipyleaflet
+# Install ipyleaflet with image service layers
 conda install -y yarn jupyter_packaging
 git clone -b imageserver https://github.com/tsutterley/ipyleaflet
-cd ipyleaflet
-pip install -e .
-# If you are developing on Jupyter Notebook
-jupyter nbextension install --py --symlink --sys-prefix --overwrite ipyleaflet
-jupyter nbextension enable --py --sys-prefix --overwrite ipyleaflet
-# If you are developing on JupyterLab
+cd ipyleaflet; pip install -e .
+# add extension for developing on JupyterLab
 jupyter labextension develop . --overwrite
 # build javascript
 cd js; yarn run watch
-cd
 # Install python package
-pip install -e .
+cd; pip install -e .
