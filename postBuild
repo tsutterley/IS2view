@@ -5,6 +5,6 @@ cd ipyleaflet; pip install -e .
 # add extension for developing on JupyterLab
 jupyter labextension develop . --overwrite
 # build javascript
-cd js; yarn run watch
+cd js; yarn run build
 # Install python package
 cd; pip install -e .
