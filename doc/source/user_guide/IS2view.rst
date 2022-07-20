@@ -19,3 +19,6 @@ General Attributes and Methods
 
 .. autoclass:: IS2view.IS2view.LeafletMap
    :members:
+
+.. autoclass:: IS2view.IS2view.TimeSeries
+   :members:
