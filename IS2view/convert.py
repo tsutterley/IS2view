@@ -4,6 +4,8 @@ Written by Tyler Sutterley (07/2022)
 Utilities for converting gridded ICESat-2 files into zarr files
 
 PYTHON DEPENDENCIES:
+    netCDF4: Python interface to the netCDF C library
+        https://unidata.github.io/netcdf4-python/netCDF4/index.html
     numpy: Scientific Computing Tools For Python
         https://numpy.org
         https://numpy.org/doc/stable/user/numpy-for-matlab-users.html

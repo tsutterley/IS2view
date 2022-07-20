@@ -33,8 +33,11 @@ Dependencies
 ############
 
 - `boto3: Amazon Web Services (AWS) SDK for Python <https://boto3.amazonaws.com/v1/documentation/api/latest/index.html>`_
+- `bottleneck: Fast NumPy array functions written in C <https://github.com/pydata/bottleneck>`_
+- `dask: Parallel computing with task scheduling <https://www.dask.org/>`_
 - `ipyleaflet: Interactive maps in the Jupyter notebook <https://ipyleaflet.readthedocs.io/en/latest/>`_
 - `matplotlib: Python 2D plotting library <https://matplotlib.org/>`_
+- `netCDF4: Python interface to the netCDF C library <https://unidata.github.io/netcdf4-python/>`_
 - `numpy: Scientific Computing Tools For Python <https://numpy.org>`_
 - `rioxarray: geospatial xarray extension powered by rasterio <https://github.com/corteva/rioxarray>`_
 - `s3fs: Pythonic file interface to S3 built on top of botocore <https://s3fs.readthedocs.io/en/latest/>`_
