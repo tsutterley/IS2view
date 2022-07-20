@@ -1,0 +1,10 @@
+# Install ipyleaflet with image service layers
+conda install -y yarn jupyter_packaging
+git clone -b imageserver https://github.com/tsutterley/ipyleaflet
+cd ipyleaflet; pip install -e .
+# add extension for developing on JupyterLab
+jupyter labextension develop . --overwrite
+# build javascript
+cd js; yarn run build
+# Install python package
+cd; pip install -e .
