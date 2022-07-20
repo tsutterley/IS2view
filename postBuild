@@ -1,5 +1,5 @@
 # Install bleeding edge ipyleaflet
-conda install -y yarn
+conda install -y yarn jupyter_packaging
 git clone -b imageserver https://github.com/tsutterley/ipyleaflet
 cd ipyleaflet
 pip install -e .
