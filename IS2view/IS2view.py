@@ -370,16 +370,19 @@ projections['EPSG:3031'] = dict(
 )
 
 # define optional background ipyleaflet image service layers
-layers = Bunch(
-    ArcticDEM = ipyleaflet.ImageService(
+layers = Bunch()
+try:
+    # ArcticDEM
+    layers.ArcticDEM = ipyleaflet.ImageService(
         name="ArcticDEM",
         attribution="""Esri, PGC, UMN, NSF, NGA, DigitalGlobe""",
         format='jpgpng',
         transparent=True,
         url='https://elevation2.arcgis.com/arcgis/rest/services/Polar/ArcticDEM/ImageServer',
         crs=projections['EPSG:3413']
-    ),
-    REMA = ipyleaflet.ImageService(
+    )
+    # Reference Elevation Map of Antarctica (REMA)
+    layers.REMA = ipyleaflet.ImageService(
         name="REMA",
         attribution="""Esri, PGC, UMN, NSF, NGA, DigitalGlobe""",
         format='jpgpng',
@@ -387,7 +390,8 @@ layers = Bunch(
         url='https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer',
         crs=projections['EPSG:3031']
     )
-)
+except NameError:
+    pass
 
 # draw ipyleaflet map
 class leaflet:
