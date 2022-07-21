@@ -34,6 +34,7 @@ import matplotlib.colorbar
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from traitlets import HasTraits, Float, Tuple, observe
+from traitlets.utils.bunch import Bunch
 
 # attempt imports
 try:
@@ -71,7 +72,7 @@ class widgets:
         self.style = copy.copy(kwargs['style'])
 
         # dropdown menu for setting ATL14/15 region
-        region_list = ['AA','CN','CS','GL','IS','SV','RA']
+        region_list = ['AA','CN','CS','GL','IS','RA','SV']
         self.region = ipywidgets.Dropdown(
             options=region_list,
             description='Region:',
@@ -368,6 +369,26 @@ projections['EPSG:3031'] = dict(
     ]
 )
 
+# define optional background ipyleaflet image service layers
+layers = Bunch(
+    ArcticDEM = ipyleaflet.ImageService(
+        name="ArcticDEM",
+        attribution="""Esri, PGC, UMN, NSF, NGA, DigitalGlobe""",
+        format='jpgpng',
+        transparent=True,
+        url='https://elevation2.arcgis.com/arcgis/rest/services/Polar/ArcticDEM/ImageServer',
+        crs=projections['EPSG:3413']
+    ),
+    REMA = ipyleaflet.ImageService(
+        name="REMA",
+        attribution="""Esri, PGC, UMN, NSF, NGA, DigitalGlobe""",
+        format='jpgpng',
+        transparent=True,
+        url='https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer',
+        crs=projections['EPSG:3031']
+    )
+)
+
 # draw ipyleaflet map
 class leaflet:
     def __init__(self, projection, **kwargs):
@@ -405,7 +426,6 @@ class leaflet:
         if kwargs['layer_control']:
             self.layer_control = ipyleaflet.LayersControl(position='topleft')
             self.map.add(self.layer_control)
-            self.layers = self.map.layers
         # add control for zoom
         if kwargs['zoom_control']:
             zoom_slider = ipywidgets.IntSlider(description='Zoom level:',
@@ -428,14 +448,16 @@ class leaflet:
             self.map.on_interaction(self.handle_interaction)
         # add draw control
         if kwargs['draw_control']:
-            # add control for drawing polygons or bounding boxes
+            # add control for drawing features on map
             draw_control = ipyleaflet.DrawControl(
-                polyline={},
                 circlemarker={},
                 edit=False)
             shapeOptions = {'color':kwargs['draw_color'],
                 'fill_color':kwargs['draw_color']}
             draw_control.marker = dict(
+                shapeOptions=shapeOptions
+            )
+            draw_control.polyline=dict(
                 shapeOptions=shapeOptions
             )
             draw_control.rectangle = dict(
@@ -528,6 +550,18 @@ class leaflet:
                 logging.info(f"{obj} already removed from map")
                 pass
 
+    @property
+    def layers(self):
+        """get the map layers
+        """
+        return self.map.layers
+
+    @property
+    def controls(self):
+        """get the map controls
+        """
+        return self.map.controls
+
 @xr.register_dataset_accessor('leaflet')
 class LeafletMap(HasTraits):
     """A xarray.DataArray extension for interactive map plotting, based on ipyleaflet
@@ -574,13 +608,13 @@ class LeafletMap(HasTraits):
         self.norm = None
         self.opacity = None
         self.colorbar = None
-        # initialize point for time series plot
+        # initialize attributes for popup
+        self.enable_popups = False
+        self.popup = None
         self._data = None
         self._time = None
         self._units = None
-        self.popup = None
-        # initialize options
-        self.enable_popups = False
+        self._longname = None
 
     # add imagery data to leaflet map
     def plot(self, m, **kwargs):
@@ -738,6 +772,18 @@ class LeafletMap(HasTraits):
         """
         return self.map.crs['resolutions'][self.z]
 
+    def reset(self):
+        """remove features from leaflet map
+        """
+        for l in self.map.layers:
+            if (l._model_name == 'LeafletImageServiceModel') and (l.endpoint == 'local'):
+                self.remove(l)
+            elif (l._model_name == 'LeafletPopupModel'):
+                self.remove(l)
+        for c in self.map.controls:
+            if (c._model_name == 'LeafletWidgetControlModel') and (c.widget._model_name == 'ImageModel'):
+                self.remove(c)
+
     # get map bounding box in projected coordinates
     def get_bbox(self):
         """get the bounding box of the leaflet map in projected coordinates
@@ -876,7 +922,7 @@ class LeafletMap(HasTraits):
         if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
             self._data = np.zeros_like(self._ds.time)
             self._time = 2018.0 + (self._ds.time)/365.25
-            long_name = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+            self._longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
             self._units = self._ds[self._variable].attrs['units'][0]
             for i,t in enumerate(self._ds.time):
                 self._data[i] = self._ds[self._variable].sel(x=x, y=y, time=t, method='nearest')
@@ -889,7 +935,7 @@ class LeafletMap(HasTraits):
             ax.plot(self._time, self._data, color=kwargs['color'])
             # set labels and title
             ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
-            ax.set_ylabel('{0} [{1}]'.format(long_name, self._units))
+            ax.set_ylabel('{0} [{1}]'.format(self._longname, self._units))
             ax.set_title(self._variable)
             # set axis ticks to not use constant offset
             ax.xaxis.get_major_formatter().set_useOffset(False)
@@ -982,8 +1028,10 @@ class TimeSeries(HasTraits):
         self._variable = None
         # initialize data for time series plot
         self._data = None
+        self._dist = None
         self._time = None
         self._units = None
+        self._longname = None
         self._plot = None
 
     # create time series plot
@@ -1014,20 +1062,12 @@ class TimeSeries(HasTraits):
         # set geometry
         self.geometry = geo
         self.crs = crs
-        # list of optional error variables
-        error_variables = ('delta_h_sigma','misfit_rms','misfit_rms_scaled','dhdt_sigma')
+        # attempt to get the coordinate reference system of the dataset
+        self.get_crs()
         # set figure axis
         if ax is None:
             fig, ax = plt.subplots(figsize=figsize)
             fig.patch.set_facecolor('white')
-        # attempt to get the coordinate reference system of the dataset
-        try:
-            grid_mapping = self._ds[self._variable].attrs['grid_mapping']
-            ds_crs = self._ds[grid_mapping].attrs['crs_wkt']
-        except Exception as e:
-            ds_crs = self._ds.rio.crs
-        else:
-            self._ds.rio.set_crs(ds_crs)
         # reduce to variable
         self._variable = copy.copy(variable)
         if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
@@ -1037,34 +1077,161 @@ class TimeSeries(HasTraits):
         # convert time to units
         self._time = 2018.0 + (self._ds.time)/365.25
         # extract units
-        long_name = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+        self._longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
         self._units = self._ds[self._variable].attrs['units'][0]
-        # reduce dataset to geometry
-        self._data = np.zeros_like(self._ds.time)
+        # create plot for each geometry type
         if (self.geometry['type'].lower() == 'point'):
-            # convert point to dataset coordinate reference system
-            lon,lat = self.geometry['coordinates']
-            x,y = rasterio.warp.transform(self.crs, ds_crs, [lon], [lat])
-            for i,t in enumerate(self._ds.time):
-                self._data[i] = self._ds_selected.sel(x=x, y=y, time=t, method='nearest')
+            self.point(ax, **kwargs)
+        elif (self.geometry['type'].lower() == 'linestring'):
+            self.transect(ax, **kwargs)
         else:
-            # clip variable and cell area to geometry
-            cell_area =  self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
-            for i,t in enumerate(self._ds.time):
-                reduced = self._ds_selected.sel(time=t)
-                clipped = reduced.rio.clip([self.geometry], self.crs, drop=False)
-                if self._variable in error_variables:
-                    self._data[i] = np.sqrt(np.sum(cell_area*clipped**2)/np.sum(cell_area))
-                else:
-                    self._data[i] = np.sum(cell_area*clipped)/np.sum(cell_area)
+            self.average(ax, **kwargs)
+        # return the class object
+        return self
+
+    def get_crs(self):
+        """Attempt to get the coordinate reference system of the dataset
+        """
+        # get coordinate reference system from grid mapping
+        try:
+            grid_mapping = self._ds[self._variable].attrs['grid_mapping']
+            ds_crs = self._ds[grid_mapping].attrs['crs_wkt']
+        except Exception as e:
+            pass
+        else:
+            self._ds.rio.set_crs(ds_crs)
+            return
+        # get coordinate reference system from attribute
+        try:
+            ds_crs = self._ds.rio.crs
+        except Exception as e:
+            pass
+        else:
+            self._ds.rio.set_crs(ds_crs)
+            return
+        # raise exception
+        raise Exception('Unknown coordinate reference system')
+
+    def point(self, ax, **kwargs):
+        """Create time series plot for a geolocation
+        """
+        # convert point to dataset coordinate reference system
+        lon,lat = self.geometry['coordinates']
+        ds_crs = self._ds.rio.crs
+        x,y = rasterio.warp.transform(self.crs, ds_crs, [lon], [lat])
+        # output time series for point
+        self._data = np.zeros_like(self._ds.time)
+        # reduce dataset to geometry
+        for i,t in enumerate(self._ds.time):
+            self._data[i] = self._ds_selected.sel(x=x, y=y, time=t, method='nearest')
         # only create plot if valid
         if np.all(np.isnan(self._data)):
             return
         # create time series plot
+        kwargs.pop('cmap') if ('cmap' in kwargs.keys()) else None
+        kwargs.pop('legend') if ('legend' in kwargs.keys()) else None
         self._plot, = ax.plot(self._time, self._data, **kwargs)
         # set labels and title
         ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
-        ax.set_ylabel('{0} [{1}]'.format(long_name, self._units))
+        ax.set_ylabel('{0} [{1}]'.format(self._longname, self._units))
+        ax.set_title(self._variable)
+        # set axis ticks to not use constant offset
+        ax.xaxis.get_major_formatter().set_useOffset(False)
+        return self
+
+    def transect(self, ax, **kwargs):
+        """Create time series plot for a transect
+        """
+        # convert linestring to dataset coordinate reference system
+        lon,lat = np.transpose(self.geometry['coordinates'])
+        ds_crs = self._ds.rio.crs
+        x,y = rasterio.warp.transform(self.crs, ds_crs, lon, lat)
+        # get coordinates of each grid cell
+        gridx,gridy = np.meshgrid(self._ds.x, self._ds.y)
+        # clip cell area to geometry and create mask
+        cell_area =  self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
+        mask = np.isfinite(cell_area.sel(band=1))
+        # only create plot if valid
+        if np.all(np.logical_not(mask)):
+            return
+        # valid values in mask
+        ii,jj = np.nonzero(mask)
+        # calculate distances to first point
+        distance = np.sqrt((gridx[mask] - x[0])**2 + (gridy[mask] - y[0])**2)
+        # sort by distance
+        isort = np.argsort(distance)
+        self._dist = distance[isort]
+        # get colormap for each time point
+        if ('cmap' in kwargs.keys()):
+            cmap = copy.copy(plt.cm.get_cmap(kwargs['cmap']))
+            plot_colors = iter(cmap(np.linspace(0,1,len(self._ds.time))))
+            kwargs.pop('cmap')
+        else:
+            plot_colors = None
+        # create legend
+        if ('legend' in kwargs.keys()):
+            legend = True
+            kwargs.pop('legend')
+        else:
+            legend = False
+        # output reduced time series for each point
+        self._data = np.zeros((np.count_nonzero(mask), len(self._ds.time)))
+        self._plot = [None]*len(self._ds.time)
+        # for each step in the time series
+        for i,t in enumerate(self._ds.time):
+            clipped = mask*self._ds_selected.sel(time=t)
+            reduced = clipped.data[ii,jj]
+            # sort data based on distance to first point
+            self._data[:,i] = reduced[isort]
+            # select color
+            if (plot_colors is not None):
+                kwargs['color'] = next(plot_colors)
+            # create transect plot
+            self._plot[i], = ax.plot(self._dist, self._data[:,i],
+                label='{0:0.2f}'.format(self._time[i].data), **kwargs)
+        # set labels and title
+        ax.set_xlabel('{0} [{1}]'.format('Distance', 'meters'))
+        ax.set_ylabel('{0} [{1}]'.format(self._longname, self._units))
+        ax.set_title(self._variable)
+        # create legend
+        if legend:
+            lgd = ax.legend(loc=2, frameon=False,
+                bbox_to_anchor=(1.025, 1),
+                borderaxespad=0.0)
+            lgd.get_frame().set_alpha(1.0)
+            for line in lgd.get_lines():
+                line.set_linewidth(6)
+        # set axis ticks to not use constant offset
+        ax.xaxis.get_major_formatter().set_useOffset(False)
+        return self
+
+    def average(self, ax, **kwargs):
+        """Create time series plot for a regional average
+        """
+        # clip cell area to geometry and create mask
+        cell_area =  self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
+        mask = np.isfinite(cell_area.sel(band=1))
+        # only create plot if valid
+        if np.all(np.logical_not(mask)):
+            return
+        # list of optional error variables
+        error_variables = ('delta_h_sigma','misfit_rms','misfit_rms_scaled','dhdt_sigma')
+        # output average time series
+        self._data = np.zeros_like(self._ds.time)
+        # reduce dataset to geometry
+        for i,t in enumerate(self._ds.time):
+            clipped = mask*self._ds_selected.sel(time=t)
+            if self._variable in error_variables:
+                self._data[i] = np.sqrt(np.sum(cell_area*clipped**2)/np.sum(cell_area))
+            else:
+                self._data[i] = np.sum(cell_area*clipped)/np.sum(cell_area)
+        # create average time series plot
+        kwargs.pop('cmap') if ('cmap' in kwargs.keys()) else None
+        kwargs.pop('legend') if ('legend' in kwargs.keys()) else None
+        self._plot, = ax.plot(self._time, self._data, **kwargs)
+        # set labels and title
+        ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
+        ax.set_ylabel('{0} [{1}]'.format(self._longname, self._units))
         ax.set_title(self._variable)
         # set axis ticks to not use constant offset
         ax.xaxis.get_major_formatter().set_useOffset(False)
