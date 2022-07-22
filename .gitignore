@@ -24,9 +24,14 @@ _*.c
 *.zip
 # Data Files #
 ##############
-*.nc
+*.dbf
+*.geojson
 *.h5
 *.hdf
+*.nc
+*.prj
+*.shp
+*.shx
 *.tif
 *.zarr
 # Logs and databases #

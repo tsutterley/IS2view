@@ -550,6 +550,30 @@ class leaflet:
         # convert phi from radians to degrees
         return phi*180.0/np.pi
 
+    # add a geopandas GeoDataFrame to map and list of geometries
+    def add_geodataframe(self, gdf, **kwargs):
+        """Add a GeoDataFrame to map and append to list of geometries
+
+        Parameters
+        ----------
+        gdf : obj
+            geopandas GeoDataFrame
+        kwargs : dict, default {}
+            Keyword arguments for GeoJSON
+        """
+        # set default keyword arguments
+        kwargs.setdefault('color', 'blue')
+        # convert geodataframe to coordinate reference system
+        # and to GeoJSON
+        geodata = gdf.to_crs('epsg:4326').__geo_interface__
+        geojson = ipyleaflet.GeoJSON(data=geodata, **kwargs)
+        # add features to map
+        self.map.add(geojson)
+        # add geometries to list
+        for feature in geodata['features']:
+            self.geometries.append(feature['geometry'])
+        return self
+
     def add(self, obj):
         """wrapper function for adding layers and controls to leaflet maps
         """
@@ -1043,6 +1067,7 @@ class TimeSeries(HasTraits):
         self._variable = None
         # initialize data for time series plot
         self._data = None
+        self._area = None
         self._dist = None
         self._time = None
         self._units = None
@@ -1069,6 +1094,7 @@ class TimeSeries(HasTraits):
             coordinate reference system of geometry
         ax : obj or NoneType, default None
             Figure axis on which to plot
+
             Mutually exclusive with ``figsize``
         figsize : tuple, default (6,4)
             Dimensions of figure to create
@@ -1270,6 +1296,7 @@ class TimeSeries(HasTraits):
         )
         # output average time series
         self._data = np.zeros_like(self._ds.time)
+        self._area = np.zeros_like(self._ds.time)
         # reduce dataset to geometry
         for i, t in enumerate(self._ds.time):
             # reduce data to time and clip to geometry
@@ -1284,6 +1311,8 @@ class TimeSeries(HasTraits):
                 self._data[i] = np.sqrt(np.sum(area*clipped**2)/np.sum(area))
             else:
                 self._data[i] = np.sum(area*clipped)/np.sum(area)
+            # calculate total area for region
+            self._area[i] = np.sum(area)
         # drop unpassable keyword arguments
         kwargs.pop('cmap') if ('cmap' in kwargs.keys()) else None
         kwargs.pop('legend') if ('legend' in kwargs.keys()) else None
