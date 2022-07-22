@@ -88,6 +88,32 @@ class widgets:
             style=self.style,
         )
 
+        # dropdown menu for setting ATL15 resolution
+        resolution_list = ['01km','10km','20km','40km']
+        self.resolution = ipywidgets.Dropdown(
+            options=resolution_list,
+            description='Resolution:',
+            description_tooltip=("Resolution: ATL15 resolution\n\t"
+                "01km: 1 kilometer horizontal\n\t"
+                "10km: 10 kilometers horizontal\n\t"
+                "20km: 20 kilometers horizontal\n\t"
+                "40km: 40 kilometers horizontal"),
+            disabled=False,
+            style=self.style,
+        )
+
+        # dropdown menu for setting ATL14/15 release
+        release_list = ['001']
+        self.release = ipywidgets.Dropdown(
+            options=release_list,
+            value='001',
+            description='Release:',
+            description_tooltip=("Release: ATL14/15 data release\n\t"
+                "001: Release-01"),
+            disabled=False,
+            style=self.style,
+        )
+
         # dropdown menu for selecting group to read from file
         group_list = ['delta_h','dhdt_lag1','dhdt_lag4','dhdt_lag8']
         self.group = ipywidgets.Dropdown(
@@ -126,6 +152,7 @@ class widgets:
         )
 
         # watch widgets for changes
+        self.release.observe(self.set_groups)
         self.dynamic.observe(self.set_dynamic)
         self.variable.observe(self.set_lag_visibility)
 
@@ -273,7 +300,18 @@ class widgets:
         variables['dhdt_lag1'] = 'dhdt'
         variables['dhdt_lag4'] = 'dhdt'
         variables['dhdt_lag8'] = 'dhdt'
+        variables['dhdt_lag12'] = 'dhdt'
         self.variable.value = variables[group]
+
+    def set_groups(self, sender):
+        """sets the list of available groups for a release
+        """
+        group_list = ['delta_h','dhdt_lag1','dhdt_lag4','dhdt_lag8']
+        # append lag12 group
+        if (int(self.release.value) > 1):
+            group_list.append('dhdt_lag12')
+        # set group list
+        self.group.options = group_list
 
     def set_variables(self, *args):
         """sets the list of available variables in a group
