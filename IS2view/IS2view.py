@@ -503,7 +503,7 @@ class leaflet:
             draw_control.marker = dict(
                 shapeOptions=shapeOptions
             )
-            draw_control.polyline=dict(
+            draw_control.polyline = dict(
                 shapeOptions=shapeOptions
             )
             draw_control.rectangle = dict(
