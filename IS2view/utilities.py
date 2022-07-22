@@ -25,7 +25,7 @@ import logging
 import builtins
 import warnings
 import posixpath
-import calendar,time
+import calendar, time
 if sys.version_info[0] == 2:
     from cookielib import CookieJar
     from urllib import urlencode
@@ -46,7 +46,7 @@ def url_split(s):
         url string
     """
     head, tail = posixpath.split(s)
-    if head in ('http:','https:','ftp:','s3:'):
+    if head in ('http:', 'https:', 'ftp:', 's3:'):
         return s,
     elif head in ('', posixpath.sep):
         return tail,
@@ -290,7 +290,7 @@ def build_opener(username, password, context=ssl.SSLContext(),
     if password_manager:
         password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
         # Add the username and password for NASA Earthdata Login system
-        password_mgr.add_password(None,urs,username,password)
+        password_mgr.add_password(None, urs, username, password)
         handler.append(urllib2.HTTPBasicAuthHandler(password_mgr))
     # Create cookie jar for storing cookies. This is used to store and return
     # the session cookie given to use by the data server (otherwise will just
@@ -309,8 +309,8 @@ def build_opener(username, password, context=ssl.SSLContext(),
     # Encode username/password for request authorization headers
     # add Authorization header to opener
     if authorization_header:
-        b64 = base64.b64encode('{0}:{1}'.format(username,password).encode())
-        opener.addheaders = [("Authorization","Basic {0}".format(b64.decode()))]
+        b64 = base64.b64encode('{0}:{1}'.format(username, password).encode())
+        opener.addheaders = [("Authorization", "Basic {0}".format(b64.decode()))]
     # Now all calls to urllib2.urlopen use our opener.
     urllib2.install_opener(opener)
     # All calls to urllib2.urlopen will now use handler
@@ -324,7 +324,7 @@ def check_credentials():
     Check that entered NASA Earthdata credentials are valid
     """
     try:
-        remote_path = posixpath.join('https://n5eil01u.ecs.nsidc.org','ATLAS')
+        remote_path = posixpath.join('https://n5eil01u.ecs.nsidc.org', 'ATLAS')
         request = urllib2.Request(url=remote_path)
         response = urllib2.urlopen(request, timeout=20)
     except urllib2.HTTPError:
@@ -388,10 +388,10 @@ def from_nsidc(HOST, username=None, password=None, build=True,
     try:
         # Create and submit request.
         request = urllib2.Request(posixpath.join(*HOST))
-        response = urllib2.urlopen(request,timeout=timeout)
+        response = urllib2.urlopen(request, timeout=timeout)
     except (urllib2.HTTPError, urllib2.URLError) as e:
         response_error = 'Download error from {0}'.format(posixpath.join(*HOST))
-        return (False,response_error)
+        return (False, response_error)
     else:
         # copy remote file contents to bytesIO object
         remote_buffer = io.BytesIO()
@@ -409,17 +409,17 @@ def from_nsidc(HOST, username=None, password=None, build=True,
             if not os.access(os.path.dirname(local), os.F_OK):
                 os.makedirs(os.path.dirname(local), mode)
             # print file information
-            args = (posixpath.join(*HOST),local)
+            args = (posixpath.join(*HOST), local)
             logging.info('{0} -->\n\t{1}'.format(*args))
             # store bytes to file using chunked transfer encoding
             remote_buffer.seek(0)
             with open(os.path.expanduser(local), 'wb') as f:
                 shutil.copyfileobj(remote_buffer, f, chunk)
             # change the permissions mode
-            os.chmod(local,mode)
+            os.chmod(local, mode)
         # return the bytesIO object
         remote_buffer.seek(0)
-        return (remote_buffer,None)
+        return (remote_buffer, None)
 
 # PURPOSE: build formatted query string for ICESat-2 release
 def cmr_query_release(release):
@@ -467,7 +467,7 @@ def cmr_regions(region):
         formatted available ATL14/ATL15 regions
     """
     # all available ICESat-2 ATL14/15 regions
-    all_regions = ['AA','AK','CN','CS','GL','IS','SV','RA']
+    all_regions = ['AA', 'AK', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV']
     if region is None:
         return ["??"]
     else:
@@ -503,7 +503,7 @@ def cmr_resolutions(resolution):
         formatted available ATL14/ATL15 resolutions
     """
     # all available ICESat-2 ATL14/15 resolutions
-    all_resolutions = ['100m','01km','10km','20km','40km']
+    all_resolutions = ['100m', '01km', '10km', '20km', '40km']
     if resolution is None:
         return ["????"]
     else:
@@ -579,7 +579,7 @@ def cmr_filter_json(search_results, request_type="application/x-hdfeos"):
     granule_urls = []
     # check that there are urls for request
     if ('feed' not in search_results) or ('entry' not in search_results['feed']):
-        return (producer_granule_ids,granule_urls)
+        return (producer_granule_ids, granule_urls)
     # iterate over references and get cmr location
     for entry in search_results['feed']['entry']:
         producer_granule_ids.append(entry['producer_granule_id'])
@@ -642,7 +642,7 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
     # build CMR query
     cmr_format = 'json'
     cmr_page_size = 2000
-    CMR_HOST = ['https://cmr.earthdata.nasa.gov','search',
+    CMR_HOST = ['https://cmr.earthdata.nasa.gov', 'search',
         'granules.{0}'.format(cmr_format)]
     # build list of CMR query parameters
     CMR_KEYS = []
@@ -663,7 +663,7 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
     for gran in readable_granule_list:
         CMR_KEYS.append("&readable_granule_name[]={0}".format(gran))
     # full CMR query url
-    cmr_query_url = "".join([posixpath.join(*CMR_HOST),*CMR_KEYS])
+    cmr_query_url = "".join([posixpath.join(*CMR_HOST), *CMR_KEYS])
     logging.info('CMR request={0}'.format(cmr_query_url))
     # output list of granule names and urls
     producer_granule_ids = []
@@ -676,11 +676,11 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
         response = opener.open(req)
         # get scroll id for next iteration
         if not cmr_scroll_id:
-            headers = {k.lower():v for k,v in dict(response.info()).items()}
+            headers = {k.lower():v for k, v in dict(response.info()).items()}
             cmr_scroll_id = headers['cmr-scroll-id']
         # read the CMR search as JSON
         search_page = json.loads(response.read().decode('utf-8'))
-        ids,urls = cmr_filter_json(search_page, request_type=request_type)
+        ids, urls = cmr_filter_json(search_page, request_type=request_type)
         if not urls:
             break
         # extend lists
