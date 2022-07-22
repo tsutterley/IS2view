@@ -72,7 +72,7 @@ class widgets:
         self.style = copy.copy(kwargs['style'])
 
         # dropdown menu for setting ATL14/15 region
-        region_list = ['AA','CN','CS','GL','IS','RA','SV']
+        region_list = ['AA', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV']
         self.region = ipywidgets.Dropdown(
             options=region_list,
             description='Region:',
@@ -89,7 +89,7 @@ class widgets:
         )
 
         # dropdown menu for setting ATL15 resolution
-        resolution_list = ['01km','10km','20km','40km']
+        resolution_list = ['01km', '10km', '20km', '40km']
         self.resolution = ipywidgets.Dropdown(
             options=resolution_list,
             description='Resolution:',
@@ -115,7 +115,7 @@ class widgets:
         )
 
         # dropdown menu for selecting group to read from file
-        group_list = ['delta_h','dhdt_lag1','dhdt_lag4','dhdt_lag8']
+        group_list = ['delta_h', 'dhdt_lag1', 'dhdt_lag4', 'dhdt_lag8']
         self.group = ipywidgets.Dropdown(
             options=group_list,
             description='Group:',
@@ -125,7 +125,7 @@ class widgets:
         )
 
         # dropdown menu for selecting variable to draw on map
-        variable_list = ['delta_h','dhdt']
+        variable_list = ['delta_h', 'dhdt']
         self.variable = ipywidgets.Dropdown(
             options=variable_list,
             description='Variable:',
@@ -160,7 +160,7 @@ class widgets:
         self.range = ipywidgets.FloatRangeSlider(
             min = -10,
             max = 10,
-            value = [-5,5],
+            value = [-5, 5],
             description='Range:',
             description_tooltip=("Range: Plot normalization range"),
             disabled=False,
@@ -176,20 +176,20 @@ class widgets:
         # (no reversed, qualitative or miscellaneous)
         self.cmaps_listed = {}
         self.cmaps_listed['Perceptually Uniform Sequential'] = [
-            'viridis','plasma','inferno','magma','cividis']
-        self.cmaps_listed['Sequential'] = ['Greys','Purples',
-            'Blues','Greens','Oranges','Reds','YlOrBr','YlOrRd',
-            'OrRd','PuRd','RdPu','BuPu','GnBu','PuBu','YlGnBu',
-            'PuBuGn','BuGn','YlGn']
-        self.cmaps_listed['Sequential (2)'] = ['binary','gist_yarg',
-            'gist_gray','gray','bone','pink','spring','summer',
-            'autumn','winter','cool','Wistia','hot','afmhot',
-            'gist_heat','copper']
-        self.cmaps_listed['Diverging'] = ['PiYG','PRGn','BrBG',
-            'PuOr','RdGy','RdBu','RdYlBu','RdYlGn','Spectral',
-            'coolwarm', 'bwr','seismic']
+            'viridis', 'plasma', 'inferno', 'magma', 'cividis']
+        self.cmaps_listed['Sequential'] = ['Greys', 'Purples',
+            'Blues', 'Greens', 'Oranges', 'Reds', 'YlOrBr', 'YlOrRd',
+            'OrRd', 'PuRd', 'RdPu', 'BuPu', 'GnBu', 'PuBu', 'YlGnBu',
+            'PuBuGn', 'BuGn', 'YlGn']
+        self.cmaps_listed['Sequential (2)'] = ['binary', 'gist_yarg',
+            'gist_gray', 'gray', 'bone', 'pink', 'spring', 'summer',
+            'autumn', 'winter', 'cool', 'Wistia', 'hot', 'afmhot',
+            'gist_heat', 'copper']
+        self.cmaps_listed['Diverging'] = ['PiYG', 'PRGn', 'BrBG',
+            'PuOr', 'RdGy', 'RdBu', 'RdYlBu', 'RdYlGn', 'Spectral',
+            'coolwarm', 'bwr', 'seismic']
         self.cmaps_listed['Cyclic'] = ['twilight',
-            'twilight_shifted','hsv']
+            'twilight_shifted', 'hsv']
         # create list of available colormaps in program
         cmap_list = []
         for val in self.cmaps_listed.values():
@@ -237,13 +237,13 @@ class widgets:
         for map based on region
         """
         centers = {}
-        centers['AA'] = (-90.0,0.0)
-        centers['CN'] = (79.0,-85.0)
-        centers['CS'] = (70.0,-73.0)
-        centers['GL'] = (72.5,-45.0)
-        centers['IS'] = (64.5,-18.5)
-        centers['SV'] = (79.0,19.0)
-        centers['RA'] = (79.0,78.0)
+        centers['AA'] = (-90.0, 0.0)
+        centers['CN'] = (79.0, -85.0)
+        centers['CS'] = (70.0, -73.0)
+        centers['GL'] = (72.5, -45.0)
+        centers['IS'] = (64.5, -18.5)
+        centers['SV'] = (79.0, 19.0)
+        centers['RA'] = (79.0, 78.0)
         return centers[self.region.value]
 
     @property
@@ -306,7 +306,7 @@ class widgets:
     def set_groups(self, sender):
         """sets the list of available groups for a release
         """
-        group_list = ['delta_h','dhdt_lag1','dhdt_lag4','dhdt_lag8']
+        group_list = ['delta_h', 'dhdt_lag1', 'dhdt_lag4', 'dhdt_lag8']
         # append lag12 group
         if (int(self.release.value) > 1):
             group_list.append('dhdt_lag12')
@@ -321,7 +321,7 @@ class widgets:
             self.variable.options = sorted(args[0].keys())
         else:
             # return to temporary defaults
-            self.variable.options = ['delta_h','dhdt']
+            self.variable.options = ['delta_h', 'dhdt']
 
     def set_dynamic(self, *args, **kwargs):
         """sets variable normalization range if dynamic
@@ -329,12 +329,12 @@ class widgets:
         if self.dynamic.value:
             self.range.min = -100
             self.range.max = 100
-            self.range.value = [np.nan,np.nan]
+            self.range.value = [np.nan, np.nan]
             self.range.layout.display = 'none'
         else:
             self.range.min = -10
             self.range.max = 10
-            self.range.value = [-5,5]
+            self.range.value = [-5, 5]
             self.range.layout.display = 'inline-flex'
 
     def set_lags(self, ds):
@@ -351,8 +351,12 @@ class widgets:
     def set_lag_visibility(self, sender):
         """updates the visibility of the time lag widget
         """
+        # list of invariant parameters
+        invariant_parameters = ['ice_mask']
+        if (int(self.release.value) <= 1):
+            invariant_parameters.append('cell_area')
         # check if setting an invariant variable
-        if self.variable.value in ('cell_area','ice_mask'):
+        if self.variable.value in invariant_parameters:
             self.timelag.layout.display = 'none'
         else:
             self.timelag.layout.display = 'inline-flex'
@@ -365,7 +369,7 @@ class widgets:
 
 # map projections
 projections = {}
-projections['EPSG:3857'] = dict(name='EPSG3857',custom=False),
+projections['EPSG:3857'] = dict(name='EPSG3857', custom=False),
 projections['EPSG:3413'] = dict(
     name='EPSG:3413',
     custom=True,
@@ -442,8 +446,8 @@ class leaflet:
         kwargs.setdefault('cursor_control', True)
         kwargs.setdefault('layer_control', True)
         kwargs.setdefault('draw_control', False)
-        kwargs.setdefault('draw_color','blue')
-        kwargs.setdefault('center', (0,0))
+        kwargs.setdefault('draw_color', 'blue')
+        kwargs.setdefault('center', (0, 0))
         kwargs.setdefault('zoom', 1)
         # create basemap in projection
         if (projection == 'North'):
@@ -494,8 +498,8 @@ class leaflet:
             draw_control = ipyleaflet.DrawControl(
                 circlemarker={},
                 edit=False)
-            shapeOptions = {'color':kwargs['draw_color'],
-                'fill_color':kwargs['draw_color']}
+            shapeOptions = {'color': kwargs['draw_color'],
+                'fill_color': kwargs['draw_color']}
             draw_control.marker = dict(
                 shapeOptions=shapeOptions
             )
@@ -504,13 +508,13 @@ class leaflet:
             )
             draw_control.rectangle = dict(
                 shapeOptions=shapeOptions,
-                metric=['km','m']
+                metric=['km', 'm']
             )
             draw_control.polygon = dict(
                 shapeOptions=shapeOptions,
                 allowIntersection=False,
                 showArea=True,
-                metric=['km','m']
+                metric=['km', 'm']
             )
             # add control to map
             self.geometries = []
@@ -522,10 +526,10 @@ class leaflet:
         """callback for handling mouse motion and setting location label
         """
         if (kwargs.get('type') == 'mousemove'):
-            lat,lon = kwargs.get('coordinates')
+            lat, lon = kwargs.get('coordinates')
             lon = self.wrap_longitudes(lon)
             self.cursor.value = u"""Latitude: {d[0]:8.4f}\u00B0,
-                Longitude: {d[1]:8.4f}\u00B0""".format(d=[lat,lon])
+                Longitude: {d[1]:8.4f}\u00B0""".format(d=[lat, lon])
 
     # keep track of objects drawn on map
     def handle_draw(self, obj, action, geo_json):
@@ -542,7 +546,7 @@ class leaflet:
     def wrap_longitudes(self, lon):
         """Fix longitudes to be within -180 and 180
         """
-        phi = np.arctan2(np.sin(lon*np.pi/180.0),np.cos(lon*np.pi/180.0))
+        phi = np.arctan2(np.sin(lon*np.pi/180.0), np.cos(lon*np.pi/180.0))
         # convert phi from radians to degrees
         return phi*180.0/np.pi
 
@@ -814,14 +818,16 @@ class LeafletMap(HasTraits):
     def reset(self):
         """remove features from leaflet map
         """
-        for l in self.map.layers:
-            if (l._model_name == 'LeafletImageServiceModel') and (l.endpoint == 'local'):
-                self.remove(l)
-            elif (l._model_name == 'LeafletPopupModel'):
-                self.remove(l)
-        for c in self.map.controls:
-            if (c._model_name == 'LeafletWidgetControlModel') and (c.widget._model_name == 'ImageModel'):
-                self.remove(c)
+        for layer in self.map.layers:
+            if (layer._model_name == 'LeafletImageServiceModel') and \
+                (layer.endpoint == 'local'):
+                self.remove(layer)
+            elif (layer._model_name == 'LeafletPopupModel'):
+                self.remove(layer)
+        for control in self.map.controls:
+            if (control._model_name == 'LeafletWidgetControlModel') and \
+                (control.widget._model_name == 'ImageModel'):
+                self.remove(control)
         # reset layers and controls
         self.image = None
         self.popup = None
@@ -844,7 +850,8 @@ class LeafletMap(HasTraits):
         """get the bounds of the leaflet map in geographical coordinates
         """
         self.get_bbox()
-        lon,lat = rasterio.warp.transform(self.crs['name'], 'EPSG:4326',
+        lon, lat = rasterio.warp.transform(
+            self.crs['name'], 'EPSG:4326',
             [self.sw['x'], self.ne['x']],
             [self.sw['y'], self.ne['y']])
         # calculate bounds in latitude/longitude
@@ -868,8 +875,10 @@ class LeafletMap(HasTraits):
         else:
             self._ds.rio.set_crs(crs)
         # convert map bounds to coordinate reference system of image
-        minx,miny,maxx,maxy = rasterio.warp.transform_bounds(self.crs['name'],
-            crs, self.sw['x'], self.sw['y'], self.ne['x'], self.ne['y'])
+        minx, miny, maxx, maxy = rasterio.warp.transform_bounds(
+            self.crs['name'], crs,
+            self.sw['x'], self.sw['y'],
+            self.ne['x'], self.ne['y'])
         # pad input image to map bounds
         padded = ds.rio.pad_box(minx=minx, maxx=maxx, miny=miny, maxy=maxy)
         # get affine transform of padded image
@@ -881,7 +890,7 @@ class LeafletMap(HasTraits):
         # image extents
         self.extent = np.array([minx, maxx, miny, maxy])
         # clip image to map bounds
-        return padded.isel(x=slice(west,east), y=slice(north,south))
+        return padded.isel(x=slice(west, east), y=slice(north, south))
 
     def get_image_url(self):
         """create the image url for the imageservice
@@ -931,7 +940,7 @@ class LeafletMap(HasTraits):
         try:
             self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
             self.get_image_url()
-        except:
+        except Exception as e:
             pass
         else:
             # update image url
@@ -944,7 +953,7 @@ class LeafletMap(HasTraits):
     def handle_click(self, **kwargs):
         """callback for handling mouse clicks
         """
-        lat,lon = kwargs.get('coordinates')
+        lat, lon = kwargs.get('coordinates')
         # remove any prior instances of popup
         if self.popup is not None:
             self.remove(self.popup)
@@ -957,7 +966,7 @@ class LeafletMap(HasTraits):
         else:
             self._ds.rio.set_crs(crs)
         # get the clicked point in dataset coordinate reference system
-        x,y = rasterio.warp.transform('EPSG:4326', crs, [lon], [lat])
+        x, y = rasterio.warp.transform('EPSG:4326', crs, [lon], [lat])
         # find nearest point in dataset
         self._data = self._ds_selected.sel(x=x, y=y, method='nearest').data[0]
         self._units = self._ds[self._variable].attrs['units']
@@ -967,7 +976,8 @@ class LeafletMap(HasTraits):
         # create contextual popup
         child = ipywidgets.HTML()
         child.value = '{0:0.1f} {1}'.format(np.squeeze(self._data), self._units)
-        self.popup = ipyleaflet.Popup(location=(lat,lon), child=child, name='popup')
+        self.popup = ipyleaflet.Popup(location=(lat, lon),
+            child=child, name='popup')
         self.add(self.popup)
 
     # add colorbar widget to leaflet map
@@ -1037,14 +1047,14 @@ class TimeSeries(HasTraits):
         self._time = None
         self._units = None
         self._longname = None
-        self._plot = None
+        self._line = None
 
     # create time series plot
     def plot(self, geo,
         variable='delta_h',
         crs='epsg:4326',
         ax=None,
-        figsize=(6,4),
+        figsize=(6, 4),
         **kwargs
         ):
         """Creates a time series of an extracted geometry
@@ -1058,7 +1068,8 @@ class TimeSeries(HasTraits):
         crs : str, default 'epsg:4326'
             coordinate reference system of geometry
         ax : obj or NoneType, default None
-            Figure axis to plot
+            Figure axis on which to plot
+            Mutually exclusive with ``figsize``
         figsize : tuple, default (6,4)
             Dimensions of figure to create
         kwargs : dict, default {}
@@ -1084,13 +1095,16 @@ class TimeSeries(HasTraits):
         # extract units
         self._longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
         self._units = self._ds[self._variable].attrs['units'][0]
-        # create plot for each geometry type
-        if (self.geometry['type'].lower() == 'point'):
+        # create plot for a given geometry type
+        geometry_type = self.geometry.get('type')
+        if (geometry_type.lower() == 'point'):
             self.point(ax, **kwargs)
-        elif (self.geometry['type'].lower() == 'linestring'):
+        elif (geometry_type.lower() == 'linestring'):
             self.transect(ax, **kwargs)
-        else:
+        elif (geometry_type.lower() == 'polygon'):
             self.average(ax, **kwargs)
+        else:
+            raise ValueError(f'Unknown geometry type {geometry_type}')
         # return the class object
         return self
 
@@ -1119,91 +1133,117 @@ class TimeSeries(HasTraits):
 
     def point(self, ax, **kwargs):
         """Create time series plot for a geolocation
+
+        Parameters
+        ----------
+        legend : bool, default False
+            Add legend with geolocation
         """
         # convert point to dataset coordinate reference system
-        lon,lat = self.geometry['coordinates']
-        ds_crs = self._ds.rio.crs
-        x,y = rasterio.warp.transform(self.crs, ds_crs, [lon], [lat])
+        lon, lat = self.geometry['coordinates']
+        x, y = rasterio.warp.transform(self.crs, self._ds.rio.crs, [lon], [lat])
         # output time series for point
         self._data = np.zeros_like(self._ds.time)
         # reduce dataset to geometry
-        for i,t in enumerate(self._ds.time):
+        for i, t in enumerate(self._ds.time):
             self._data[i] = self._ds_selected.sel(x=x, y=y, time=t, method='nearest')
         # only create plot if valid
         if np.all(np.isnan(self._data)):
             return
-        # create time series plot
+        # drop unpassable keyword arguments
         kwargs.pop('cmap') if ('cmap' in kwargs.keys()) else None
-        kwargs.pop('legend') if ('legend' in kwargs.keys()) else None
-        self._plot, = ax.plot(self._time, self._data, **kwargs)
+        # create legend with geolocation
+        if ('legend' in kwargs.keys()):
+            add_legend = True
+            kwargs.pop('legend')
+        else:
+            add_legend = False
+        # create time series plot
+        self._line, = ax.plot(self._time, self._data, **kwargs)
         # set labels and title
         ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
         ax.set_ylabel('{0} [{1}]'.format(self._longname, self._units))
         ax.set_title(self._variable)
+        # add legend
+        if add_legend:
+            label = u'{0:8.4f}\u00B0N, {1:8.4f}\u00B0E'.format(lat, lon)
+            self._line.set_label(label)
+            lgd = ax.legend(loc=0, frameon=False)
+            for line in lgd.get_lines():
+                line.set_linewidth(0)
         # set axis ticks to not use constant offset
         ax.xaxis.get_major_formatter().set_useOffset(False)
         return self
 
     def transect(self, ax, **kwargs):
         """Create time series plot for a transect
+
+        Parameters
+        ----------
+        cmap : str or NoneType, default None
+            matplotlib colormap
+        legend : bool, default False
+            Add legend with time values
         """
         # convert linestring to dataset coordinate reference system
-        lon,lat = np.transpose(self.geometry['coordinates'])
-        ds_crs = self._ds.rio.crs
-        x,y = rasterio.warp.transform(self.crs, ds_crs, lon, lat)
+        lon, lat = np.transpose(self.geometry['coordinates'])
+        x, y = rasterio.warp.transform(self.crs, self._ds.rio.crs, lon, lat)
         # get coordinates of each grid cell
-        gridx,gridy = np.meshgrid(self._ds.x, self._ds.y)
+        gridx, gridy = np.meshgrid(self._ds.x, self._ds.y)
         # clip cell area to geometry and create mask
-        cell_area =  self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
-        mask = np.isfinite(cell_area.sel(band=1))
+        cell_area = self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
+        if (self._ds['cell_area'].ndim == 3) and ('band' in self._ds['cell_area'].dims):
+            mask = np.isfinite(cell_area.sel(band=1))
+        elif (self._ds['cell_area'].ndim == 3) and ('time' in self._ds['cell_area'].dims):
+            mask = np.isfinite(cell_area).any(dim='time')
         # only create plot if valid
         if np.all(np.logical_not(mask)):
             return
         # valid values in mask
-        ii,jj = np.nonzero(mask)
-        # calculate distances to first point
+        ii, jj = np.nonzero(mask)
+        # calculate distances to first point in geometry
         distance = np.sqrt((gridx[mask] - x[0])**2 + (gridy[mask] - y[0])**2)
-        # sort by distance
-        isort = np.argsort(distance)
-        self._dist = distance[isort]
+        # sort output data by distance
+        indices = np.argsort(distance)
+        self._dist = distance[indices]
         # get colormap for each time point
         if ('cmap' in kwargs.keys()):
             cmap = copy.copy(plt.cm.get_cmap(kwargs['cmap']))
-            plot_colors = iter(cmap(np.linspace(0,1,len(self._ds.time))))
+            # create iterable plot colors for color map
+            plot_colors = iter(cmap(np.linspace(0, 1, len(self._ds.time))))
             kwargs.pop('cmap')
         else:
             plot_colors = None
-        # create legend
+        # create legend for time values
         if ('legend' in kwargs.keys()):
-            legend = True
+            add_legend = True
             kwargs.pop('legend')
         else:
-            legend = False
+            add_legend = False
         # output reduced time series for each point
         self._data = np.zeros((np.count_nonzero(mask), len(self._ds.time)))
-        self._plot = [None]*len(self._ds.time)
+        self._line = [None]*len(self._ds.time)
         # for each step in the time series
-        for i,t in enumerate(self._ds.time):
+        for i, t in enumerate(self._ds.time):
             clipped = mask*self._ds_selected.sel(time=t)
-            reduced = clipped.data[ii,jj]
+            reduced = clipped.data[ii, jj]
             # sort data based on distance to first point
-            self._data[:,i] = reduced[isort]
+            self._data[:, i] = reduced[indices]
             # select color
             if (plot_colors is not None):
                 kwargs['color'] = next(plot_colors)
             # create transect plot
-            self._plot[i], = ax.plot(self._dist, self._data[:,i],
+            self._line[i], = ax.plot(self._dist, self._data[:,i],
                 label='{0:0.2f}'.format(self._time[i].data), **kwargs)
         # set labels and title
         ax.set_xlabel('{0} [{1}]'.format('Distance', 'meters'))
         ax.set_ylabel('{0} [{1}]'.format(self._longname, self._units))
         ax.set_title(self._variable)
         # create legend
-        if legend:
+        if add_legend:
             lgd = ax.legend(loc=2, frameon=False,
                 bbox_to_anchor=(1.025, 1),
                 borderaxespad=0.0)
-            lgd.get_frame().set_alpha(1.0)
             for line in lgd.get_lines():
                 line.set_linewidth(6)
         # set axis ticks to not use constant offset
@@ -1215,25 +1255,40 @@ class TimeSeries(HasTraits):
         """
         # clip cell area to geometry and create mask
         cell_area =  self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
-        mask = np.isfinite(cell_area.sel(band=1))
+        if (self._ds['cell_area'].ndim == 3) and ('band' in self._ds['cell_area'].dims):
+            mask = np.isfinite(cell_area.sel(band=1))
+        elif (self._ds['cell_area'].ndim == 3) and ('time' in self._ds['cell_area'].dims):
+            mask = np.isfinite(cell_area).any(dim='time')
         # only create plot if valid
         if np.all(np.logical_not(mask)):
             return
         # list of optional error variables
-        error_variables = ('delta_h_sigma','misfit_rms','misfit_rms_scaled','dhdt_sigma')
+        error_variables = ('delta_h_sigma',
+            'misfit_rms',
+            'misfit_rms_scaled',
+            'dhdt_sigma'
+        )
         # output average time series
         self._data = np.zeros_like(self._ds.time)
         # reduce dataset to geometry
-        for i,t in enumerate(self._ds.time):
+        for i, t in enumerate(self._ds.time):
+            # reduce data to time and clip to geometry
             clipped = mask*self._ds_selected.sel(time=t)
-            if self._variable in error_variables:
-                self._data[i] = np.sqrt(np.sum(cell_area*clipped**2)/np.sum(cell_area))
+            # reduce cell area to time (for Release-02 and above)
+            if (cell_area.ndim == 3) and ('time' in cell_area.dims):
+                area = cell_area.sel(time=t)
             else:
-                self._data[i] = np.sum(cell_area*clipped)/np.sum(cell_area)
-        # create average time series plot
+                area = cell_area.copy()
+            # calculate regional average
+            if self._variable in error_variables:
+                self._data[i] = np.sqrt(np.sum(area*clipped**2)/np.sum(area))
+            else:
+                self._data[i] = np.sum(area*clipped)/np.sum(area)
+        # drop unpassable keyword arguments
         kwargs.pop('cmap') if ('cmap' in kwargs.keys()) else None
         kwargs.pop('legend') if ('legend' in kwargs.keys()) else None
-        self._plot, = ax.plot(self._time, self._data, **kwargs)
+        # create average time series plot
+        self._line, = ax.plot(self._time, self._data, **kwargs)
         # set labels and title
         ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
         ax.set_ylabel('{0} [{1}]'.format(self._longname, self._units))
