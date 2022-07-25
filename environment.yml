@@ -12,7 +12,7 @@ dependencies:
   - notebook
   - pip
   - python>=3.6
-  - numpy
+  - numpy>=1.21
   - rioxarray
   - s3fs
   - xarray
