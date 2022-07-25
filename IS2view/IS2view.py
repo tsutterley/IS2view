@@ -22,6 +22,7 @@ UPDATE HISTORY:
 """
 import io
 import copy
+import json
 import base64
 import asyncio
 import logging
@@ -71,6 +72,18 @@ class widgets:
         # set style
         self.style = copy.copy(kwargs['style'])
 
+        # dropdown menu for setting ATL14/15 release
+        release_list = ['001']
+        self.release = ipywidgets.Dropdown(
+            options=release_list,
+            value='001',
+            description='Release:',
+            description_tooltip=("Release: ATL14/15 data release\n\t"
+                "001: Release-01"),
+            disabled=False,
+            style=self.style,
+        )
+
         # dropdown menu for setting ATL14/15 region
         region_list = ['AA', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV']
         self.region = ipywidgets.Dropdown(
@@ -98,18 +111,6 @@ class widgets:
                 "10km: 10 kilometers horizontal\n\t"
                 "20km: 20 kilometers horizontal\n\t"
                 "40km: 40 kilometers horizontal"),
-            disabled=False,
-            style=self.style,
-        )
-
-        # dropdown menu for setting ATL14/15 release
-        release_list = ['001']
-        self.release = ipywidgets.Dropdown(
-            options=release_list,
-            value='001',
-            description='Release:',
-            description_tooltip=("Release: ATL14/15 data release\n\t"
-                "001: Release-01"),
             disabled=False,
             style=self.style,
         )
@@ -437,6 +438,8 @@ except NameError:
 
 # draw ipyleaflet map
 class leaflet:
+    """Create interactive leaflet maps for visualizing ATL14/15 data
+    """
     def __init__(self, projection, **kwargs):
         # set default keyword arguments
         kwargs.setdefault('map', None)
@@ -446,7 +449,9 @@ class leaflet:
         kwargs.setdefault('cursor_control', True)
         kwargs.setdefault('layer_control', True)
         kwargs.setdefault('draw_control', False)
-        kwargs.setdefault('draw_color', 'blue')
+        default_draw_tools = ['marker', 'polyline', 'rectangle', 'polygon']
+        kwargs.setdefault('draw_tools', default_draw_tools)
+        kwargs.setdefault('color', 'blue')
         kwargs.setdefault('center', (0, 0))
         kwargs.setdefault('zoom', 1)
         # create basemap in projection
@@ -496,28 +501,43 @@ class leaflet:
         if kwargs['draw_control']:
             # add control for drawing features on map
             draw_control = ipyleaflet.DrawControl(
-                circlemarker={},
-                edit=False)
-            shapeOptions = {'color': kwargs['draw_color'],
-                'fill_color': kwargs['draw_color']}
-            draw_control.marker = dict(
-                shapeOptions=shapeOptions
-            )
-            draw_control.polyline = dict(
-                shapeOptions=shapeOptions
-            )
-            draw_control.rectangle = dict(
-                shapeOptions=shapeOptions,
-                metric=['km', 'm']
-            )
-            draw_control.polygon = dict(
-                shapeOptions=shapeOptions,
-                allowIntersection=False,
-                showArea=True,
-                metric=['km', 'm']
-            )
+                circlemarker={}, marker={}, polyline={},
+                rectangle={}, polygon={}, edit=False)
+            shapeOptions = {'color': kwargs['color'],
+                'fill_color': kwargs['color']}
+            # verify draw_tools is iterable
+            if isinstance(kwargs['draw_tools'], str):
+                kwargs['draw_tool'] = [kwargs['draw_tools']]
+            # add marker tool
+            if ('marker' in kwargs['draw_tools']):
+                draw_control.marker = dict(
+                    shapeOptions=shapeOptions
+                )
+            # add polyline tool
+            if ('polyline' in kwargs['draw_tools']):
+                draw_control.polyline = dict(
+                    shapeOptions=shapeOptions
+                )
+            # add rectangle tool
+            if ('rectangle' in kwargs['draw_tools']):
+                draw_control.rectangle = dict(
+                    shapeOptions=shapeOptions,
+                    metric=['km', 'm']
+                )
+            # add polygon tool
+            if ('polygon' in kwargs['draw_tools']):
+                draw_control.polygon = dict(
+                    shapeOptions=shapeOptions,
+                    allowIntersection=False,
+                    showArea=True,
+                    metric=['km', 'm']
+                )
+            # geojson feature collection
+            self.geometries = {}
+            self.geometries['type'] = 'FeatureCollection'
+            self.geometries['crs'] = 'epsg:4326'
+            self.geometries['features'] = []
             # add control to map
-            self.geometries = []
             draw_control.on_draw(self.handle_draw)
             self.map.add(draw_control)
 
@@ -535,11 +555,13 @@ class leaflet:
     def handle_draw(self, obj, action, geo_json):
         """callback for handling draw events
         """
-        # append geojson geometry to list
+        # append geojson feature to list
+        feature = copy.copy(geo_json)
+        feature['properties'].pop('style')
         if (action == 'created'):
-            self.geometries.append(geo_json['geometry'])
+            self.geometries['features'].append(feature)
         elif (action == 'deleted'):
-            self.geometries.remove(geo_json['geometry'])
+            self.geometries['features'].remove(feature)
         return self
 
     # fix longitudes to be -180:180
@@ -569,10 +591,28 @@ class leaflet:
         geojson = ipyleaflet.GeoJSON(data=geodata, **kwargs)
         # add features to map
         self.map.add(geojson)
-        # add geometries to list
-        for feature in geodata['features']:
-            self.geometries.append(feature['geometry'])
+        # add geometries to list of features
+        self.geometries['features'].extend(geodata['features'])
         return self
+
+    # output geometries to GeoJSON
+    def to_geojson(self, filename, **kwargs):
+        """Output geometries to a GeoJSON file
+
+        Parameters
+        ----------
+        filename : str
+            Output GeoJSON filename
+        kwargs : dict, default {}
+            Additional attributes for the GeoJSON file
+        """
+        # dump the geometries to a geojson file
+        kwargs.update(self.geometries)
+        with open(filename, 'w') as fid:
+            json.dump(kwargs, fid)
+        # print the filename and dictionary structure
+        logging.info(filename)
+        logging.info(list(kwargs.keys()))
 
     def add(self, obj):
         """wrapper function for adding layers and controls to leaflet maps
@@ -1058,8 +1098,9 @@ class TimeSeries(HasTraits):
     """
 
     def __init__(self, ds):
-        # initialize geometry
-        self.geometry = None
+        # initialize feature
+        self.geometry = {}
+        self.properties = {}
         self.crs = None
         # initialize dataset
         self._ds = ds
@@ -1074,10 +1115,11 @@ class TimeSeries(HasTraits):
         self._longname = None
         self._line = None
 
-    # create time series plot
-    def plot(self, geo,
+    # create time series plot for a region
+    def plot(self, feature,
         variable='delta_h',
         crs='epsg:4326',
+        epoch=2018.0,
         ax=None,
         figsize=(6, 4),
         **kwargs
@@ -1086,12 +1128,14 @@ class TimeSeries(HasTraits):
 
         Parameters
         ----------
-        geo : obj
-            GeoJSON geometry to extract
+        feature : obj
+            GeoJSON feature to extract
         variable : str, default delta_h
             xarray variable to plot
         crs : str, default 'epsg:4326'
             coordinate reference system of geometry
+        epoch : float, default 2018.0
+            Reference epoch for delta times
         ax : obj or NoneType, default None
             Figure axis on which to plot
 
@@ -1102,7 +1146,11 @@ class TimeSeries(HasTraits):
             Keyword arguments for time series plot
         """
         # set geometry
-        self.geometry = geo
+        self.geometry = feature.get('geometry') or {}
+        # set properties with all keys lowercase
+        properties = feature.get('properties') or {}
+        self.properties = {k.lower(): v for k, v in properties.items()}
+        # get coordinate reference system of geometry
         self.crs = crs
         # attempt to get the coordinate reference system of the dataset
         self.get_crs()
@@ -1117,7 +1165,7 @@ class TimeSeries(HasTraits):
         else:
             return
         # convert time to units
-        self._time = 2018.0 + (self._ds.time)/365.25
+        self._time = epoch + (self._ds.time)/365.25
         # extract units
         self._longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
         self._units = self._ds[self._variable].attrs['units'][0]
@@ -1130,7 +1178,7 @@ class TimeSeries(HasTraits):
         elif (geometry_type.lower() == 'polygon'):
             self.average(ax, **kwargs)
         else:
-            raise ValueError(f'Unknown geometry type {geometry_type}')
+            raise ValueError(f'Invalid geometry type {geometry_type}')
         # return the class object
         return self
 
@@ -1163,7 +1211,7 @@ class TimeSeries(HasTraits):
         Parameters
         ----------
         legend : bool, default False
-            Add legend with geolocation
+            Add legend
         """
         # convert point to dataset coordinate reference system
         lon, lat = self.geometry['coordinates']
@@ -1178,7 +1226,7 @@ class TimeSeries(HasTraits):
             return
         # drop unpassable keyword arguments
         kwargs.pop('cmap') if ('cmap' in kwargs.keys()) else None
-        # create legend with geolocation
+        # create legend with geometry name or geolocation
         if ('legend' in kwargs.keys()):
             add_legend = True
             kwargs.pop('legend')
@@ -1193,7 +1241,7 @@ class TimeSeries(HasTraits):
         # add legend
         if add_legend:
             label = u'{0:8.4f}\u00B0N, {1:8.4f}\u00B0E'.format(lat, lon)
-            self._line.set_label(label)
+            self._line.set_label(self.properties.get('name') or label)
             lgd = ax.legend(loc=0, frameon=False)
             for line in lgd.get_lines():
                 line.set_linewidth(0)
@@ -1278,6 +1326,11 @@ class TimeSeries(HasTraits):
 
     def average(self, ax, **kwargs):
         """Create time series plot for a regional average
+
+        Parameters
+        ----------
+        legend : bool, default False
+            Add legend
         """
         # clip cell area to geometry and create mask
         cell_area =  self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
@@ -1315,6 +1368,11 @@ class TimeSeries(HasTraits):
             self._area[i] = np.sum(area)
         # drop unpassable keyword arguments
         kwargs.pop('cmap') if ('cmap' in kwargs.keys()) else None
+        # create legend with geometry name
+        if ('legend' in kwargs.keys()) and self.properties.get('name'):
+            add_legend = True
+        else:
+            add_legend = False
         kwargs.pop('legend') if ('legend' in kwargs.keys()) else None
         # create average time series plot
         self._line, = ax.plot(self._time, self._data, **kwargs)
@@ -1322,6 +1380,170 @@ class TimeSeries(HasTraits):
         ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
         ax.set_ylabel('{0} [{1}]'.format(self._longname, self._units))
         ax.set_title(self._variable)
+        # add legend
+        if add_legend:
+            self._line.set_label(self.properties.get('name'))
+            lgd = ax.legend(loc=0, frameon=False)
+            for line in lgd.get_lines():
+                line.set_linewidth(0)
+        # set axis ticks to not use constant offset
+        ax.xaxis.get_major_formatter().set_useOffset(False)
+        return self
+
+@xr.register_dataset_accessor('transect')
+class Transect(HasTraits):
+    """A xarray.DataArray extension for extracting a transect
+    """
+
+    def __init__(self, ds):
+        # initialize feature
+        self.geometry = {}
+        self.properties = {}
+        self.crs = None
+        # initialize dataset
+        self._ds = ds
+        self._ds_selected = None
+        self._variable = None
+        # initialize data for time series plot
+        self._data = None
+        self._dist = None
+        self._units = None
+        self._longname = None
+        self._line = None
+
+    # create plot for a transect
+    def plot(self, feature,
+        variable='h',
+        lag=0,
+        crs='epsg:4326',
+        ax=None,
+        figsize=(6, 4),
+        **kwargs
+        ):
+        """Creates a plot for a transect
+
+        Parameters
+        ----------
+        feature : obj
+            GeoJSON feature to extract
+        variable : str, default h
+            xarray variable to plot
+        lag : int, default 0
+            Time lag to plot if 3-dimensional
+        crs : str, default 'epsg:4326'
+            coordinate reference system of geometry
+        ax : obj or NoneType, default None
+            Figure axis on which to plot
+
+            Mutually exclusive with ``figsize``
+        figsize : tuple, default (6,4)
+            Dimensions of figure to create
+        kwargs : dict, default {}
+            Keyword arguments for transect plot
+        """
+        # set geometry
+        self.geometry = feature.get('geometry') or {}
+        # set properties with all keys lowercase
+        properties = feature.get('properties') or {}
+        self.properties = {k.lower(): v for k, v in properties.items()}
+        # get coordinate reference system of geometry
+        self.crs = crs
+        # attempt to get the coordinate reference system of the dataset
+        self.get_crs()
+        # set figure axis
+        if ax is None:
+            fig, ax = plt.subplots(figsize=figsize)
+            fig.patch.set_facecolor('white')
+        # reduce to variable
+        self._variable = copy.copy(variable)
+        if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
+            self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[lag])
+        elif (self._ds[self._variable].ndim == 3) and ('band' in self._ds[self._variable].dims):
+            self._ds_selected = self._ds[self._variable].sel(band=1)
+        else:
+            self._ds_selected = self._ds[self._variable]
+        # extract units
+        self._longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+        self._units = self._ds[self._variable].attrs['units'][0]
+        # create plot for a given geometry type
+        geometry_type = self.geometry.get('type')
+        if (geometry_type.lower() == 'linestring'):
+            self.transect(ax, **kwargs)
+        else:
+            raise ValueError(f'Invalid geometry type {geometry_type}')
+        # return the class object
+        return self
+
+    def get_crs(self):
+        """Attempt to get the coordinate reference system of the dataset
+        """
+        # get coordinate reference system from grid mapping
+        try:
+            grid_mapping = self._ds[self._variable].attrs['grid_mapping']
+            ds_crs = self._ds[grid_mapping].attrs['crs_wkt']
+        except Exception as e:
+            pass
+        else:
+            self._ds.rio.set_crs(ds_crs)
+            return
+        # get coordinate reference system from crs attribute
+        try:
+            ds_crs = self._ds.rio.crs.to_wkt()
+        except Exception as e:
+            pass
+        else:
+            self._ds.rio.set_crs(ds_crs)
+            return
+        # raise exception
+        raise Exception('Unknown coordinate reference system')
+
+    def transect(self, ax, **kwargs):
+        """Create plot for a transect
+
+        Parameters
+        ----------
+        legend : bool, default False
+            Add legend
+        """
+        # convert linestring to dataset coordinate reference system
+        lon, lat = np.transpose(self.geometry['coordinates'])
+        x, y = rasterio.warp.transform(self.crs, self._ds.rio.crs, lon, lat)
+        # get coordinates of each grid cell
+        gridx, gridy = np.meshgrid(self._ds.x, self._ds.y)
+        # clip variable to geometry and create mask
+        clipped = self._ds_selected.rio.clip([self.geometry], self.crs, drop=False)
+        mask = np.isfinite(clipped)
+        # only create plot if valid
+        if np.all(np.logical_not(mask)):
+            return
+        # valid values in mask
+        ii, jj = np.nonzero(mask)
+        # calculate distances to first point in geometry
+        distance = np.sqrt((gridx[mask] - x[0])**2 + (gridy[mask] - y[0])**2)
+        # sort output data by distance
+        indices = np.argsort(distance)
+        self._dist = distance[indices]
+        # create legend with geometry name
+        if ('legend' in kwargs.keys()) and self.properties.get('name'):
+            add_legend = True
+        else:
+            add_legend = False
+        kwargs.pop('legend') if ('legend' in kwargs.keys()) else None
+        # sort data based on distance to first point
+        reduced = clipped.data[ii, jj]
+        self._data = reduced[indices]
+        # create transect plot
+        self._line, = ax.plot(self._dist, self._data, **kwargs)
+        # set labels and title
+        ax.set_xlabel('{0} [{1}]'.format('Distance', 'meters'))
+        ax.set_ylabel('{0} [{1}]'.format(self._longname, self._units))
+        ax.set_title(self._variable)
+        # add legend
+        if add_legend:
+            self._line.set_label(self.properties.get('name'))
+            lgd = ax.legend(loc=0, frameon=False)
+            for line in lgd.get_lines():
+                line.set_linewidth(0)
         # set axis ticks to not use constant offset
         ax.xaxis.get_major_formatter().set_useOffset(False)
         return self

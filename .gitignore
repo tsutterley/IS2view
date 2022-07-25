@@ -28,6 +28,8 @@ _*.c
 *.geojson
 *.h5
 *.hdf
+*.kml
+*.kmz
 *.nc
 *.prj
 *.shp
