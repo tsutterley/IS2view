@@ -22,3 +22,6 @@ General Attributes and Methods
 
 .. autoclass:: IS2view.IS2view.TimeSeries
    :members:
+
+.. autoclass:: IS2view.IS2view.Transect
+   :members:
