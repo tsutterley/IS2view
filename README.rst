@@ -23,7 +23,7 @@ IS2view
 .. |Pangeo| image:: https://img.shields.io/static/v1.svg?logo=Jupyter&label=PangeoBinderAWS&message=us-west-2&color=orange
    :target: https://aws-uswest2-binder.pangeo.io/v2/gh/tsutterley/IS2view/main?urlpath=lab
 
-Interactive viewer for ICESat-2 ATL14/15 Gridded Land Ice Height Products
+Interactive visualization and data extraction tool for ICESat-2 ATL14/15 Gridded Land Ice Height Products
 
 - https://icesat-2.gsfc.nasa.gov
 - https://icesat-2-scf.gsfc.nasa.gov

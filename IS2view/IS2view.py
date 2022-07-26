@@ -1175,7 +1175,7 @@ class TimeSeries(HasTraits):
             self.point(ax, **kwargs)
         elif (geometry_type.lower() == 'linestring'):
             self.transect(ax, **kwargs)
-        elif (geometry_type.lower() == 'polygon'):
+        elif geometry_type.lower() in ('polygon','multipolygon'):
             self.average(ax, **kwargs)
         else:
             raise ValueError(f'Invalid geometry type {geometry_type}')
