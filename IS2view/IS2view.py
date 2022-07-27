@@ -672,6 +672,62 @@ class leaflet:
         """
         return self.map.controls
 
+# function for setting image service layers with raster functions
+def image_service_layer(name, raster='hillshade'):
+    """
+    Creates image service layers with optional raster functions
+
+    Parameters
+    ----------
+    name : str
+        Name of the image service layer
+
+            - ``ArcticDEM``
+            - ``REMA``
+    raster : str, default "hillshade"
+        Name of the raster function for image service layer
+
+            - ``aspect``: Slope Aspect Map
+            - ``contour``: Elevation Contours Map
+            - ``ellipsoidal``: Ellipsoidal Elevation Map
+            - ``hillshade``: Gray Hillshade Map
+            - ``orthometric``: Orthometric Elevation Map
+            - ``slope``: Slope Map
+            - ``smoothed``: Smoothed Contours Map
+            - ``tinted``: Tinted Hillshade Map
+    """
+    # available raster functions for each DEM
+    if (name == 'ArcticDEM'):
+        mapping = dict(
+            aspect = "Aspect Map",
+            contour = "Contour 25",
+            ellipsoidal = "Height Ellipsoidal",
+            hillshade = "Hillshade Gray",
+            orthometric = "Height Orthometric",
+            slope = "Slope Map",
+            smoothed = "Contour Smoothed 25",
+            tinted = "Hillshade Elevation Tinted"
+        )
+    elif (name == 'REMA'):
+        mapping = dict(
+            aspect = "Aspect Map",
+            contour = "Contour 25",
+            hillshade = "Hillshade Gray",
+            orthometric = "Height Orthometric",
+            slope = "Slope Degrees Map",
+            smoothed = "Smooth Contour 25",
+            tinted = "Hillshade Elevation Tinted"
+        )
+    else:
+        raise ValueError(f'Unknown image service layer {name}')
+    # check if raster function is known layer
+    if raster not in mapping.keys():
+        raise ValueError(f'Unknown raster function {raster}')
+    # add rendering rule to layer
+    layer = copy.copy(layers[name])
+    layer.rendering_rule = {"rasterFunction": mapping[raster]}
+    return layer
+
 @xr.register_dataset_accessor('leaflet')
 class LeafletMap(HasTraits):
     """A xarray.DataArray extension for interactive map plotting, based on ipyleaflet
@@ -1264,12 +1320,20 @@ class TimeSeries(HasTraits):
         x, y = rasterio.warp.transform(self.crs, self._ds.rio.crs, lon, lat)
         # get coordinates of each grid cell
         gridx, gridy = np.meshgrid(self._ds.x, self._ds.y)
-        # clip cell area to geometry and create mask
-        cell_area = self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
-        if (self._ds['cell_area'].ndim == 3) and ('band' in self._ds['cell_area'].dims):
-            mask = np.isfinite(cell_area.sel(band=1))
-        elif (self._ds['cell_area'].ndim == 3) and ('time' in self._ds['cell_area'].dims):
-            mask = np.isfinite(cell_area).any(dim='time')
+        # clip ice area to geometry
+        if ('cell_area' in self._ds):
+            ice_area = self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
+        elif ('ice_area' in self._ds):
+            ice_area = self._ds['ice_area'].rio.clip([self.geometry], self.crs, drop=False)
+        else:
+            raise NameError('No ice area variable in dataset')
+        # create valid mask from ice area
+        if (ice_area.ndim == 3) and ('band' in ice_area.dims):
+            mask = np.isfinite(ice_area.sel(band=1))
+        elif (ice_area.ndim == 3) and ('time' in ice_area.dims):
+            mask = np.isfinite(ice_area).any(dim='time')
+        elif (ice_area.ndim == 2):
+            mask = np.isfinite(ice_area)
         # only create plot if valid
         if np.all(np.logical_not(mask)):
             return
@@ -1332,12 +1396,20 @@ class TimeSeries(HasTraits):
         legend : bool, default False
             Add legend
         """
-        # clip cell area to geometry and create mask
-        cell_area =  self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
-        if (self._ds['cell_area'].ndim == 3) and ('band' in self._ds['cell_area'].dims):
-            mask = np.isfinite(cell_area.sel(band=1))
-        elif (self._ds['cell_area'].ndim == 3) and ('time' in self._ds['cell_area'].dims):
-            mask = np.isfinite(cell_area).any(dim='time')
+        # clip ice area to geometry
+        if ('cell_area' in self._ds):
+            ice_area = self._ds['cell_area'].rio.clip([self.geometry], self.crs, drop=False)
+        elif ('ice_area' in self._ds):
+            ice_area = self._ds['ice_area'].rio.clip([self.geometry], self.crs, drop=False)
+        else:
+            raise NameError('No ice area variable in dataset')
+        # create valid mask from ice area
+        if (ice_area.ndim == 3) and ('band' in ice_area.dims):
+            mask = np.isfinite(ice_area.sel(band=1))
+        elif (ice_area.ndim == 3) and ('time' in ice_area.dims):
+            mask = np.isfinite(ice_area).any(dim='time')
+        elif (ice_area.ndim == 2):
+            mask = np.isfinite(ice_area)
         # only create plot if valid
         if np.all(np.logical_not(mask)):
             return
@@ -1355,10 +1427,10 @@ class TimeSeries(HasTraits):
             # reduce data to time and clip to geometry
             clipped = mask*self._ds_selected.sel(time=t)
             # reduce cell area to time (for Release-02 and above)
-            if (cell_area.ndim == 3) and ('time' in cell_area.dims):
-                area = cell_area.sel(time=t)
+            if (ice_area.ndim == 3) and ('time' in ice_area.dims):
+                area = ice_area.sel(time=t)
             else:
-                area = cell_area.copy()
+                area = ice_area.copy()
             # calculate regional average
             if self._variable in error_variables:
                 self._data[i] = np.sqrt(np.sum(area*clipped**2)/np.sum(area))

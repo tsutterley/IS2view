@@ -11,13 +11,13 @@ Add Contextual Layers
 
 .. code-block:: python
 
-   m.add(IS2view.layers.ArcticDEM)
+   m.add(IS2view.image_service_layer('ArcticDEM'))
 
 - `Reference Elevation Model of Antarctica <https://www.pgc.umn.edu/data/rema>`_ (Antarctic Polar Stereographic, `EPSG:3031 <https://epsg.io/3031>`_)
 
 .. code-block:: python
 
-   m.add(IS2view.layers.REMA)
+   m.add(IS2view.image_service_layer('REMA'))
 
 Plot a Transect
 ###############
