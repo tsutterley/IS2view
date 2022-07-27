@@ -13,11 +13,24 @@ Add Contextual Layers
 
    m.add(IS2view.image_service_layer('ArcticDEM'))
 
+.. figure:: ../_assets/arcticdem.png
+   :width: 600
+   :align: center
+
+   Provided by `Esri Polar/ArcticDEM ImageServer <https://elevation2.arcgis.com/arcgis/rest/services/Polar/ArcticDEM/ImageServer>`_
+
+
 - `Reference Elevation Model of Antarctica <https://www.pgc.umn.edu/data/rema>`_ (Antarctic Polar Stereographic, `EPSG:3031 <https://epsg.io/3031>`_)
 
 .. code-block:: python
 
    m.add(IS2view.image_service_layer('REMA'))
+
+.. figure:: ../_assets/rema.png
+   :width: 600
+   :align: center
+
+   Provided by `Esri Polar/AntarcticDEM ImageServer <https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer>`_
 
 Plot a Transect
 ###############
