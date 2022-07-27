@@ -9,15 +9,21 @@ Add Contextual Layers
 
 - `ArcticDEM <https://www.pgc.umn.edu/data/arcticdem>`_ (NSIDC Sea Ice Polar Stereographic North, `EPSG:3413 <https://epsg.io/3413>`_)
 
+   Provided by `Esri Polar/ArcticDEM ImageServer <https://elevation2.arcgis.com/arcgis/rest/services/Polar/ArcticDEM/ImageServer>`_
+
 .. code-block:: python
 
-   m.add(IS2view.layers.ArcticDEM)
+   m.add(IS2view.image_service_layer('ArcticDEM'))
+
+
 
 - `Reference Elevation Model of Antarctica <https://www.pgc.umn.edu/data/rema>`_ (Antarctic Polar Stereographic, `EPSG:3031 <https://epsg.io/3031>`_)
 
+   Provided by `Esri Polar/AntarcticDEM ImageServer <https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer>`_
+
 .. code-block:: python
 
-   m.add(IS2view.layers.REMA)
+   m.add(IS2view.image_service_layer('REMA'))
 
 Plot a Transect
 ###############
@@ -112,4 +118,3 @@ Calculate Area Averages
    :align: center
 
    MEaSUREs Antarctic Boundaries from `Mouginot et al. (2017) <https://nsidc.org/data/NSIDC-0709/versions/2>`_
-

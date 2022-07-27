@@ -17,6 +17,8 @@ General Attributes and Methods
 .. autoclass:: IS2view.IS2view.leaflet
    :members:
 
+.. autofunction:: IS2view.IS2view.image_service_layer
+
 .. autoclass:: IS2view.IS2view.LeafletMap
    :members:
 
