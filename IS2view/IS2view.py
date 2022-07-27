@@ -684,7 +684,7 @@ def image_service_layer(name, raster='hillshade'):
 
             - ``ArcticDEM``
             - ``REMA``
-    raster : str, default "hillshade"
+    raster : str, default 'hillshade'
         Name of the raster function for image service layer
 
             - ``aspect``: Slope Aspect Map
@@ -788,7 +788,7 @@ class LeafletMap(HasTraits):
         ----------
         m : obj
             leaflet map to add the layer
-        variable : str, default delta_h
+        variable : str, default 'delta_h'
             xarray variable to plot
         lag : int, default 0
             Time lag to plot if 3-dimensional
@@ -1186,7 +1186,7 @@ class TimeSeries(HasTraits):
         ----------
         feature : obj
             GeoJSON feature to extract
-        variable : str, default delta_h
+        variable : str, default 'delta_h'
             xarray variable to plot
         crs : str, default 'epsg:4326'
             coordinate reference system of geometry
@@ -1498,7 +1498,7 @@ class Transect(HasTraits):
         ----------
         feature : obj
             GeoJSON feature to extract
-        variable : str, default h
+        variable : str, default 'h'
             xarray variable to plot
         lag : int, default 0
             Time lag to plot if 3-dimensional
