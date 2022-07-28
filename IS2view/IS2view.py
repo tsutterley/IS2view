@@ -116,6 +116,7 @@ class widgets:
         )
 
         # dropdown menu for selecting group to read from file
+        # use Release-01 groups as the initial default
         group_list = ['delta_h', 'dhdt_lag1', 'dhdt_lag4', 'dhdt_lag8']
         self.group = ipywidgets.Dropdown(
             options=group_list,
@@ -290,6 +291,7 @@ class widgets:
     def set_atl14_defaults(self, *args, **kwargs):
         """sets the default widget parameters for ATL14 variables
         """
+        # use dynamic normalization
         self.dynamic.value = True
 
     def set_atl15_defaults(self, *args, **kwargs):
@@ -299,9 +301,10 @@ class widgets:
         variables = {}
         variables['delta_h'] = 'delta_h'
         variables['dhdt_lag1'] = 'dhdt'
-        variables['dhdt_lag4'] = 'dhdt'
-        variables['dhdt_lag8'] = 'dhdt'
-        variables['dhdt_lag12'] = 'dhdt'
+        # set annual time lags
+        for timelag in range(4, 68, 4):
+            variables[f'dhdt_lag{timelag:d}'] = 'dhdt'
+        # set default variable for group
         self.variable.value = variables[group]
 
     def set_groups(self, sender):
@@ -439,12 +442,49 @@ except NameError:
 # draw ipyleaflet map
 class leaflet:
     """Create interactive leaflet maps for visualizing ATL14/15 data
+
+    Parameters
+    ----------
+    map : obj or NoneType, default None
+        ``ipyleaflet.Map``
+    attribution : bool, default False
+        Include layer attributes on leaflet map
+    scale_control : bool, default False
+        Include spatial scale bar to map
+    cursor_control : bool, default True
+        Include display for cursor location
+    layer_control : bool, default True
+        Include control for added map layers
+    draw_control : bool, default False
+        Include control for interactively drawing on map
+    draw_tools : list, default ['marker', 'polyline', 'rectangle', 'polygon']
+        Interactive drawing tools to include with control
+    color : str, default 'blue'
+        Color of drawn or included GeoJSON objects
+    center : tuple, default (0, 0)
+        Map center at (latitude, longitude)
+    zoom : int, default 1
+        Initial map zoom level
+
+    Attributes
+    ----------
+    map : obj
+        ``ipyleaflet.Map``
+    crs : str
+        Coordinate Reference System of map
+    layer_control : obj
+        ``ipyleaflet.LayersControl``
+    scale_control : obj
+        ``ipyleaflet.ScaleControl``
+    cursor : obj
+        ``ipywidgets.Label`` with cursor location
+    geometries : dict
+        GeoJSON formatted geometries
     """
     def __init__(self, projection, **kwargs):
         # set default keyword arguments
         kwargs.setdefault('map', None)
         kwargs.setdefault('attribution', False)
-        kwargs.setdefault('zoom_control', False)
         kwargs.setdefault('scale_control', False)
         kwargs.setdefault('cursor_control', True)
         kwargs.setdefault('layer_control', True)
@@ -477,18 +517,10 @@ class leaflet:
         if kwargs['layer_control']:
             self.layer_control = ipyleaflet.LayersControl(position='topleft')
             self.map.add(self.layer_control)
-        # add control for zoom
-        if kwargs['zoom_control']:
-            zoom_slider = ipywidgets.IntSlider(description='Zoom level:',
-                min=self.map.min_zoom, max=self.map.max_zoom, value=self.map.zoom)
-            ipywidgets.jslink((zoom_slider, 'value'), (self.map, 'zoom'))
-            zoom_control = ipyleaflet.WidgetControl(widget=zoom_slider,
-                position='topright')
-            self.map.add(zoom_control)
         # add control for spatial scale bar
         if kwargs['scale_control']:
-            scale_control = ipyleaflet.ScaleControl(position='topright')
-            self.map.add(scale_control)
+            self.scale_control = ipyleaflet.ScaleControl(position='topright')
+            self.map.add(self.scale_control)
         # add control for cursor position
         if kwargs['cursor_control']:
             self.cursor = ipywidgets.Label()
@@ -699,24 +731,24 @@ def image_service_layer(name, raster='hillshade'):
     # available raster functions for each DEM
     if (name == 'ArcticDEM'):
         mapping = dict(
-            aspect = "Aspect Map",
-            contour = "Contour 25",
-            ellipsoidal = "Height Ellipsoidal",
-            hillshade = "Hillshade Gray",
-            orthometric = "Height Orthometric",
-            slope = "Slope Map",
-            smoothed = "Contour Smoothed 25",
-            tinted = "Hillshade Elevation Tinted"
+            aspect="Aspect Map",
+            contour="Contour 25",
+            ellipsoidal="Height Ellipsoidal",
+            hillshade="Hillshade Gray",
+            orthometric="Height Orthometric",
+            slope="Slope Map",
+            smoothed="Contour Smoothed 25",
+            tinted="Hillshade Elevation Tinted"
         )
     elif (name == 'REMA'):
         mapping = dict(
-            aspect = "Aspect Map",
-            contour = "Contour 25",
-            hillshade = "Hillshade Gray",
-            orthometric = "Height Orthometric",
-            slope = "Slope Degrees Map",
-            smoothed = "Smooth Contour 25",
-            tinted = "Hillshade Elevation Tinted"
+            aspect="Aspect Map",
+            contour="Contour 25",
+            hillshade="Hillshade Gray",
+            orthometric="Height Orthometric",
+            slope="Slope Degrees Map",
+            smoothed="Smooth Contour 25",
+            tinted="Hillshade Elevation Tinted"
         )
     else:
         raise ValueError(f'Unknown image service layer {name}')
@@ -731,6 +763,48 @@ def image_service_layer(name, raster='hillshade'):
 @xr.register_dataset_accessor('leaflet')
 class LeafletMap(HasTraits):
     """A xarray.DataArray extension for interactive map plotting, based on ipyleaflet
+
+    Parameters
+    ----------
+    ds : obj
+        ``xarray.Dataset``
+
+    Attributes
+    ----------
+    _ds : obj
+        ``xarray.Dataset``
+    _ds_selected : obj
+        ``xarray.Dataset`` for selected variable
+    _variable : str
+        Selected variable
+    map : obj
+        ``ipyleaflet.Map``
+    crs : str
+        Coordinate Reference System of map
+    left, top, right, bottom : float
+        Map bounds in image coordinates
+    sw : dict
+        Location of lower-left corner in projected coordinates
+    ne : dict
+        Location of upper-right corner in projected coordinates
+    bounds : tuple
+        Location of map bounds in geographical coordinates
+    image : obj
+        ``ipyleaflet.ImageService`` layer for variable
+    cmap : obj
+        Matplotlib colormap object
+    norm : obj
+        Matplotlib normalization object
+    opacity : float
+        Transparency of image service layer
+    colorbar : obj
+        ``ipyleaflet.WidgetControl`` with Matplotlib colorbar
+    popup : obj
+        ``ipyleaflet.Popup`` with value at clicked location
+    _data : float
+        Variable value at clicked location
+    _units : str
+        Units of selected variable
     """
 
     bounds = Tuple(Tuple(Float(), Float()), Tuple(Float(), Float()))
@@ -799,13 +873,13 @@ class LeafletMap(HasTraits):
         vmax : float or NoneType
             Maximum value for normalization
         norm : obj or NoneType
-            matplotlib color normalization object
+            Matplotlib color normalization object
         opacity : float, default 1.0
             Opacity of image plot
         enable_popups : bool, default False
             Enable contextual popups
         colorbar : bool, decault True
-            show colorbar for rendered variable
+            Show colorbar for rendered variable
         position : str, default 'topright'
             Position of colorbar on leaflet map
         """
@@ -1151,6 +1225,40 @@ class LeafletMap(HasTraits):
 @xr.register_dataset_accessor('timeseries')
 class TimeSeries(HasTraits):
     """A xarray.DataArray extension for extracting and plotting a time series
+
+    Parameters
+    ----------
+    ds : obj
+        ``xarray.Dataset``
+
+    Attributes
+    ----------
+    _ds : obj
+        ``xarray.Dataset``
+    _ds_selected : obj
+        ``xarray.Dataset`` for selected variable
+    _variable : str
+        Selected variable
+    geometry : dict
+        GeoJSON geometry of feature
+    properties : dict
+        GeoJSON properties of feature
+    crs : str
+        Coordinate Reference System of feature
+    _data : float
+        Variable value at geometry
+    _area : float
+        Area of geometry (``Polygon``, ``MultiPolygon``)
+    _dist : str
+        Eulerian distance from first point (``LineString``)
+    _time : str
+        Time coordinates in decimal-years
+    _units : str
+        Units of selected variable
+    _longname : str
+        Unit longname of selected variable
+    _line : str
+        Matplotlib line object from plot
     """
 
     def __init__(self, ds):
@@ -1298,9 +1406,10 @@ class TimeSeries(HasTraits):
         if add_legend:
             label = u'{0:8.4f}\u00B0N, {1:8.4f}\u00B0E'.format(lat, lon)
             self._line.set_label(self.properties.get('name') or label)
+            linewidth = 6 if (ax.get_legend() is not None) else 0
             lgd = ax.legend(loc=0, frameon=False)
             for line in lgd.get_lines():
-                line.set_linewidth(0)
+                line.set_linewidth(linewidth)
         # set axis ticks to not use constant offset
         ax.xaxis.get_major_formatter().set_useOffset(False)
         return self
@@ -1455,9 +1564,10 @@ class TimeSeries(HasTraits):
         # add legend
         if add_legend:
             self._line.set_label(self.properties.get('name'))
+            linewidth = 6 if (ax.get_legend() is not None) else 0
             lgd = ax.legend(loc=0, frameon=False)
             for line in lgd.get_lines():
-                line.set_linewidth(0)
+                line.set_linewidth(linewidth)
         # set axis ticks to not use constant offset
         ax.xaxis.get_major_formatter().set_useOffset(False)
         return self
@@ -1465,6 +1575,36 @@ class TimeSeries(HasTraits):
 @xr.register_dataset_accessor('transect')
 class Transect(HasTraits):
     """A xarray.DataArray extension for extracting a transect
+
+    Parameters
+    ----------
+    ds : obj
+        ``xarray.Dataset``
+
+    Attributes
+    ----------
+    _ds : obj
+        ``xarray.Dataset``
+    _ds_selected : obj
+        ``xarray.Dataset`` for selected variable
+    _variable : str
+        Selected variable
+    geometry : dict
+        GeoJSON geometry of feature
+    properties : dict
+        GeoJSON properties of feature
+    crs : str
+        Coordinate Reference System of feature
+    _data : float
+        Variable value at geometry
+    _dist : str
+        Eulerian distance from first point (``LineString``)
+    _units : str
+        Units of selected variable
+    _longname : str
+        Unit longname of selected variable
+    _line : str
+        Matplotlib line object from plot
     """
 
     def __init__(self, ds):
@@ -1613,9 +1753,10 @@ class Transect(HasTraits):
         # add legend
         if add_legend:
             self._line.set_label(self.properties.get('name'))
+            linewidth = 6 if (ax.get_legend() is not None) else 0
             lgd = ax.legend(loc=0, frameon=False)
             for line in lgd.get_lines():
-                line.set_linewidth(0)
+                line.set_linewidth(linewidth)
         # set axis ticks to not use constant offset
         ax.xaxis.get_major_formatter().set_useOffset(False)
         return self

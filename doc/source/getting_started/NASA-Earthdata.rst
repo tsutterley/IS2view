@@ -28,8 +28,8 @@ NSIDC is migrating its data archive to the Earthdata Cloud, which is hosted in A
 If any problems contact NSIDC support at `nsidc@nsidc.org <mailto:nsidc@nsidc.org>`_ or
 the NASA EOSDIS support team `support@earthdata.nasa.gov <mailto:support@earthdata.nasa.gov>`_.
 
-Steps to Sync from NSIDC
-########################
+Data Access Steps for NSIDC
+###########################
 
 1. `Register with NASA Earthdata Login system <https://urs.earthdata.nasa.gov/users/new>`_
 2. `After registering, login to the system <https://urs.earthdata.nasa.gov/home>`_
