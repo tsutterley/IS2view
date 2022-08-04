@@ -15,8 +15,6 @@ Add Contextual Layers
 
    m.add(IS2view.image_service_layer('ArcticDEM'))
 
-
-
 - `Reference Elevation Model of Antarctica <https://www.pgc.umn.edu/data/rema>`_ (Antarctic Polar Stereographic, `EPSG:3031 <https://epsg.io/3031>`_)
 
    Provided by `Esri Polar/AntarcticDEM ImageServer <https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer>`_
@@ -35,6 +33,7 @@ Plot a Transect
    gdf = geopandas.read_file('/vsizip/shapefiles.zip/glacier0001.shp')
    # add geodataframe
    m.add_geodataframe(gdf)
+   # iterate over features
    for feature in m.geometries['features']:
       ds.timeseries.plot(feature, cmap='rainbow', legend=True,
          variable=IS2widgets.variable.value,
@@ -66,6 +65,7 @@ Plot Multiple Time Series
    # plot colors for each geometry
    n_features = len(m.geometries['features'])
    plot_colors = iter(plt.cm.rainbow_r(np.linspace(0,1,n_features)))
+   # iterate over features
    for geo in m.geometries['features']:
       color = next(plot_colors)
       ds.timeseries.plot(geo, ax=ax,
@@ -89,29 +89,45 @@ Calculate Area Averages
    import geopandas
    import numpy as np
    import matplotlib.pyplot as plt
+   import matplotlib.colors as colors
+   # data release and variable
+   release = IS2widgets.release.value
+   variable = IS2widgets.variable.value
    # read shapefile with drainage outlines
    gdf = geopandas.read_file('IceBoundaries_Antarctica_v02.shp')
-   # add geodataframe of drainages of the Amundsen Sea Embayment
-   m.add_geodataframe(gdf[(gdf['Subregions'] == 'G-H') & (gdf['TYPE'] == 'GR')])
-   # allocate for combined area and volume
-   area = np.zeros_like(ds.time, dtype=np.float64)
-   volume = np.zeros_like(ds.time, dtype=np.float64)
-   for geo in m.geometries['features']:
-      ds.timeseries.plot(geo, legend=True,
-         variable=IS2widgets.variable.value,
-      )
-      # add to total area and volume
-      area += ds.timeseries._area
-      volume += ds.timeseries._area*ds.timeseries._data
-   # create output figure
-   fig, ax = plt.subplots()
-   fig.patch.set_facecolor('white')
-   ax.plot(ds.timeseries._time, volume/area)
-   ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
-   ax.set_ylabel('{0} [{1}]'.format(ds.timeseries._longname, ds.timeseries._units))
-   ax.set_title('average {0}'.format(ds.timeseries._variable))
-   # show average plot
-   plt.show()
+   # get unique list of subregions
+   subregions = gdf[gdf['TYPE'] == 'GR']['Subregions'].unique()
+   # plot colors for each subregion
+   n_features = len(subregions)
+   plot_colors = iter(plt.cm.rainbow_r(np.linspace(0,1,n_features)))
+   # iterate over subregions
+   for subregion in sorted(subregions):
+      # add geodataframe of drainages within subregion
+      color = colors.to_hex(next(plot_colors))
+      data = gdf[(gdf['TYPE'] == 'GR') & (gdf['Subregions'] == subregion)]
+      m.add_geodataframe(data, style=dict(color=color))
+      # allocate for combined area and volume
+      area = np.zeros_like(ds.time, dtype=np.float64)
+      volume = np.zeros_like(ds.time, dtype=np.float64)
+      # iterate over features
+      for geo in m.geometries['features']:
+         ds.timeseries.extract(geo, variable=variable)
+         # add to total area and volume
+         area += ds.timeseries._area
+         volume += ds.timeseries._area*ds.timeseries._data
+      # create output figure
+      fig, ax = plt.subplots()
+      fig.patch.set_facecolor('white')
+      ax.plot(ds.timeseries._time, volume/area)
+      ax.set_xlabel('{0} [{1}]'.format('time', 'years'))
+      ax.set_ylabel('{0} [{1}]'.format(ds.timeseries._longname, ds.timeseries._units))
+      ax.set_title('{0} average {1}'.format(subregion,variable))
+      # set axis ticks to not use constant offset
+      ax.xaxis.get_major_formatter().set_useOffset(False)
+      # save average plot
+      plt.savefig('ATL15_{0}_{1}_{2}.pdf'.format(release,subregion,variable))
+      # drop features for subregion
+      m.geometries['features'] = []
 
 .. figure:: ../_assets/average.png
    :width: 400
