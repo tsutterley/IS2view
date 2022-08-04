@@ -616,7 +616,7 @@ class leaflet:
             Keyword arguments for GeoJSON
         """
         # set default keyword arguments
-        kwargs.setdefault('color', 'blue')
+        kwargs.setdefault('style', dict(color='blue'))
         # convert geodataframe to coordinate reference system
         # and to GeoJSON
         geodata = gdf.to_crs('epsg:4326').__geo_interface__
@@ -1288,7 +1288,7 @@ class TimeSeries(HasTraits):
         figsize=(6, 4),
         **kwargs
         ):
-        """Creates a time series of an extracted geometry
+        """Plot a time series for an extracted geometry
 
         Parameters
         ----------
@@ -1346,6 +1346,58 @@ class TimeSeries(HasTraits):
         # return the class object
         return self
 
+    # extract a time series plot for a region
+    def extract(self, feature,
+        variable='delta_h',
+        crs='epsg:4326',
+        epoch=2018.0,
+        ):
+        """Extract a time series for a geometry
+
+        Parameters
+        ----------
+        feature : obj
+            GeoJSON feature to extract
+        variable : str, default 'delta_h'
+            xarray variable to extract
+        crs : str, default 'epsg:4326'
+            coordinate reference system of geometry
+        epoch : float, default 2018.0
+            Reference epoch for delta times
+        """
+        # set geometry
+        self.geometry = feature.get('geometry') or {}
+        # set properties with all keys lowercase
+        properties = feature.get('properties') or {}
+        self.properties = {k.lower(): v for k, v in properties.items()}
+        # get coordinate reference system of geometry
+        self.crs = crs
+        # attempt to get the coordinate reference system of the dataset
+        self.get_crs()
+        # reduce to variable
+        self._variable = copy.copy(variable)
+        if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
+            self._ds_selected = self._ds[self._variable]
+        else:
+            return
+        # convert time to units
+        self._time = epoch + (self._ds.time)/365.25
+        # extract units
+        self._longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+        self._units = self._ds[self._variable].attrs['units'][0]
+        # create plot for a given geometry type
+        geometry_type = self.geometry.get('type')
+        if (geometry_type.lower() == 'point'):
+            self.point(None)
+        elif (geometry_type.lower() == 'linestring'):
+            self.transect(None)
+        elif geometry_type.lower() in ('polygon','multipolygon'):
+            self.average(None)
+        else:
+            raise ValueError(f'Invalid geometry type {geometry_type}')
+        # return the class object
+        return self
+
     def get_crs(self):
         """Attempt to get the coordinate reference system of the dataset
         """
@@ -1370,10 +1422,14 @@ class TimeSeries(HasTraits):
         raise Exception('Unknown coordinate reference system')
 
     def point(self, ax, **kwargs):
-        """Create time series plot for a geolocation
+        """Extracts and plots a time series for a geolocation
 
         Parameters
         ----------
+        ax : obj or NoneType
+            Figure axis on which to plot
+
+            Will only extract time series if ``None``
         legend : bool, default False
             Add legend
         """
@@ -1388,6 +1444,9 @@ class TimeSeries(HasTraits):
         # only create plot if valid
         if np.all(np.isnan(self._data)):
             return
+        # if only returning data
+        if ax is None:
+            return self
         # drop unpassable keyword arguments
         kwargs.pop('cmap') if ('cmap' in kwargs.keys()) else None
         # create legend with geometry name or geolocation
@@ -1415,10 +1474,14 @@ class TimeSeries(HasTraits):
         return self
 
     def transect(self, ax, **kwargs):
-        """Create time series plot for a transect
+        """Extracts and plots a time series for a transect
 
         Parameters
         ----------
+        ax : obj or NoneType
+            Figure axis on which to plot
+
+            Will only extract time series if ``None``
         cmap : str or NoneType, default None
             matplotlib colormap
         legend : bool, default False
@@ -1453,6 +1516,22 @@ class TimeSeries(HasTraits):
         # sort output data by distance
         indices = np.argsort(distance)
         self._dist = distance[indices]
+        # output reduced time series for each point
+        self._data = np.zeros((np.count_nonzero(mask), len(self._ds.time)))
+        labels = [None]*len(self._ds.time)
+        # for each step in the time series
+        for i, t in enumerate(self._ds.time):
+            clipped = mask*self._ds_selected.sel(time=t)
+            reduced = clipped.data[ii, jj]
+            # sort data based on distance to first point
+            self._data[:, i] = reduced[indices]
+            labels[i] = '{0:0.2f}'.format(self._time[i].data)
+        # only create plot if valid
+        if np.all(np.isnan(self._data)):
+            return
+        # if only returning data
+        if ax is None:
+            return self
         # get colormap for each time point
         if ('cmap' in kwargs.keys()):
             cmap = copy.copy(plt.cm.get_cmap(kwargs['cmap']))
@@ -1467,21 +1546,16 @@ class TimeSeries(HasTraits):
             kwargs.pop('legend')
         else:
             add_legend = False
-        # output reduced time series for each point
-        self._data = np.zeros((np.count_nonzero(mask), len(self._ds.time)))
+        # output time series plot
         self._line = [None]*len(self._ds.time)
         # for each step in the time series
         for i, t in enumerate(self._ds.time):
-            clipped = mask*self._ds_selected.sel(time=t)
-            reduced = clipped.data[ii, jj]
-            # sort data based on distance to first point
-            self._data[:, i] = reduced[indices]
             # select color
             if (plot_colors is not None):
                 kwargs['color'] = next(plot_colors)
             # create transect plot
             self._line[i], = ax.plot(self._dist, self._data[:,i],
-                label='{0:0.2f}'.format(self._time[i].data), **kwargs)
+                label=labels[i], **kwargs)
         # set labels and title
         ax.set_xlabel('{0} [{1}]'.format('Distance', 'meters'))
         ax.set_ylabel('{0} [{1}]'.format(self._longname, self._units))
@@ -1498,10 +1572,14 @@ class TimeSeries(HasTraits):
         return self
 
     def average(self, ax, **kwargs):
-        """Create time series plot for a regional average
+        """Extracts and plots a time series for a regional average
 
         Parameters
         ----------
+        ax : obj or NoneType
+            Figure axis on which to plot
+
+            Will only extract time series if ``None``
         legend : bool, default False
             Add legend
         """
@@ -1547,6 +1625,12 @@ class TimeSeries(HasTraits):
                 self._data[i] = np.sum(area*clipped)/np.sum(area)
             # calculate total area for region
             self._area[i] = np.sum(area)
+        # only create plot if valid
+        if np.all(np.isnan(self._data)):
+            return
+        # if only returning data
+        if ax is None:
+            return self
         # drop unpassable keyword arguments
         kwargs.pop('cmap') if ('cmap' in kwargs.keys()) else None
         # create legend with geometry name
@@ -1686,6 +1770,57 @@ class Transect(HasTraits):
         # return the class object
         return self
 
+    # extract a time series for a region
+    def extract(self, feature,
+        variable='h',
+        lag=0,
+        crs='epsg:4326',
+        epoch=2018.0,
+        ):
+        """Extract a transect for a geometry
+
+        Parameters
+        ----------
+        feature : obj
+            GeoJSON feature to extract
+        variable : str, default 'h'
+            xarray variable to extract
+        lag : int, default 0
+            Time lag to extract if 3-dimensional
+        crs : str, default 'epsg:4326'
+            coordinate reference system of geometry
+        epoch : float, default 2018.0
+            Reference epoch for delta times
+        """
+        # set geometry
+        self.geometry = feature.get('geometry') or {}
+        # set properties with all keys lowercase
+        properties = feature.get('properties') or {}
+        self.properties = {k.lower(): v for k, v in properties.items()}
+        # get coordinate reference system of geometry
+        self.crs = crs
+        # attempt to get the coordinate reference system of the dataset
+        self.get_crs()
+        # reduce to variable
+        self._variable = copy.copy(variable)
+        if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
+            self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[lag])
+        elif (self._ds[self._variable].ndim == 3) and ('band' in self._ds[self._variable].dims):
+            self._ds_selected = self._ds[self._variable].sel(band=1)
+        else:
+            self._ds_selected = self._ds[self._variable]
+        # extract units
+        self._longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+        self._units = self._ds[self._variable].attrs['units'][0]
+        # create time series for a given geometry type
+        geometry_type = self.geometry.get('type')
+        if (geometry_type.lower() == 'linestring'):
+            self.transect(None)
+        else:
+            raise ValueError(f'Invalid geometry type {geometry_type}')
+        # return the class object
+        return self
+
     def get_crs(self):
         """Attempt to get the coordinate reference system of the dataset
         """
@@ -1710,10 +1845,14 @@ class Transect(HasTraits):
         raise Exception('Unknown coordinate reference system')
 
     def transect(self, ax, **kwargs):
-        """Create plot for a transect
+        """Extracts and plots a transect
 
         Parameters
         ----------
+        ax : obj or NoneType
+            Figure axis on which to plot
+
+            Will only extract transect if ``None``
         legend : bool, default False
             Add legend
         """
@@ -1735,15 +1874,21 @@ class Transect(HasTraits):
         # sort output data by distance
         indices = np.argsort(distance)
         self._dist = distance[indices]
+        # sort data based on distance to first point
+        reduced = clipped.data[ii, jj]
+        self._data = reduced[indices]
+        # only create plot if valid
+        if np.all(np.isnan(self._data)):
+            return
+        # if only returning data
+        if ax is None:
+            return self
         # create legend with geometry name
         if ('legend' in kwargs.keys()) and self.properties.get('name'):
             add_legend = True
         else:
             add_legend = False
         kwargs.pop('legend') if ('legend' in kwargs.keys()) else None
-        # sort data based on distance to first point
-        reduced = clipped.data[ii, jj]
-        self._data = reduced[indices]
         # create transect plot
         self._line, = ax.plot(self._dist, self._data, **kwargs)
         # set labels and title
