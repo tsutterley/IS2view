@@ -1359,7 +1359,7 @@ class TimeSeries(HasTraits):
         feature : obj
             GeoJSON feature to extract
         variable : str, default 'delta_h'
-            xarray variable to plot
+            xarray variable to extract
         crs : str, default 'epsg:4326'
             coordinate reference system of geometry
         epoch : float, default 2018.0
@@ -1784,9 +1784,9 @@ class Transect(HasTraits):
         feature : obj
             GeoJSON feature to extract
         variable : str, default 'h'
-            xarray variable to plot
+            xarray variable to extract
         lag : int, default 0
-            Time lag to plot if 3-dimensional
+            Time lag to extract if 3-dimensional
         crs : str, default 'epsg:4326'
             coordinate reference system of geometry
         epoch : float, default 2018.0
