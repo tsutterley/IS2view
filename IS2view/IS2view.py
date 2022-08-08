@@ -21,6 +21,7 @@ UPDATE HISTORY:
     Written 07/2022
 """
 import io
+import os
 import copy
 import json
 import base64
@@ -68,12 +69,37 @@ warnings.filterwarnings("ignore")
 class widgets:
     def __init__(self, **kwargs):
         # set default keyword options
+        kwargs.setdefault('directory', os.getcwd())
         kwargs.setdefault('style', {})
         # set style
         self.style = copy.copy(kwargs['style'])
 
+        # dropdown menu for setting asset
+        asset_list = ['nsidc-https','atlas-s3','atlas-local']
+        self.asset = ipywidgets.Dropdown(
+            options=asset_list,
+            value='nsidc-https',
+            description='Asset:',
+            description_tooltip=("Asset: Location to get the data\n\t"
+                "nsidc-https: NSIDC on-prem DAAC\n\t"
+                "atlas-s3: s3 bucket in `us-west-2`\n\t"
+                "atlas-local: local directory"),
+            disabled=False,
+            style=self.style,
+        )
+
+        # working data directory if local
+        self.directory = ipywidgets.Text(
+            value=kwargs['directory'],
+            description='Directory:',
+            description_tooltip=("Directory: working data directory"),
+            disabled=False,
+            style=self.style,
+        )
+        self.directory.layout.display = 'none'
+
         # dropdown menu for setting ATL14/15 release
-        release_list = ['001']
+        release_list = ['001','002']
         self.release = ipywidgets.Dropdown(
             options=release_list,
             value='001',
@@ -154,6 +180,7 @@ class widgets:
         )
 
         # watch widgets for changes
+        self.asset.observe(self.set_directory_visibility)
         self.release.observe(self.set_groups)
         self.dynamic.observe(self.set_dynamic)
         self.variable.observe(self.set_lag_visibility)
@@ -287,6 +314,14 @@ class widgets:
         """
         return self.range.value[1]
 
+    def set_directory_visibility(self, sender):
+        """updates the visibility of the directory widget
+        """
+        # check if setting an invariant variable
+        if (self.asset.value == 'atlas-local'):
+            self.directory.layout.display = 'inline-flex'
+        else:
+            self.directory.layout.display = 'none'
 
     def set_atl14_defaults(self, *args, **kwargs):
         """sets the default widget parameters for ATL14 variables
@@ -1339,7 +1374,7 @@ class TimeSeries(HasTraits):
             self.point(ax, **kwargs)
         elif (geometry_type.lower() == 'linestring'):
             self.transect(ax, **kwargs)
-        elif geometry_type.lower() in ('polygon','multipolygon'):
+        elif geometry_type.lower() in ('polygon', 'multipolygon'):
             self.average(ax, **kwargs)
         else:
             raise ValueError(f'Invalid geometry type {geometry_type}')
@@ -1391,7 +1426,7 @@ class TimeSeries(HasTraits):
             self.point(None)
         elif (geometry_type.lower() == 'linestring'):
             self.transect(None)
-        elif geometry_type.lower() in ('polygon','multipolygon'):
+        elif geometry_type.lower() in ('polygon', 'multipolygon'):
             self.average(None)
         else:
             raise ValueError(f'Invalid geometry type {geometry_type}')
@@ -1775,7 +1810,6 @@ class Transect(HasTraits):
         variable='h',
         lag=0,
         crs='epsg:4326',
-        epoch=2018.0,
         ):
         """Extract a transect for a geometry
 

@@ -41,3 +41,5 @@ General Methods
 .. autofunction:: IS2view.utilities.cmr_filter_json
 
 .. autofunction:: IS2view.utilities.cmr
+
+.. autofunction:: IS2view.utilities.query_resources
