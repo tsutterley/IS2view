@@ -171,6 +171,54 @@ def s3_key(presigned_url):
     # return the s3 bucket key for object
     return key
 
+# PURPOSE: get a s3 presigned url from a bucket and key
+def s3_presigned_url(bucket, key):
+    """
+    Get a s3 presigned url from a bucket and object key
+
+    Parameters
+    ----------
+    bucket: str
+        s3 bucket name
+    key: str
+        s3 bucket key for object
+
+    Returns
+    -------
+    presigned_url: str
+        s3 presigned url
+    """
+    return posixpath.join('s3://', bucket, key)
+
+# PURPOSE: generate a s3 presigned https url from a bucket and key
+def generate_presigned_url(bucket, key, expiration=3600):
+    """
+    Generate a presigned https URL to share an S3 object
+
+    Parameters
+    ----------
+    bucket: str
+        s3 bucket name
+    key: str
+        s3 bucket key for object
+
+    Returns
+    -------
+    presigned_url: str
+        s3 presigned https url
+    """
+    # generate a presigned URL for S3 object
+    s3 = boto3.client('s3')
+    try:
+        response = s3.generate_presigned_url('get_object',
+            Params={'Bucket': bucket, 'Key': key},
+            ExpiresIn=expiration)
+    except Exception as e:
+        logging.error(e)
+        return None
+    # The response contains the presigned URL
+    return response
+
 # PURPOSE: attempt to build an opener with netrc
 def attempt_login(urs='urs.earthdata.nasa.gov',
     context=ssl.SSLContext(),
@@ -221,6 +269,7 @@ def attempt_login(urs='urs.earthdata.nasa.gov',
         # try retrieving credentials from netrc
         username, _, password = netrc.netrc(kwargs['netrc']).authenticators(urs)
     except Exception as e:
+        logging.error(e)
         # try retrieving credentials from environmental variables
         username, password = (kwargs['username'], kwargs['password'])
         pass
@@ -244,6 +293,7 @@ def attempt_login(urs='urs.earthdata.nasa.gov',
         try:
             check_credentials()
         except Exception as e:
+            logging.error(e)
             pass
         else:
             return opener
@@ -390,6 +440,7 @@ def from_nsidc(HOST, username=None, password=None, build=True,
         request = urllib2.Request(posixpath.join(*HOST))
         response = urllib2.urlopen(request, timeout=timeout)
     except (urllib2.HTTPError, urllib2.URLError) as e:
+        logging.error(e)
         response_error = 'Download error from {0}'.format(posixpath.join(*HOST))
         return (False, response_error)
     else:
@@ -421,6 +472,13 @@ def from_nsidc(HOST, username=None, password=None, build=True,
         remote_buffer.seek(0)
         return (remote_buffer, None)
 
+# available regions and resolutions
+_products = ('ATL14', 'ATL15')
+_regions = ('AA', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV')
+_atl14_resolutions = ('100m',)
+_atl15_resolutions = ('01km', '10km', '20km', '40km')
+_resolutions = _atl14_resolutions + _atl15_resolutions
+
 # PURPOSE: build formatted query string for ICESat-2 release
 def cmr_query_release(release):
     """
@@ -429,7 +487,7 @@ def cmr_query_release(release):
     Parameters
     ----------
     release: str
-        ICESat-2 data release to query
+        ICESat-2 data release
 
     Returns
     -------
@@ -451,74 +509,71 @@ def cmr_query_release(release):
         desired_pad_length -= 1
     return query_params
 
-# PURPOSE: check if the submitted ATL14/ATL15 regions are valid
+# PURPOSE: check if the submitted ATL14/15 regions are valid
 def cmr_regions(region):
     """
-    Check if the submitted ATL14/ATL15 regions are valid
+    Check if the submitted ATL14/15 regions are valid
 
     Parameters
     ----------
     region: str, list or NoneType, default None
-        ICESat-2 ATL14/ATL15 region
-
+bb
     Returns
     -------
     region_list: list
-        formatted available ATL14/ATL15 regions
+        formatted available ATL14/15 regions
     """
     # all available ICESat-2 ATL14/15 regions
-    all_regions = ['AA', 'AK', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV']
     if region is None:
         return ["??"]
     else:
         if isinstance(region, str):
-            assert region in all_regions
+            assert region in _regions
             region_list = [str(region)]
         elif isinstance(region, list):
             region_list = []
             for r in region:
-                assert r in all_regions
+                assert r in _regions
                 region_list.append(str(r))
         else:
             raise TypeError("Please enter the region as a list or string")
         # check if user-entered region is currently not available
-        if not set(all_regions) & set(region_list):
+        if not set(_regions) & set(region_list):
             warnings.filterwarnings("always")
             warnings.warn("Listed region is not presently available")
         return region_list
 
-# PURPOSE: check if the submitted ATL14/ATL15 regions are valid
+# PURPOSE: check if the submitted ATL14/15 regions are valid
 def cmr_resolutions(resolution):
     """
-    Check if the submitted ATL14/ATL15 resolutions are valid
+    Check if the submitted ATL14/15 resolutions are valid
 
     Parameters
     ----------
     resolution: str, list or NoneType, default None
-        ICESat-2 ATL14/ATL15 spatial resolution
+        ICESat-2 ATL14/15 spatial resolution
 
     Returns
     -------
     resolution_list: list
-        formatted available ATL14/ATL15 resolutions
+        formatted available ATL14/15 resolutions
     """
     # all available ICESat-2 ATL14/15 resolutions
-    all_resolutions = ['100m', '01km', '10km', '20km', '40km']
     if resolution is None:
         return ["????"]
     else:
         if isinstance(resolution, str):
-            assert resolution in all_resolutions
+            assert resolution in _resolutions
             resolution_list = [str(resolution)]
         elif isinstance(resolution, list):
             resolution_list = []
             for r in resolution:
-                assert r in all_resolutions
+                assert r in _resolutions
                 resolution_list.append(str(r))
         else:
             raise TypeError("Please enter the resolution as a list or string")
         # check if user-entered resolution is currently not available
-        if not set(all_resolutions) & set(resolution_list):
+        if not set(_resolutions) & set(resolution_list):
             warnings.filterwarnings("always")
             warnings.warn("Listed resolution is not presently available")
         return resolution_list
@@ -530,9 +585,9 @@ def cmr_readable_granules(product, **kwargs):
     Parameters
     ----------
     regions: str, list or NoneType, default None
-        ICESat-2 ATL14/ATL15 region
+        ICESat-2 ATL14/15 region name
     resolutions: str, list or NoneType, default None
-        ICESat-2 ATL14/ATL15 spatial resolution
+        ICESat-2 ATL14/15 spatial resolution
 
     Returns
     -------
@@ -544,8 +599,10 @@ def cmr_readable_granules(product, **kwargs):
     kwargs.setdefault("resolutions", None)
     # list of readable granule names
     readable_granule_list = []
+    # verify inputs
+    assert product in _products
     # gridded land ice products
-    # for each ATL14/ATL15 parameter
+    # for each ATL14/15 parameter
     for r in cmr_regions(kwargs["regions"]):
         for s in cmr_resolutions(kwargs["resolutions"]):
             args = (product, r, s)
@@ -590,7 +647,7 @@ def cmr_filter_json(search_results, request_type="application/x-hdfeos"):
     # return the list of urls and granule ids
     return (producer_granule_ids, granule_urls)
 
-# PURPOSE: cmr queries for orbital parameters
+# PURPOSE: cmr queries for gridded land ice products
 def cmr(product=None, release=None, regions=None, resolutions=None,
     provider='NSIDC_ECS', request_type="application/x-hdfeos",
     opener=None, verbose=False, fid=sys.stdout):
@@ -600,13 +657,13 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
     Parameters
     ----------
     product: str or NoneType, default None
-        ICESat-2 data product to query
+        ICESat-2 data product
     release: str or NoneType, default None
-        ICESat-2 data release to query
+        ICESat-2 data release
     regions: str, list or NoneType, default None
-        ICESat-2 ATL14/15 region strings to query
+        ICESat-2 ATL14/15 region name
     resolutions: str, list or NoneType, default None
-        ICESat-2 ATL14/15 resolution strings to query
+        ICESat-2 ATL14/15 spatial resolution
     provider: str, default 'NSIDC_ECS'
         CMR data provider
     request_type: str, default 'application/x-hdfeos'
@@ -688,3 +745,158 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
         granule_urls.extend(urls)
     # return the list of granule ids and urls
     return (producer_granule_ids, granule_urls)
+
+# available assets for finding data
+_assets = ('nsidc-s3', 'atlas-s3', 'nsidc-https', 'atlas-local')
+
+# PURPOSE: queries CMR or s3 for available granules
+def query_resources(**kwargs):
+    """
+    Queries CMR or s3 for available granules
+
+    Parameters
+    ----------
+    asset: str, default 'nsidc-https'
+        Location to get the ICESat-2 gridded land ice data
+
+        - ``nsidc-https`` : NSIDC on-prem DAAC
+        - ``nsidc-s3`` : NSIDC AWS protected s3 bucket
+        - ``atlas-s3`` : s3 bucket in `us-west-2`
+        - ``atlas-local`` : local directory
+    bucket: str, default 'is2view'
+        Project AWS s3 bucket name
+    directory: str or NoneType, default None
+        Working data directory if local
+    product: str, default 'ATL15'
+        ICESat-2 gridded land ice product
+
+        - ``ATL14`` : land ice height
+        - ``ATL15`` : land ice height change
+    release: str, default '001'
+        ICESat-2 data release
+    version: str, default '01'
+        ICESat-2 data version
+    region: str, default 'AA'
+        ICESat-2 ATL14/15 region name
+
+        - ``AA`` : Antarctic
+        - ``CN`` : Northern Canadian Archipelagobb
+        - ``CS`` : Southern Canadian Archipelago
+        - ``GL`` : Greenland
+        - ``IS`` : Iceland
+        - ``SV`` : Svalbard
+        - ``RA`` : Russian High Arctic
+    resolution: str, default '01km'
+        ICESat-2 ATL14/15 spatial resolution
+
+        - ``100m`` : 100 meters horizontal
+        - ``01km`` : 1 kilometer horizontal
+        - ``10km`` : 10 kilometers horizontal
+        - ``20km`` : 20 kilometers horizontal
+        - ``40km`` : 40 kilometers horizontal
+
+    Returns
+    -------
+    granule: str
+        presigned url or path for granule
+    """
+    kwargs.setdefault('asset', 'nsidc-https')
+    kwargs.setdefault('bucket', 'is2view')
+    kwargs.setdefault('directory', None)
+    kwargs.setdefault('product', 'ATL15')
+    kwargs.setdefault('release', '001')
+    kwargs.setdefault('version', '01')
+    kwargs.setdefault('region', 'AA')
+    kwargs.setdefault('resolution', '01km')
+    # verify inputs
+    assert kwargs['asset'] in _assets
+    assert kwargs['product'] in _products
+    assert kwargs['release'] in ('001', '002')
+    assert kwargs['region'] in _regions
+    assert kwargs['resolution'] in _resolutions
+    # start and end cycle for releases
+    cycles = {}
+    cycles['001'] = (3, 11)
+    cycles['002'] = (3, 14)
+    # CMR providers
+    provider = {}
+    provider['nsidc-s3'] = 'NSIDC_ECS'
+    provider['atlas-s3'] = 'NSIDC_ECS'
+    provider['nsidc-https'] = 'NSIDC_ECS'
+    provider['atlas-local'] = 'NSIDC_ECS'
+    # file formatting string for ATL14/15 granules
+    # 1: product
+    # 2: region identification
+    # 3-4: start and end cycle
+    # 5: horizontal spatial resolution
+    # 6: data release
+    # 7: data version
+    file_format = '{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.nc'
+    # attempt to get resource
+    granule = None
+    if (int(kwargs['release']) <= 1):
+        # query CMR
+        ids, urls = cmr(product=kwargs['product'],
+            release=kwargs['release'],
+            regions=kwargs['region'],
+            resolutions=kwargs['resolution'],
+            provider=provider[kwargs['asset']])
+        # check if granule is available
+        if not (ids or urls):
+            raise Exception('Granule not found in asset')
+        # check if available on s3 or locally
+        if (kwargs['asset'] == 'nsidc-s3'):
+            # return presigned url for granule
+            key = s3_key(urls[0])
+            granule = s3_presigned_url(_s3_buckets['nsidc'], key)
+        elif (kwargs['asset'] == 'atlas-s3'):
+            # get presigned url for granule
+            key = s3_key(urls[0])
+            granule = s3_presigned_url(kwargs['bucket'], key)
+        elif (kwargs['asset'] == 'nsidc-https'):
+            # verify that granule exists locally
+            granule = ids[0]
+            if not os.access(granule, os.F_OK):
+                from_nsidc(urls[0], local=granule)
+        elif (kwargs['asset'] == 'atlas-local'):
+            # verify that granule exists locally
+            directory = os.path.expanduser(kwargs['directory'] or '.')
+            granule = os.path.abspath(os.path.join(directory, ids[0]))
+            if not os.access(granule, os.F_OK):
+                from_nsidc(urls[0], local=granule)
+    else:
+        # format granule for unreleased data
+        file = file_format.format(
+            kwargs['product'],
+            kwargs['region'],
+            cycles[kwargs['release']][0],
+            cycles[kwargs['release']][1],
+            kwargs['resolution'],
+            int(kwargs['release']),
+            int(kwargs['version'])
+        )
+        # unreleased granule from local or project s3
+        if (kwargs['asset'] == 'atlas-local'):
+            # local granule for unreleased data
+            directory = os.path.expanduser(kwargs['directory'] or '.')
+            granule = os.path.abspath(os.path.join(directory, file))
+            # verify that unreleased granule exists locally
+            if not os.access(granule, os.F_OK):
+                raise FileNotFoundError(granule)
+        elif (kwargs['asset'] == 'atlas-s3'):
+            # s3 urls for unreleased data
+            if (kwargs['region'] == 'IS'):
+                yymmdd = ('2019', '03', '31')
+            else:
+                yymmdd = ('2019', '03', '29')
+            # full s3 key path
+            key = posixpath.join('ATLAS', kwargs['product'],
+                kwargs['release'], *yymmdd, file)
+            # get presigned url for granule
+            granule = s3_presigned_url(kwargs['bucket'], key)
+
+    # raise exception if no granule available
+    if granule is None:
+        raise ValueError('Unavailable granule')
+    # presigned url or path for granule
+    return granule
