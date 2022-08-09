@@ -728,19 +728,19 @@ def query_resources(**kwargs):
     asset: str, default 'nsidc-https'
         Location to get the data
 
-        - `nsidc-https`: NSIDC on-prem DAAC
-        - `nsidc-s3`: NSIDC AWS protected s3 bucket
-        - `atlas-s3`: s3 bucket in `us-west-2`
-        - `atlas-local`: local directory
+        - ``nsidc-https`` : NSIDC on-prem DAAC
+        - ``nsidc-s3`` : NSIDC AWS protected s3 bucket
+        - ``atlas-s3`` : s3 bucket in `us-west-2`
+        - ``atlas-local`` : local directory
     bucket: str, default 'is2view'
         AWS s3 bucket name
-    directory: str, default os.getcwd()
+    directory: str or NoneType, default None
         Working data directory
     product: str, default 'ATL15'
         ICESat-2 gridded land ice product
 
-        - `ATL14': land ice height
-        - `ATL15': land ice height change
+        - ``ATL14`` : land ice height
+        - ``ATL15`` : land ice height change
     release: str, default '001'
         ATL14/15 data release
     version: str, default '01'
@@ -748,21 +748,21 @@ def query_resources(**kwargs):
     region: str, default 'AA'
         ATL14/15 region
 
-        - `AA`: Antarctic
-        - `CN`: Northern Canadian Archipelagobb
-        - `CS`: Southern Canadian Archipelago
-        - `GL`: Greenland
-        - `IS`: Iceland
-        - `SV`: Svalbard
-        - `RA`: Russian High Arctic
+        - ``AA`` : Antarctic
+        - ``CN`` : Northern Canadian Archipelagobb
+        - ``CS`` : Southern Canadian Archipelago
+        - ``GL`` : Greenland
+        - ``IS`` : Iceland
+        - ``SV`` : Svalbard
+        - ``RA`` : Russian High Arctic
     resolution: str, default '01km'
          ATL14/15 resolution
 
-        - `100m`: 100 meters horizontal
-        - `01km`: 1 kilometer horizontal
-        - `10km`: 10 kilometers horizontal
-        - `20km`: 20 kilometers horizontal
-        - `40km`: 40 kilometers horizontal
+        - ``100m`` : 100 meters horizontal
+        - ``01km`` : 1 kilometer horizontal
+        - ``10km`` : 10 kilometers horizontal
+        - ``20km`` : 20 kilometers horizontal
+        - ``40km`` : 40 kilometers horizontal
 
     Returns
     -------
@@ -771,7 +771,7 @@ def query_resources(**kwargs):
     """
     kwargs.setdefault('asset', 'nsidc-https')
     kwargs.setdefault('bucket', 'is2view')
-    kwargs.setdefault('directory', os.getcwd())
+    kwargs.setdefault('directory', None)
     kwargs.setdefault('product', 'ATL15')
     kwargs.setdefault('release', '001')
     kwargs.setdefault('version', '01')
@@ -823,7 +823,7 @@ def query_resources(**kwargs):
             return ids[0]
         elif (kwargs['asset'] == 'atlas-local'):
             # verify that granule exists locally
-            directory = os.path.expanduser(kwargs['directory'])
+            directory = os.path.expanduser(kwargs['directory'] or '.')
             local = os.path.abspath(os.path.join(directory, ids[0]))
             if not os.access(local, os.F_OK):
                 from_nsidc(urls[0], local=local)
@@ -843,7 +843,7 @@ def query_resources(**kwargs):
             int(kwargs['version'])
         )
         # verify that unreleased granule exists locally
-        directory = os.path.expanduser(kwargs['directory'])
+        directory = os.path.expanduser(kwargs['directory'] or '.')
         local = os.path.abspath(os.path.join(directory, granule))
         if not os.access(local, os.F_OK):
             raise FileNotFoundError(local)
