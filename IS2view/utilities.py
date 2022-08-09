@@ -455,7 +455,7 @@ def cmr_query_release(release):
     Parameters
     ----------
     release: str
-        ICESat-2 data release to query
+        ICESat-2 data release
 
     Returns
     -------
@@ -477,20 +477,19 @@ def cmr_query_release(release):
         desired_pad_length -= 1
     return query_params
 
-# PURPOSE: check if the submitted ATL14/ATL15 regions are valid
+# PURPOSE: check if the submitted ATL14/15 regions are valid
 def cmr_regions(region):
     """
-    Check if the submitted ATL14/ATL15 regions are valid
+    Check if the submitted ATL14/15 regions are valid
 
     Parameters
     ----------
     region: str, list or NoneType, default None
-        ICESat-2 ATL14/ATL15 region
-
+bb
     Returns
     -------
     region_list: list
-        formatted available ATL14/ATL15 regions
+        formatted available ATL14/15 regions
     """
     # all available ICESat-2 ATL14/15 regions
     if region is None:
@@ -512,20 +511,20 @@ def cmr_regions(region):
             warnings.warn("Listed region is not presently available")
         return region_list
 
-# PURPOSE: check if the submitted ATL14/ATL15 regions are valid
+# PURPOSE: check if the submitted ATL14/15 regions are valid
 def cmr_resolutions(resolution):
     """
-    Check if the submitted ATL14/ATL15 resolutions are valid
+    Check if the submitted ATL14/15 resolutions are valid
 
     Parameters
     ----------
     resolution: str, list or NoneType, default None
-        ICESat-2 ATL14/ATL15 spatial resolution
+        ICESat-2 ATL14/15 spatial resolution
 
     Returns
     -------
     resolution_list: list
-        formatted available ATL14/ATL15 resolutions
+        formatted available ATL14/15 resolutions
     """
     # all available ICESat-2 ATL14/15 resolutions
     if resolution is None:
@@ -554,9 +553,9 @@ def cmr_readable_granules(product, **kwargs):
     Parameters
     ----------
     regions: str, list or NoneType, default None
-        ICESat-2 ATL14/ATL15 region
+        ICESat-2 ATL14/15 region name
     resolutions: str, list or NoneType, default None
-        ICESat-2 ATL14/ATL15 spatial resolution
+        ICESat-2 ATL14/15 spatial resolution
 
     Returns
     -------
@@ -571,7 +570,7 @@ def cmr_readable_granules(product, **kwargs):
     # verify inputs
     assert product in _products
     # gridded land ice products
-    # for each ATL14/ATL15 parameter
+    # for each ATL14/15 parameter
     for r in cmr_regions(kwargs["regions"]):
         for s in cmr_resolutions(kwargs["resolutions"]):
             args = (product, r, s)
@@ -626,13 +625,13 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
     Parameters
     ----------
     product: str or NoneType, default None
-        ICESat-2 data product to query
+        ICESat-2 data product
     release: str or NoneType, default None
-        ICESat-2 data release to query
+        ICESat-2 data release
     regions: str, list or NoneType, default None
-        ICESat-2 ATL14/15 region strings to query
+        ICESat-2 ATL14/15 region name
     resolutions: str, list or NoneType, default None
-        ICESat-2 ATL14/15 resolution strings to query
+        ICESat-2 ATL14/15 spatial resolution
     provider: str, default 'NSIDC_ECS'
         CMR data provider
     request_type: str, default 'application/x-hdfeos'
@@ -726,27 +725,27 @@ def query_resources(**kwargs):
     Parameters
     ----------
     asset: str, default 'nsidc-https'
-        Location to get the data
+        Location to get the ICESat-2 gridded land ice data
 
         - ``nsidc-https`` : NSIDC on-prem DAAC
         - ``nsidc-s3`` : NSIDC AWS protected s3 bucket
         - ``atlas-s3`` : s3 bucket in `us-west-2`
         - ``atlas-local`` : local directory
     bucket: str, default 'is2view'
-        AWS s3 bucket name
+        Project AWS s3 bucket name
     directory: str or NoneType, default None
-        Working data directory
+        Working data directory if local
     product: str, default 'ATL15'
         ICESat-2 gridded land ice product
 
         - ``ATL14`` : land ice height
         - ``ATL15`` : land ice height change
     release: str, default '001'
-        ATL14/15 data release
+        ICESat-2 data release
     version: str, default '01'
-        ATL14/15 product version
+        ICESat-2 data version
     region: str, default 'AA'
-        ATL14/15 region
+        ICESat-2 ATL14/15 region name
 
         - ``AA`` : Antarctic
         - ``CN`` : Northern Canadian Archipelagobb
@@ -756,7 +755,7 @@ def query_resources(**kwargs):
         - ``SV`` : Svalbard
         - ``RA`` : Russian High Arctic
     resolution: str, default '01km'
-         ATL14/15 resolution
+        ICESat-2 ATL14/15 spatial resolution
 
         - ``100m`` : 100 meters horizontal
         - ``01km`` : 1 kilometer horizontal
@@ -793,10 +792,19 @@ def query_resources(**kwargs):
     provider['atlas-s3'] = 'NSIDC_ECS'
     provider['nsidc-https'] = 'NSIDC_ECS'
     provider['atlas-local'] = 'NSIDC_ECS'
-    # get resources
-    if int(kwargs['release']) <= 1:
+    # file formatting string for ATL14/15 granules
+    # 1: product
+    # 2: region identification
+    # 3-4: start and end cycle
+    # 5: horizontal spatial resolution
+    # 6: data release
+    # 7: data version
+    file_format = '{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.nc'
+    # attempt to get resource
+    granule = None
+    if (int(kwargs['release']) <= 1):
         # query CMR
-        ids,urls = cmr(product=kwargs['product'],
+        ids, urls = cmr(product=kwargs['product'],
             release=kwargs['release'],
             regions=kwargs['region'],
             resolutions=kwargs['resolution'],
@@ -808,69 +816,55 @@ def query_resources(**kwargs):
         if (kwargs['asset'] == 'nsidc-s3'):
             # return presigned url for granule
             key = s3_key(urls[0])
-            url = s3_presigned_url(_s3_buckets['nsidc'], key)
-            return url
+            granule = s3_presigned_url(_s3_buckets['nsidc'], key)
         elif (kwargs['asset'] == 'atlas-s3'):
             # get presigned url for granule
             key = s3_key(urls[0])
-            url = s3_presigned_url(kwargs['bucket'], key)
-            return url
+            granule = s3_presigned_url(kwargs['bucket'], key)
         elif (kwargs['asset'] == 'nsidc-https'):
             # verify that granule exists locally
-            if not os.access(ids[0], os.F_OK):
-                from_nsidc(urls[0], local=ids[0])
-            # return local path for granule
-            return ids[0]
+            granule = ids[0]
+            if not os.access(granule, os.F_OK):
+                from_nsidc(urls[0], local=granule)
         elif (kwargs['asset'] == 'atlas-local'):
             # verify that granule exists locally
             directory = os.path.expanduser(kwargs['directory'] or '.')
-            local = os.path.abspath(os.path.join(directory, ids[0]))
-            if not os.access(local, os.F_OK):
-                from_nsidc(urls[0], local=local)
-            # return local path for granule
-            return local
-    elif (int(kwargs['release']) > 1) and (kwargs['asset'] == 'atlas-local'):
-        # local granule for unreleased data
-        file_format = '{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.nc'
-        # format granule for unreleased product
-        granule = file_format.format(
-            kwargs['product'],
-            kwargs['region'],
-            cycles[kwargs['release']][0],
-            cycles[kwargs['release']][1],
-            kwargs['resolution'],
-            int(kwargs['release']),
-            int(kwargs['version'])
-        )
-        # verify that unreleased granule exists locally
-        directory = os.path.expanduser(kwargs['directory'] or '.')
-        local = os.path.abspath(os.path.join(directory, granule))
-        if not os.access(local, os.F_OK):
-            raise FileNotFoundError(local)
-        return local
-    elif (int(kwargs['release']) > 1) and (kwargs['asset'] == 'atlas-s3'):
-        # urls for unreleased data
-        file_format = '{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.nc'
-        # format granule for unreleased product
-        granule = file_format.format(
-            kwargs['product'],
-            kwargs['region'],
-            cycles[kwargs['release']][0],
-            cycles[kwargs['release']][1],
-            kwargs['resolution'],
-            int(kwargs['release']),
-            int(kwargs['version'])
-        )
-        # date path
-        if (kwargs['region'] == 'IS'):
-            datepath = ('2019', '03', '31')
-        else:
-            datepath = ('2019', '03', '29')
-        # full s3 path
-        path = ['ATLAS', kwargs['product'], kwargs['release'], *datepath]
-        key = posixpath.join(*path, granule)
-        # get presigned url for granule
-        url = s3_presigned_url(kwargs['bucket'], key)
-        return url
+            granule = os.path.abspath(os.path.join(directory, ids[0]))
+            if not os.access(granule, os.F_OK):
+                from_nsidc(urls[0], local=granule)
     else:
-        raise ValueError('Unavailable release')
+        # format granule for unreleased data
+        file = file_format.format(
+            kwargs['product'],
+            kwargs['region'],
+            cycles[kwargs['release']][0],
+            cycles[kwargs['release']][1],
+            kwargs['resolution'],
+            int(kwargs['release']),
+            int(kwargs['version'])
+        )
+        # unreleased granule from local or project s3
+        if (kwargs['asset'] == 'atlas-local'):
+            # local granule for unreleased data
+            directory = os.path.expanduser(kwargs['directory'] or '.')
+            granule = os.path.abspath(os.path.join(directory, file))
+            # verify that unreleased granule exists locally
+            if not os.access(granule, os.F_OK):
+                raise FileNotFoundError(granule)
+        elif (kwargs['asset'] == 'atlas-s3'):
+            # s3 urls for unreleased data
+            if (kwargs['region'] == 'IS'):
+                yymmdd = ('2019', '03', '31')
+            else:
+                yymmdd = ('2019', '03', '29')
+            # full s3 key path
+            key = posixpath.join('ATLAS', kwargs['product'],
+                kwargs['release'], *yymmdd, file)
+            # get presigned url for granule
+            granule = s3_presigned_url(kwargs['bucket'], key)
+
+    # raise exception if no granule available
+    if granule is None:
+        raise ValueError('Unavailable granule')
+    # presigned url or path for granule
+    return granule
