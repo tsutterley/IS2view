@@ -1,6 +1,7 @@
 boto3
 bottleneck
 dask
+h5netcdf
 ipyleaflet
 matplotlib
 netCDF4

@@ -190,6 +190,35 @@ def s3_presigned_url(bucket, key):
     """
     return posixpath.join('s3://', bucket, key)
 
+# PURPOSE: generate a s3 presigned https url from a bucket and key
+def generate_presigned_url(bucket, key, expiration=3600):
+    """
+    Generate a presigned https URL to share an S3 object
+
+    Parameters
+    ----------
+    bucket: str
+        s3 bucket name
+    key: str
+        s3 bucket key for object
+
+    Returns
+    -------
+    presigned_url: str
+        s3 presigned https url
+    """
+    # generate a presigned URL for S3 object
+    s3 = boto3.client('s3')
+    try:
+        response = s3.generate_presigned_url('get_object',
+            Params={'Bucket': bucket, 'Key': key},
+            ExpiresIn=expiration)
+    except Exception as e:
+        logging.error(e)
+        return None
+    # The response contains the presigned URL
+    return response
+
 # PURPOSE: attempt to build an opener with netrc
 def attempt_login(urs='urs.earthdata.nasa.gov',
     context=ssl.SSLContext(),
@@ -240,6 +269,7 @@ def attempt_login(urs='urs.earthdata.nasa.gov',
         # try retrieving credentials from netrc
         username, _, password = netrc.netrc(kwargs['netrc']).authenticators(urs)
     except Exception as e:
+        logging.error(e)
         # try retrieving credentials from environmental variables
         username, password = (kwargs['username'], kwargs['password'])
         pass
@@ -263,6 +293,7 @@ def attempt_login(urs='urs.earthdata.nasa.gov',
         try:
             check_credentials()
         except Exception as e:
+            logging.error(e)
             pass
         else:
             return opener
@@ -409,6 +440,7 @@ def from_nsidc(HOST, username=None, password=None, build=True,
         request = urllib2.Request(posixpath.join(*HOST))
         response = urllib2.urlopen(request, timeout=timeout)
     except (urllib2.HTTPError, urllib2.URLError) as e:
+        logging.error(e)
         response_error = 'Download error from {0}'.format(posixpath.join(*HOST))
         return (False, response_error)
     else:

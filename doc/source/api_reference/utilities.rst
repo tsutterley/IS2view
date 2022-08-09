@@ -22,6 +22,10 @@ General Methods
 
 .. autofunction:: IS2view.utilities.s3_key
 
+.. autofunction:: IS2view.utilities.s3_presigned_url
+
+.. autofunction:: IS2view.utilities.generate_presigned_url
+
 .. autofunction:: IS2view.utilities.attempt_login
 
 .. autofunction:: IS2view.utilities.build_opener
