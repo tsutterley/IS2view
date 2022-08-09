@@ -66,6 +66,9 @@ except (ImportError, ModuleNotFoundError) as e:
 # ignore warnings
 warnings.filterwarnings("ignore")
 
+# set environmental variable for anonymous s3 access
+os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
+
 class widgets:
     def __init__(self, **kwargs):
         # set default keyword options
