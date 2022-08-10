@@ -1094,21 +1094,38 @@ class LeafletMap(HasTraits):
         # update bounds
         self.bounds = ((south, west), (north, east))
 
+    def get_crs(self):
+        """Attempt to get the coordinate reference system of the dataset
+        """
+        # get coordinate reference system from grid mapping
+        try:
+            grid_mapping = self._ds[self._variable].attrs['grid_mapping']
+            ds_crs = self._ds[grid_mapping].attrs['crs_wkt']
+        except Exception as e:
+            pass
+        else:
+            self._ds.rio.set_crs(ds_crs)
+            return
+        # get coordinate reference system from crs attribute
+        try:
+            ds_crs = self._ds.rio.crs.to_wkt()
+        except Exception as e:
+            pass
+        else:
+            self._ds.rio.set_crs(ds_crs)
+            return
+        # raise exception
+        raise Exception('Unknown coordinate reference system')
+
     def clip_image(self, ds):
         """clip xarray image to bounds of leaflet map
         """
         self.get_bbox()
         # attempt to get the coordinate reference system of the dataset
-        try:
-            grid_mapping = self._ds[self._variable].attrs['grid_mapping']
-            crs = self._ds[grid_mapping].attrs['crs_wkt']
-        except Exception as e:
-            crs = self._ds.rio.crs
-        else:
-            self._ds.rio.set_crs(crs)
+        self.get_crs()
         # convert map bounds to coordinate reference system of image
         minx, miny, maxx, maxy = rasterio.warp.transform_bounds(
-            self.crs['name'], crs,
+            self.crs['name'], self._ds.rio.crs,
             self.sw['x'], self.sw['y'],
             self.ne['x'], self.ne['y'])
         # pad input image to map bounds
