@@ -8,6 +8,7 @@ Interactive visualization and data extraction tool for ICESat-2 ATL14/15 Gridded
     :caption: Getting Started
 
     getting_started/Install.rst
+    getting_started/Getting-Started.rst
     getting_started/NASA-Earthdata.rst
     getting_started/Contributing.rst
     getting_started/Resources.rst
