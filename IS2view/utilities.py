@@ -887,6 +887,7 @@ def query_resources(**kwargs):
         if (kwargs['asset'] == 'nsidc-s3'):
             #-- Create and submit request to create AWS session
             #-- get aws s3 client object
+            attempt_login('urs.earthdata.nasa.gov')
             client = s3_client(_s3_endpoints['nsidc'])
             fs_s3 = s3fs.S3FileSystem(anon=False,
                 key=client['accessKeyId'],
