@@ -78,13 +78,14 @@ class widgets:
         self.style = copy.copy(kwargs['style'])
 
         # dropdown menu for setting asset
-        asset_list = ['nsidc-https','atlas-s3','atlas-local']
+        asset_list = ['nsidc-https','nsidc-s3','atlas-s3','atlas-local']
         self.asset = ipywidgets.Dropdown(
             options=asset_list,
             value='nsidc-https',
             description='Asset:',
             description_tooltip=("Asset: Location to get the data\n\t"
                 "nsidc-https: NSIDC on-prem DAAC\n\t"
+                "nsidc-s3: NSIDC Cumulus s3 bucket`\n\t"
                 "atlas-s3: s3 bucket in `us-west-2`\n\t"
                 "atlas-local: local directory"),
             disabled=False,
@@ -1162,7 +1163,7 @@ class LeafletMap(HasTraits):
         ax.axis("off")
         # save as in-memory png
         png = io.BytesIO()
-        plt.savefig(png, format='png')
+        plt.savefig(png, format='png', transparent=True)
         plt.close()
         png.seek(0)
         # encode to base64 and get url
@@ -1267,7 +1268,7 @@ class LeafletMap(HasTraits):
         cbar.ax.tick_params(which='both', width=1, direction='in')
         # save colorbar to in-memory png object
         png = io.BytesIO()
-        plt.savefig(png, bbox_inches='tight', format='png')
+        plt.savefig(png, bbox_inches='tight', format='png', transparent=True)
         png.seek(0)
         # create output widget
         output = ipywidgets.Image(value=png.getvalue(), format='png')

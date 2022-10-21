@@ -65,7 +65,7 @@ class convert():
             fileBasename,_ = os.path.splitext(self.filename.filename)
         # output zarr file
         if self.output is None:
-            self.output = os.path.expanduser('{0}.zarr'.format(fileBasename))
+            self.output = os.path.expanduser(f'{fileBasename}.zarr')
         # log input and output files
         logging.info(self.filename)
         logging.info(self.output)

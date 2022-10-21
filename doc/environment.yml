@@ -12,6 +12,7 @@ dependencies:
   - numpydoc
   - pip
   - python>=3.6
+  - s3fs
   - sphinx
   - sphinx-argparse
   - sphinx_rtd_theme
