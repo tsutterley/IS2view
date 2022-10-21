@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 u"""
 utilities.py
-Written by Tyler Sutterley (07/2022)
+Written by Tyler Sutterley (10/2022)
 Download and management utilities
 
 UPDATE HISTORY:
+    Updated 10/2022: public release of NSIDC s3 access
     Written 07/2022
 """
 from __future__ import print_function, division
@@ -275,10 +276,9 @@ def attempt_login(urs='urs.earthdata.nasa.gov',
         pass
     # if username or password are not available
     if not username:
-        username = builtins.input('Username for {0}: '.format(urs))
+        username = builtins.input(f'Username for {urs}: ')
     if not password:
-        prompt = 'Password for {0}@{1}: '.format(username, urs)
-        password = getpass.getpass(prompt=prompt)
+        password = getpass.getpass(prompt=f'Password for {username}@{urs}: ')
     # for each retry
     for retry in range(kwargs['retries']):
         # build an opener for urs with credentials
@@ -298,8 +298,8 @@ def attempt_login(urs='urs.earthdata.nasa.gov',
         else:
             return opener
         # reattempt login
-        username = builtins.input('Username for {0}: '.format(urs))
-        password = getpass.getpass(prompt=prompt)
+        username = builtins.input(f'Username for {urs}: ')
+        password = getpass.getpass(prompt=f'Password for {username}@{urs}: ')
     # reached end of available retries
     raise RuntimeError('End of Retries: Check NASA Earthdata credentials')
 
@@ -359,7 +359,7 @@ def build_opener(username, password, context=ssl.SSLContext(),
     # Encode username/password for request authorization headers
     # add Authorization header to opener
     if authorization_header:
-        b64 = base64.b64encode('{0}:{1}'.format(username, password).encode())
+        b64 = base64.b64encode(f'{username}:{password}'.encode())
         opener.addheaders = [("Authorization", "Basic {0}".format(b64.decode()))]
     # Now all calls to urllib2.urlopen use our opener.
     urllib2.install_opener(opener)
@@ -499,13 +499,13 @@ def cmr_query_release(release):
     # maximum length of version in CMR queries
     desired_pad_length = 3
     if len(str(release)) > desired_pad_length:
-        raise RuntimeError('Release string too long: "{0}"'.format(release))
+        raise RuntimeError(f'Release string too long: "{release}"')
     # Strip off any leading zeros
     release = str(release).lstrip('0')
     query_params = ''
     while len(release) <= desired_pad_length:
         padded_release = release.zfill(desired_pad_length)
-        query_params += '&version={0}'.format(padded_release)
+        query_params += f'&version={padded_release}'
         desired_pad_length -= 1
     return query_params
 
@@ -605,15 +605,15 @@ def cmr_readable_granules(product, **kwargs):
     # for each ATL14/15 parameter
     for r in cmr_regions(kwargs["regions"]):
         for s in cmr_resolutions(kwargs["resolutions"]):
-            args = (product, r, s)
-            pattern = "{0}_{1}_????_{2}_*"
+            pattern = f"{product}_{r}_????_{s}_*"
             # append the granule pattern
-            readable_granule_list.append(pattern.format(*args))
+            readable_granule_list.append(pattern)
     # return readable granules list
     return readable_granule_list
 
 # PURPOSE: filter the CMR json response for desired data files
-def cmr_filter_json(search_results, request_type="application/x-hdfeos"):
+def cmr_filter_json(search_results, endpoint="data",
+    request_type="application/x-hdfeos"):
     """
     Filter the CMR json response for desired data files
 
@@ -621,6 +621,12 @@ def cmr_filter_json(search_results, request_type="application/x-hdfeos"):
     ----------
     search_results: dict
         json response from CMR query
+    endpoint: str, default 'data'
+        url endpoint type
+
+            - ``'data'``: NASA Earthdata https archive
+            - ``'opendap'``: NASA Earthdata OPeNDAP archive
+            - ``'s3'``: NASA Earthdata Cumulus AWS S3 bucket
     request_type: str, default 'application/x-hdfeos'
         data type for reducing CMR query
 
@@ -637,11 +643,22 @@ def cmr_filter_json(search_results, request_type="application/x-hdfeos"):
     # check that there are urls for request
     if ('feed' not in search_results) or ('entry' not in search_results['feed']):
         return (producer_granule_ids, granule_urls)
+    # descriptor links for each endpoint
+    rel = {}
+    rel['data'] = "http://esipfed.org/ns/fedsearch/1.1/data#"
+    rel['opendap'] = "http://esipfed.org/ns/fedsearch/1.1/service#"
+    rel['s3'] = "http://esipfed.org/ns/fedsearch/1.1/s3#"
     # iterate over references and get cmr location
     for entry in search_results['feed']['entry']:
         producer_granule_ids.append(entry['producer_granule_id'])
         for link in entry['links']:
-            if (link['type'] == request_type):
+            # skip links without descriptors
+            if ('rel' not in link.keys()):
+                continue
+            if ('type' not in link.keys()):
+                continue
+            # append if selected endpoint and request type
+            if (link['rel'] == rel[endpoint]) and (link['type'] == request_type):
                 granule_urls.append(link['href'])
                 break
     # return the list of urls and granule ids
@@ -649,7 +666,7 @@ def cmr_filter_json(search_results, request_type="application/x-hdfeos"):
 
 # PURPOSE: cmr queries for gridded land ice products
 def cmr(product=None, release=None, regions=None, resolutions=None,
-    provider='NSIDC_ECS', request_type="application/x-hdfeos",
+    provider='NSIDC_ECS', endpoint='data', request_type="application/x-hdfeos",
     opener=None, verbose=False, fid=sys.stdout):
     """
     Query the NASA Common Metadata Repository (CMR) for ICESat-2 data
@@ -666,6 +683,12 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
         ICESat-2 ATL14/15 spatial resolution
     provider: str, default 'NSIDC_ECS'
         CMR data provider
+    endpoint: str, default 'data'
+        url endpoint type
+
+            - ``'data'``: NASA Earthdata https archive
+            - ``'opendap'``: NASA Earthdata OPeNDAP archive
+            - ``'s3'``: NASA Earthdata Cumulus AWS S3 bucket
     request_type: str, default 'application/x-hdfeos'
         data type for reducing CMR query
     opener: obj or NoneType, default None
@@ -700,16 +723,16 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
     cmr_format = 'json'
     cmr_page_size = 2000
     CMR_HOST = ['https://cmr.earthdata.nasa.gov', 'search',
-        'granules.{0}'.format(cmr_format)]
+        f'granules.{cmr_format}']
     # build list of CMR query parameters
     CMR_KEYS = []
-    CMR_KEYS.append('?provider={0}'.format(provider))
+    CMR_KEYS.append(f'?provider={provider}')
     CMR_KEYS.append('&sort_key[]=start_date')
     CMR_KEYS.append('&sort_key[]=producer_granule_id')
     CMR_KEYS.append('&scroll=true')
-    CMR_KEYS.append('&page_size={0}'.format(cmr_page_size))
+    CMR_KEYS.append(f'&page_size={cmr_page_size}')
     # append product string
-    CMR_KEYS.append('&short_name={0}'.format(product))
+    CMR_KEYS.append(f'&short_name={product}')
     # append release strings
     CMR_KEYS.append(cmr_query_release(release))
     # append keys for querying specific granules
@@ -718,10 +741,10 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
     readable_granule_list = cmr_readable_granules(product,
         regions=regions, resolutions=resolutions)
     for gran in readable_granule_list:
-        CMR_KEYS.append("&readable_granule_name[]={0}".format(gran))
+        CMR_KEYS.append(f"&readable_granule_name[]={gran}")
     # full CMR query url
     cmr_query_url = "".join([posixpath.join(*CMR_HOST), *CMR_KEYS])
-    logging.info('CMR request={0}'.format(cmr_query_url))
+    logging.info(f'CMR request={cmr_query_url}')
     # output list of granule names and urls
     producer_granule_ids = []
     granule_urls = []
@@ -737,7 +760,8 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
             cmr_scroll_id = headers['cmr-scroll-id']
         # read the CMR search as JSON
         search_page = json.loads(response.read().decode('utf-8'))
-        ids, urls = cmr_filter_json(search_page, request_type=request_type)
+        ids, urls = cmr_filter_json(search_page,
+            endpoint=endpoint, request_type=request_type)
         if not urls:
             break
         # extend lists
@@ -820,10 +844,22 @@ def query_resources(**kwargs):
     cycles['002'] = (3, 14)
     # CMR providers
     provider = {}
-    provider['nsidc-s3'] = 'NSIDC_ECS'
-    provider['atlas-s3'] = 'NSIDC_ECS'
+    provider['nsidc-s3'] = 'NSIDC_CPRD'
+    provider['atlas-s3'] = 'NSIDC_CPRD'
     provider['nsidc-https'] = 'NSIDC_ECS'
     provider['atlas-local'] = 'NSIDC_ECS'
+    # CMR endpoints
+    endpoint = {}
+    endpoint['nsidc-s3'] = 's3'
+    endpoint['atlas-s3'] = 's3'
+    endpoint['nsidc-https'] = 'data'
+    endpoint['atlas-local'] = 'data'
+    # CMR request types
+    request_type = {}
+    request_type['nsidc-s3'] = 'application/netcdf'
+    request_type['atlas-s3'] = 'application/netcdf'
+    request_type['nsidc-https'] = 'application/x-hdfeos'
+    request_type['atlas-local'] = 'application/x-hdfeos'
     # file formatting string for ATL14/15 granules
     # 1: product
     # 2: region identification
@@ -834,13 +870,15 @@ def query_resources(**kwargs):
     file_format = '{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.nc'
     # attempt to get resource
     granule = None
-    if (int(kwargs['release']) <= 1):
+    if (int(kwargs['release']) <= 2):
         # query CMR
         ids, urls = cmr(product=kwargs['product'],
             release=kwargs['release'],
             regions=kwargs['region'],
             resolutions=kwargs['resolution'],
-            provider=provider[kwargs['asset']])
+            provider=provider[kwargs['asset']],
+            endpoint=endpoint[kwargs['asset']],
+            request_type=request_type[kwargs['asset']])
         # check if granule is available
         if not (ids or urls):
             raise Exception('Granule not found in asset')

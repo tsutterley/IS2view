@@ -107,7 +107,7 @@ are projected in the `EPSG:3031 <https://epsg.io/3413>`_ coordinate reference sy
 +--------------------------------+-----------------------------------------+
 |           Description          |                  Value                  |
 +================================+=========================================+
-| Projected coordinate system    | Polar Stereographic South               |
+| Projected coordinate system    | Antarctic Polar Stereographic           |
 +--------------------------------+-----------------------------------------+
 | Spatial EPSG                   | `3031 <https://epsg.io/3031>`_          |
 +--------------------------------+-----------------------------------------+
