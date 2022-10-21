@@ -846,19 +846,19 @@ def query_resources(**kwargs):
     # CMR providers
     provider = {}
     provider['nsidc-s3'] = 'NSIDC_CPRD'
-    provider['atlas-s3'] = 'NSIDC_CPRD'
+    provider['atlas-s3'] = 'NSIDC_ECS'
     provider['nsidc-https'] = 'NSIDC_ECS'
     provider['atlas-local'] = 'NSIDC_ECS'
     # CMR endpoints
     endpoint = {}
     endpoint['nsidc-s3'] = 's3'
-    endpoint['atlas-s3'] = 's3'
+    endpoint['atlas-s3'] = 'data'
     endpoint['nsidc-https'] = 'data'
     endpoint['atlas-local'] = 'data'
     # CMR request types
     request_type = {}
     request_type['nsidc-s3'] = 'application/netcdf'
-    request_type['atlas-s3'] = 'application/netcdf'
+    request_type['atlas-s3'] = 'application/x-hdfeos'
     request_type['nsidc-https'] = 'application/x-hdfeos'
     request_type['atlas-local'] = 'application/x-hdfeos'
     # file formatting string for ATL14/15 granules
