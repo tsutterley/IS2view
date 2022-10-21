@@ -16,6 +16,7 @@ import re
 import io
 import ssl
 import json
+import s3fs
 import boto3
 import netrc
 import shutil
@@ -870,7 +871,7 @@ def query_resources(**kwargs):
     file_format = '{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.nc'
     # attempt to get resource
     granule = None
-    if (int(kwargs['release']) <= 2):
+    if (int(kwargs['release']) <= 1):
         # query CMR
         ids, urls = cmr(product=kwargs['product'],
             release=kwargs['release'],
@@ -884,9 +885,14 @@ def query_resources(**kwargs):
             raise Exception('Granule not found in asset')
         # check if available on s3 or locally
         if (kwargs['asset'] == 'nsidc-s3'):
-            # return presigned url for granule
-            key = s3_key(urls[0])
-            granule = s3_presigned_url(_s3_buckets['nsidc'], key)
+            #-- Create and submit request to create AWS session
+            #-- get aws s3 client object
+            client = s3_client(_s3_endpoints['nsidc'])
+            fs_s3 = s3fs.S3FileSystem(anon=False,
+                key=client['accessKeyId'],
+                secret=client['secretAccessKey'],
+                token=client['sessionToken'])
+            granule = fs_s3.open(urls[0], mode='rb')
         elif (kwargs['asset'] == 'atlas-s3'):
             # get presigned url for granule
             key = s3_key(urls[0])
