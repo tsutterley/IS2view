@@ -18,6 +18,8 @@ General Methods
 
 .. autofunction:: IS2view.utilities.s3_client
 
+.. autofunction:: IS2view.utilities.s3_filesystem
+
 .. autofunction:: IS2view.utilities.s3_bucket
 
 .. autofunction:: IS2view.utilities.s3_key

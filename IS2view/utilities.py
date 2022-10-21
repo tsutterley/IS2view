@@ -126,6 +126,42 @@ def s3_client(HOST=_s3_endpoints['nsidc'],
     # return the AWS client for region
     return client
 
+# PURPOSE: get AWS s3 file system for NSIDC Cumulus
+def s3_filesystem(HOST=_s3_endpoints['nsidc'],
+    timeout=None, region_name='us-west-2'):
+    """
+    Get AWS s3 file system object for NSIDC data in the cloud
+    https://data.nsidc.earthdatacloud.nasa.gov/s3credentials
+
+    Parameters
+    ----------
+    HOST: str
+        NSIDC AWS S3 credential host
+    timeout: int or NoneType, default None
+        timeout in seconds for blocking operations
+    region_name: str, default 'us-west-2'
+        AWS region name
+
+    Returns
+    -------
+    session: obj
+        AWS s3 file system session for NSIDC Cumulus
+    """
+    request = urllib2.Request(HOST)
+    response = urllib2.urlopen(request, timeout=timeout)
+    cumulus = json.loads(response.read())
+    # get AWS file system session object
+    session = s3fs.S3FileSystem(anon=False,
+        key=cumulus['accessKeyId'],
+        secret=cumulus['secretAccessKey'],
+        token=cumulus['sessionToken'],
+        client_kwargs=dict(
+            region_name=region_name
+        )
+    )
+    # return the AWS session for region
+    return session
+
 # PURPOSE: get a s3 bucket name from a presigned url
 def s3_bucket(presigned_url):
     """
@@ -885,15 +921,12 @@ def query_resources(**kwargs):
             raise Exception('Granule not found in asset')
         # check if available on s3 or locally
         if (kwargs['asset'] == 'nsidc-s3'):
-            #-- Create and submit request to create AWS session
-            #-- get aws s3 client object
-            attempt_login('urs.earthdata.nasa.gov')
-            client = s3_client(_s3_endpoints['nsidc'])
-            fs_s3 = s3fs.S3FileSystem(anon=False,
-                key=client['accessKeyId'],
-                secret=client['secretAccessKey'],
-                token=client['sessionToken'])
-            granule = fs_s3.open(urls[0], mode='rb')
+            #-- submit request to create AWS session
+            attempt_login('urs.earthdata.nasa.gov',
+                authorization_header=True)
+            #-- get AWS s3 file system object
+            session = s3_filesystem(_s3_endpoints['nsidc'])
+            granule = session.open(urls[0], mode='rb')
         elif (kwargs['asset'] == 'atlas-s3'):
             # get presigned url for granule
             key = s3_key(urls[0])
