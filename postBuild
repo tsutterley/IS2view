@@ -1,7 +1,7 @@
 # Install ipyleaflet with image service layers
 conda install -y yarn jupyter_packaging geopandas
 yarn add webpack webpack-dev-server --dev
-cd /tmp; git clone -b imageserver https://github.com/tsutterley/ipyleaflet
+cd /tmp; git clone https://github.com/jupyter-widgets/ipyleaflet
 cd ipyleaflet; pip install -e .
 # add extension for developing on JupyterLab
 jupyter labextension develop . --overwrite
