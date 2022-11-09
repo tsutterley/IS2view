@@ -16,7 +16,6 @@ dependencies:
   - sphinx
   - sphinx-argparse
   - sphinx_rtd_theme
-  - texlive-core
   - xarray
   - pip:
     - ..

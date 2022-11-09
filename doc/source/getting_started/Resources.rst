@@ -10,10 +10,10 @@ Resources
 Documents
 #########
 
-- `Algorithm Theoretical Basis Document (ATBD) for ATL14/15 <https://nsidc.org/sites/default/files/icesat2_atl14_atl15_atbd_r001_0.pdf>`_
-- `NSIDC User Guide for ATL14 <https://nsidc.org/sites/default/files/atl14-v001-userguide_1_0.pdf>`_
-- `NSIDC User Guide for ATL15 <https://nsidc.org/sites/default/files/atl15-v001-userguide_1_0.pdf>`_
-- `Known Issues for ATL14/15 <https://nsidc.org/sites/default/files/icesat2_atl014_atl15_known_issues_v001.pdf>`_
+- `Algorithm Theoretical Basis Document for ATL14 and ATL15 <https://nsidc.org/sites/default/files/documents/technical-reference/icesat2_atl14_atl15_atbd_r002.pdf>`_
+- `NSIDC User Guide for ATL14 <https://nsidc.org/sites/default/files/documents/user-guide/atl14-v002-userguide.pdf>`_
+- `NSIDC User Guide for ATL15 <https://nsidc.org/sites/default/files/documents/user-guide/atl15-v002-userguide.pdf>`_
+- `Known Issues for ATL14/15 <https://nsidc.org/sites/default/files/documents/technical-reference/atl1415_known_issues_rel002.pdf>`_
 
 Software
 ########

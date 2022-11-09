@@ -341,6 +341,7 @@ class widgets:
         variables['delta_h'] = 'delta_h'
         variables['dhdt_lag1'] = 'dhdt'
         # set annual time lags
+        # extend possible time lags to 16 years post-launch
         for timelag in range(4, 68, 4):
             variables[f'dhdt_lag{timelag:d}'] = 'dhdt'
         # set default variable for group
