@@ -17,8 +17,6 @@ import re
 import io
 import ssl
 import json
-import s3fs
-import boto3
 import netrc
 import shutil
 import base64
@@ -37,6 +35,22 @@ else:
     from http.cookiejar import CookieJar
     from urllib.parse import urlencode
     import urllib.request as urllib2
+
+# attempt imports
+try:
+    import boto3
+except (ImportError, ModuleNotFoundError) as e:
+    warnings.filterwarnings("always")
+    warnings.warn("boto3 not available")
+    warnings.warn("Some functions will throw an exception if called")
+try:
+    import s3fs
+except (ImportError, ModuleNotFoundError) as e:
+    warnings.filterwarnings("always")
+    warnings.warn("s3fs not available")
+    warnings.warn("Some functions will throw an exception if called")
+# ignore warnings
+warnings.filterwarnings("ignore")
 
 # PURPOSE: recursively split a url path
 def url_split(s):
