@@ -24,6 +24,7 @@ import os
 import logging
 import warnings
 import numpy as np
+
 # attempt imports
 try:
     import rioxarray
@@ -96,7 +97,7 @@ def from_xarray(granule, group=None, engine='zarr', **kwargs):
         presigned url or path for granule
     group: str or NoneType, default None
         Data group to read
-    engine: st, default 'zarr'
+    engine: str, default 'zarr'
         Engine to use when reading files
     kwargs: dict
         Keyword arguments to pass to xarray

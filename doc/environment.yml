@@ -2,17 +2,14 @@ name: is2view-docs
 channels:
   - conda-forge
 dependencies:
-  - boto3
   - docutils<0.18
   - graphviz
   - ipywidgets
-  - matplotlib
   - notebook
   - numpy>=1.21
   - numpydoc
   - pip
   - python>=3.6
-  - s3fs
   - sphinx
   - sphinx_rtd_theme
   - xarray

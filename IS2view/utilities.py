@@ -17,8 +17,6 @@ import re
 import io
 import ssl
 import json
-import s3fs
-import boto3
 import netrc
 import shutil
 import base64
@@ -37,6 +35,22 @@ else:
     from http.cookiejar import CookieJar
     from urllib.parse import urlencode
     import urllib.request as urllib2
+
+# attempt imports
+try:
+    import boto3
+except (ImportError, ModuleNotFoundError) as e:
+    warnings.filterwarnings("always")
+    warnings.warn("boto3 not available")
+    warnings.warn("Some functions will throw an exception if called")
+try:
+    import s3fs
+except (ImportError, ModuleNotFoundError) as e:
+    warnings.filterwarnings("always")
+    warnings.warn("s3fs not available")
+    warnings.warn("Some functions will throw an exception if called")
+# ignore warnings
+warnings.filterwarnings("ignore")
 
 # PURPOSE: recursively split a url path
 def url_split(s):
@@ -875,7 +889,7 @@ def query_resources(**kwargs):
     kwargs.setdefault('bucket', 'is2view')
     kwargs.setdefault('directory', None)
     kwargs.setdefault('product', 'ATL15')
-    kwargs.setdefault('release', '001')
+    kwargs.setdefault('release', '002')
     kwargs.setdefault('version', '01')
     kwargs.setdefault('region', 'AA')
     kwargs.setdefault('resolution', '01km')
@@ -891,13 +905,13 @@ def query_resources(**kwargs):
     # CMR providers
     provider = {}
     provider['nsidc-s3'] = 'NSIDC_CPRD'
-    provider['atlas-s3'] = 'NSIDC_ECS'
+    provider['atlas-s3'] = 'NSIDC_CPRD'
     provider['nsidc-https'] = 'NSIDC_ECS'
     provider['atlas-local'] = 'NSIDC_ECS'
     # CMR endpoints
     endpoint = {}
     endpoint['nsidc-s3'] = 's3'
-    endpoint['atlas-s3'] = 'data'
+    endpoint['atlas-s3'] = 's3'
     endpoint['nsidc-https'] = 'data'
     endpoint['atlas-local'] = 'data'
     # CMR request types
@@ -996,13 +1010,9 @@ def query_resources(**kwargs):
                 raise FileNotFoundError(granule)
         elif (kwargs['asset'] == 'atlas-s3'):
             # s3 urls for unreleased data
-            if (kwargs['region'] == 'IS'):
-                yymmdd = ('2019', '03', '31')
-            else:
-                yymmdd = ('2019', '03', '29')
             # full s3 key path
             key = posixpath.join('ATLAS', kwargs['product'],
-                kwargs['release'], *yymmdd, file)
+                kwargs['release'], '2019', file)
             # get presigned url for granule
             granule = s3_presigned_url(kwargs['bucket'], key)
     except Exception:

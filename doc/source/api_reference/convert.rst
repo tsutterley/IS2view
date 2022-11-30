@@ -2,7 +2,7 @@
 convert.py
 ==========
 
-Utilities for converting gridded ICESat-2 files into zarr files
+Utilities for converting gridded ICESat-2 files from native netCDF4
 
 `Source code`__
 

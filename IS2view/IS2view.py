@@ -36,11 +36,6 @@ import logging
 import warnings
 import numpy as np
 import collections.abc
-import matplotlib
-import matplotlib.cm as cm
-import matplotlib.colorbar
-import matplotlib.pyplot as plt
-import matplotlib.colors as colors
 from traitlets import HasTraits, Float, Tuple, observe
 from traitlets.utils.bunch import Bunch
 
@@ -56,6 +51,16 @@ try:
 except (ImportError, ModuleNotFoundError) as e:
     warnings.filterwarnings("always")
     warnings.warn("ipyleaflet not available")
+    warnings.warn("Some functions will throw an exception if called")
+try:
+    import matplotlib
+    import matplotlib.cm as cm
+    import matplotlib.colorbar
+    import matplotlib.pyplot as plt
+    import matplotlib.colors as colors
+except (ImportError, ModuleNotFoundError) as e:
+    warnings.filterwarnings("always")
+    warnings.warn("matplotlib not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
     import rasterio.warp
@@ -509,7 +514,7 @@ try:
         url='https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer',
         crs=projections['EPSG:3031']
     )
-except NameError:
+except (NameError, AttributeError):
     pass
 
 # draw ipyleaflet map
