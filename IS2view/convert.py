@@ -1,6 +1,6 @@
 """
 convert.py
-Written by Tyler Sutterley (07/2022)
+Written by Tyler Sutterley (11/2022)
 Utilities for converting gridded ICESat-2 files into zarr files
 
 PYTHON DEPENDENCIES:
@@ -13,6 +13,7 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 11/2022: output variables and attributes in top-level group
     Written 07/2022
 """
 import os
@@ -71,6 +72,10 @@ class convert():
         logging.info(self.output)
         # find each group within the input netCDF4 file
         with xr.backends.netCDF4_.netCDF4.Dataset(self.filename) as source:
+            # copy variables and attributes from the top-level group
+            # copy everything from the netCDF4 file to the zarr file
+            ds = xr.open_dataset(xr.backends.NetCDF4DataStore(source))
+            ds.to_zarr(store=self.output, mode='a')
             # for each group
             for group in source.groups.keys():
                 # skip over specific groups

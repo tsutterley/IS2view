@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 u"""
 utilities.py
-Written by Tyler Sutterley (10/2022)
+Written by Tyler Sutterley (11/2022)
 Download and management utilities
 
 UPDATE HISTORY:
+    Updated 11/2022: can query for zarr datasets
     Updated 10/2022: public release of NSIDC s3 access
     Written 07/2022
 """
@@ -757,10 +758,11 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
         # create "opener" (OpenerDirector instance)
         opener = urllib2.build_opener(*handler)
     # build CMR query
+    cmr_query_type = 'granules'
     cmr_format = 'json'
     cmr_page_size = 2000
     CMR_HOST = ['https://cmr.earthdata.nasa.gov', 'search',
-        f'granules.{cmr_format}']
+        f'{cmr_query_type}.{cmr_format}']
     # build list of CMR query parameters
     CMR_KEYS = []
     CMR_KEYS.append(f'?provider={provider}')
@@ -809,6 +811,8 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
 
 # available assets for finding data
 _assets = ('nsidc-s3', 'atlas-s3', 'nsidc-https', 'atlas-local')
+# availabel formats for accessing data
+_formats = ('nc', 'zarr')
 
 # PURPOSE: queries CMR or s3 for available granules
 def query_resources(**kwargs):
@@ -856,6 +860,12 @@ def query_resources(**kwargs):
         - ``20km`` : 20 kilometers horizontal
         - ``40km`` : 40 kilometers horizontal
 
+    format: str, default 'nc'
+        Data format for ICESat-2 granules
+
+        - ``nc`` : Native netCDF4
+        - ``zarr`` : Cloud-optimized zarr
+
     Returns
     -------
     granule: str
@@ -869,16 +879,15 @@ def query_resources(**kwargs):
     kwargs.setdefault('version', '01')
     kwargs.setdefault('region', 'AA')
     kwargs.setdefault('resolution', '01km')
+    kwargs.setdefault('format', 'nc')
     # verify inputs
     assert kwargs['asset'] in _assets
     assert kwargs['product'] in _products
     assert kwargs['release'] in ('001', '002')
     assert kwargs['region'] in _regions
     assert kwargs['resolution'] in _resolutions
-    # start and end cycle for releases
-    cycles = {}
-    cycles['001'] = (3, 11)
-    cycles['002'] = (3, 14)
+    assert kwargs['format'] in _formats
+
     # CMR providers
     provider = {}
     provider['nsidc-s3'] = 'NSIDC_CPRD'
@@ -894,20 +903,13 @@ def query_resources(**kwargs):
     # CMR request types
     request_type = {}
     request_type['nsidc-s3'] = 'application/netcdf'
-    request_type['atlas-s3'] = 'application/x-hdfeos'
-    request_type['nsidc-https'] = 'application/x-hdfeos'
-    request_type['atlas-local'] = 'application/x-hdfeos'
-    # file formatting string for ATL14/15 granules
-    # 1: product
-    # 2: region identification
-    # 3-4: start and end cycle
-    # 5: horizontal spatial resolution
-    # 6: data release
-    # 7: data version
-    file_format = '{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.nc'
+    request_type['atlas-s3'] = 'application/netcdf'
+    request_type['nsidc-https'] = 'application/netcdf'
+    request_type['atlas-local'] = 'application/netcdf'
+
     # attempt to get resource
     granule = None
-    if (int(kwargs['release']) <= 1):
+    try:
         # query CMR
         ids, urls = cmr(product=kwargs['product'],
             release=kwargs['release'],
@@ -921,13 +923,17 @@ def query_resources(**kwargs):
             raise Exception('Granule not found in asset')
         # check if available on s3 or locally
         if (kwargs['asset'] == 'nsidc-s3'):
-            #-- submit request to create AWS session
+            # submit request to create AWS session
             attempt_login('urs.earthdata.nasa.gov',
                 authorization_header=True)
-            #-- get AWS s3 file system object
+            # get AWS s3 file system object
             session = s3_filesystem(_s3_endpoints['nsidc'])
             granule = session.open(urls[0], mode='rb')
         elif (kwargs['asset'] == 'atlas-s3'):
+            # update url if using different format
+            if kwargs['format'] in ('zarr',):
+                prefix,_ = posixpath.splitext(urls[0])
+                urls[0] = f'{prefix}.{kwargs["format"]}'
             # get presigned url for granule
             key = s3_key(urls[0])
             granule = s3_presigned_url(kwargs['bucket'], key)
@@ -937,12 +943,38 @@ def query_resources(**kwargs):
             if not os.access(granule, os.F_OK):
                 from_nsidc(urls[0], local=granule)
         elif (kwargs['asset'] == 'atlas-local'):
+            # update url if using different format
+            if kwargs['format'] in ('zarr',):
+                prefix,_ = posixpath.splitext(ids[0])
+                ids[0] = f'{prefix}.{kwargs["format"]}'
             # verify that granule exists locally
             directory = os.path.expanduser(kwargs['directory'] or '.')
             granule = os.path.abspath(os.path.join(directory, ids[0]))
-            if not os.access(granule, os.F_OK):
+            if not os.access(granule, os.F_OK) and (kwargs['format'] == 'nc'):
                 from_nsidc(urls[0], local=granule)
+            elif not os.access(granule, os.F_OK):
+                raise FileNotFoundError(granule)
+    except Exception:
+        # unavailable granule
+        pass
     else:
+        # return the granule
+        return granule
+
+    # try getting unreleased or old granule
+    try:
+        # file formatting string for ATL14/15 granules
+        # 1: product
+        # 2: region identification
+        # 3-4: start and end cycle
+        # 5: horizontal spatial resolution
+        # 6: data release
+        # 7: data version
+        file_format = '{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.{7}'
+        # start and end cycle for releases
+        cycles = {}
+        cycles['001'] = (3, 11)
+        cycles['002'] = (3, 14)
         # format granule for unreleased data
         file = file_format.format(
             kwargs['product'],
@@ -951,7 +983,8 @@ def query_resources(**kwargs):
             cycles[kwargs['release']][1],
             kwargs['resolution'],
             int(kwargs['release']),
-            int(kwargs['version'])
+            int(kwargs['version']),
+            kwargs['format']
         )
         # unreleased granule from local or project s3
         if (kwargs['asset'] == 'atlas-local'):
@@ -972,9 +1005,13 @@ def query_resources(**kwargs):
                 kwargs['release'], *yymmdd, file)
             # get presigned url for granule
             granule = s3_presigned_url(kwargs['bucket'], key)
+    except Exception:
+        # unavailable granule
+        pass
+    else:
+        # return the granule
+        return granule
 
     # raise exception if no granule available
     if granule is None:
         raise ValueError('Unavailable granule')
-    # presigned url or path for granule
-    return granule
