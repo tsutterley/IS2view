@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 IS2view.py
-Written by Tyler Sutterley (07/2022)
+Written by Tyler Sutterley (11/2022)
 Jupyter notebook, user interface and plotting tools for visualizing
     rioxarray variables on leaflet maps
 
@@ -16,8 +16,14 @@ PYTHON DEPENDENCIES:
     matplotlib: Python 2D plotting library
         http://matplotlib.org/
         https://github.com/matplotlib/matplotlib
+    rasterio: Access to geospatial raster data
+        https://github.com/rasterio/rasterio
+        https://rasterio.readthedocs.io
+    xarray: N-D labeled arrays and datasets in Python
+        https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 11/2022: modifications for dask-chunked rasters
     Written 07/2022
 """
 import io
@@ -72,8 +78,11 @@ os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
 class widgets:
     def __init__(self, **kwargs):
         # set default keyword options
+        kwargs.setdefault('loglevel', logging.CRITICAL)
         kwargs.setdefault('directory', os.getcwd())
         kwargs.setdefault('style', {})
+        # set logging level
+        logging.basicConfig(level=kwargs['loglevel'])
         # set style
         self.style = copy.copy(kwargs['style'])
 
@@ -106,10 +115,11 @@ class widgets:
         release_list = ['001','002']
         self.release = ipywidgets.Dropdown(
             options=release_list,
-            value='001',
+            value='002',
             description='Release:',
             description_tooltip=("Release: ATL14/15 data release\n\t"
-                "001: Release-01"),
+                "001: Release-01\n\t"
+                "002: Release-02"),
             disabled=False,
             style=self.style,
         )
@@ -156,6 +166,19 @@ class widgets:
             style=self.style,
         )
 
+        # dropdown menu for selecting data format
+        format_list = ['nc', 'zarr']
+        self.format = ipywidgets.Dropdown(
+            options=format_list,
+            description='Format:',
+            description_tooltip=("Format: ATL15 data format\n\t"
+                "nc: Native netCDF4\n\t"
+                "zarr: Cloud-optimized zarr"),
+            disabled=False,
+            style=self.style,
+        )
+        self.format.layout.display = 'none'
+
         # dropdown menu for selecting variable to draw on map
         variable_list = ['delta_h', 'dhdt']
         self.variable = ipywidgets.Dropdown(
@@ -185,6 +208,7 @@ class widgets:
 
         # watch widgets for changes
         self.asset.observe(self.set_directory_visibility)
+        self.asset.observe(self.set_format_visibility)
         self.release.observe(self.set_groups)
         self.dynamic.observe(self.set_dynamic)
         self.variable.observe(self.set_lag_visibility)
@@ -321,11 +345,20 @@ class widgets:
     def set_directory_visibility(self, sender):
         """updates the visibility of the directory widget
         """
-        # check if setting an invariant variable
         if (self.asset.value == 'atlas-local'):
             self.directory.layout.display = 'inline-flex'
         else:
             self.directory.layout.display = 'none'
+
+    def set_format_visibility(self, sender):
+        """updates the visibility of the data format widget
+        """
+        if self.asset.value in ('atlas-s3','atlas-local'):
+            self.format.layout.display = 'inline-flex'
+        else:
+            self.format.layout.display = 'none'
+            # set the format back to the default
+            self.format.value = 'nc'
 
     def set_atl14_defaults(self, *args, **kwargs):
         """sets the default widget parameters for ATL14 variables
@@ -951,7 +984,7 @@ class LeafletMap(HasTraits):
             self._ds_selected = self._ds[self._variable]
         # set colorbar limits to 2-98 percentile
         # if not using a defined plot range
-        clim = self._ds_selected.quantile((0.02, 0.98)).values
+        clim = self._ds_selected.chunk(dict(y=-1,x=-1)).quantile((0.02, 0.98)).values
         if (kwargs['vmin'] is None) or np.isnan(kwargs['vmin']):
             vmin = clim[0]
         else:
@@ -1219,13 +1252,14 @@ class LeafletMap(HasTraits):
         # get the clicked point in dataset coordinate reference system
         x, y = rasterio.warp.transform('EPSG:4326', crs, [lon], [lat])
         # find nearest point in dataset
-        self._data = self._ds_selected.sel(x=x, y=y, method='nearest').data[0]
+        self._data = self._ds_selected.sel(x=x, y=y, method='nearest').values[0]
         self._units = self._ds[self._variable].attrs['units']
         # only create popup if valid
         if np.isnan(self._data):
             return
         # create contextual popup
         child = ipywidgets.HTML()
+        print(np.squeeze(self._data), self._units)
         child.value = '{0:0.1f} {1}'.format(np.squeeze(self._data), self._units)
         self.popup = ipyleaflet.Popup(location=(lat, lon),
             child=child, name='popup')
@@ -1578,8 +1612,8 @@ class TimeSeries(HasTraits):
         labels = [None]*len(self._ds.time)
         # for each step in the time series
         for i, t in enumerate(self._ds.time):
-            clipped = mask*self._ds_selected.sel(time=t)
-            reduced = clipped.data[ii, jj]
+            clipped = self._ds_selected.sel(time=t).where(mask, drop=False)
+            reduced = clipped.chunk(dict(y=-1,x=-1)).values[ii, jj]
             # sort data based on distance to first point
             self._data[:, i] = reduced[indices]
             labels[i] = '{0:0.2f}'.format(self._time[i].data)
@@ -1669,7 +1703,7 @@ class TimeSeries(HasTraits):
         # reduce dataset to geometry
         for i, t in enumerate(self._ds.time):
             # reduce data to time and clip to geometry
-            clipped = mask*self._ds_selected.sel(time=t)
+            clipped = self._ds_selected.sel(time=t).where(mask, drop=False)
             # reduce cell area to time (for Release-02 and above)
             if (ice_area.ndim == 3) and ('time' in ice_area.dims):
                 area = ice_area.sel(time=t)
@@ -1931,7 +1965,7 @@ class Transect(HasTraits):
         indices = np.argsort(distance)
         self._dist = distance[indices]
         # sort data based on distance to first point
-        reduced = clipped.data[ii, jj]
+        reduced = clipped.chunk(dict(y=-1,x=-1)).values[ii, jj]
         self._data = reduced[indices]
         # only create plot if valid
         if np.all(np.isnan(self._data)):

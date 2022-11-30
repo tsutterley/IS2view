@@ -43,6 +43,7 @@ This software is also dependent on other commonly used Python packages:
 - `matplotlib: Python 2D plotting library <https://matplotlib.org/>`_
 - `netCDF4: Python interface to the netCDF C library <https://unidata.github.io/netcdf4-python/>`_
 - `numpy: Scientific Computing Tools For Python <https://numpy.org>`_
+- `rasterio: Access to geospatial raster data <https://rasterio.readthedocs.io/en/latest/>`_
 - `rioxarray: geospatial xarray extension powered by rasterio <https://github.com/corteva/rioxarray>`_
 - `s3fs: Pythonic file interface to S3 built on top of botocore <https://s3fs.readthedocs.io/en/latest/>`_
 - `xarray: N-D labeled arrays and datasets in Python <https://docs.xarray.dev/en/stable/>`_
