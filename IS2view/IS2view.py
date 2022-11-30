@@ -514,7 +514,7 @@ try:
         url='https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer',
         crs=projections['EPSG:3031']
     )
-except NameError:
+except (NameError, AttributeError):
     pass
 
 # draw ipyleaflet map
