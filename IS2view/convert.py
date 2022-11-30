@@ -1,7 +1,7 @@
 """
 convert.py
 Written by Tyler Sutterley (11/2022)
-Utilities for converting gridded ICESat-2 files into zarr files
+Utilities for converting gridded ICESat-2 files from native netCDF4
 
 PYTHON DEPENDENCIES:
     netCDF4: Python interface to the netCDF C library
@@ -14,6 +14,7 @@ PYTHON DEPENDENCIES:
 
 UPDATE HISTORY:
     Updated 11/2022: output variables and attributes in top-level group
+        use netCDF4 directly due to changes in xarray backends
     Written 07/2022
 """
 import os
@@ -22,6 +23,12 @@ import warnings
 import numpy as np
 
 # attempt imports
+try:
+    import netCDF4
+except (ImportError, ModuleNotFoundError) as e:
+    warnings.filterwarnings("always")
+    warnings.warn("netCDF4 not available")
+    warnings.warn("Some functions will throw an exception if called")
 try:
     import xarray as xr
 except (ImportError, ModuleNotFoundError) as e:
@@ -34,7 +41,7 @@ warnings.filterwarnings("ignore")
 class convert():
     np.seterr(invalid='ignore')
     def __init__(self, filename=None, output=None):
-        """Utilities for converting gridded ICESat-2 files into zarr files
+        """Utilities for converting gridded ICESat-2 files from native netCDF4
 
         Parameters
         ----------
@@ -72,7 +79,7 @@ class convert():
         logging.info(self.filename)
         logging.info(self.output)
         # find each group within the input netCDF4 file
-        with xr.backends.netCDF4_.netCDF4.Dataset(self.filename) as source:
+        with netCDF4.Dataset(self.filename) as source:
             # copy variables and attributes from the top-level group
             # copy everything from the netCDF4 file to the zarr file
             ds = xr.open_dataset(xr.backends.NetCDF4DataStore(source))
