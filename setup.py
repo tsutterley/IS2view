@@ -21,10 +21,11 @@ else:
 
 # get version
 with open('version.txt', mode='r', encoding='utf8') as fh:
-    fallback_version = fh.read()
+    version = fh.read()
 
 setup(
     name='IS2view',
+    version=version,
     description=description,
     long_description=long_description,
     long_description_content_type=long_description_content_type,

@@ -47,6 +47,7 @@ This software is also dependent on other commonly used Python packages:
 - `rioxarray: geospatial xarray extension powered by rasterio <https://github.com/corteva/rioxarray>`_
 - `s3fs: Pythonic file interface to S3 built on top of botocore <https://s3fs.readthedocs.io/en/latest/>`_
 - `xarray: N-D labeled arrays and datasets in Python <https://docs.xarray.dev/en/stable/>`_
+- `zarr: Chunked, compressed, N-dimensional arrays in Python <https://zarr.readthedocs.io/en/stable/>`_
 
 Disclaimer
 ##########

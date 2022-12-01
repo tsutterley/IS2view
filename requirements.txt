@@ -9,3 +9,4 @@ numpy
 rioxarray
 s3fs
 xarray
+zarr
