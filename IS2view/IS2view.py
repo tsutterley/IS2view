@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 IS2view.py
-Written by Tyler Sutterley (11/2022)
+Written by Tyler Sutterley (12/2022)
 Jupyter notebook, user interface and plotting tools for visualizing
     rioxarray variables on leaflet maps
 
@@ -23,6 +23,7 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 12/2022: added case for warping input image
     Updated 11/2022: modifications for dask-chunked rasters
     Written 07/2022
 """
@@ -63,6 +64,7 @@ except (ImportError, ModuleNotFoundError) as e:
     warnings.warn("matplotlib not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
+    import rasterio.transform
     import rasterio.warp
 except (ImportError, ModuleNotFoundError) as e:
     warnings.filterwarnings("always")
@@ -1158,7 +1160,7 @@ class LeafletMap(HasTraits):
         raise Exception('Unknown coordinate reference system')
 
     def clip_image(self, ds):
-        """clip xarray image to bounds of leaflet map
+        """clip or warp xarray image to bounds of leaflet map
         """
         self.get_bbox()
         # attempt to get the coordinate reference system of the dataset
@@ -1168,18 +1170,51 @@ class LeafletMap(HasTraits):
             self.crs['name'], self._ds.rio.crs,
             self.sw['x'], self.sw['y'],
             self.ne['x'], self.ne['y'])
-        # pad input image to map bounds
-        padded = ds.rio.pad_box(minx=minx, maxx=maxx, miny=miny, maxy=maxy)
-        # get affine transform of padded image
-        pad_transform = padded.rio.transform()
-        north = int((maxy - pad_transform.f)//pad_transform.e)
-        east = int((maxx - pad_transform.c)//pad_transform.a) + 1
-        south = int((miny - pad_transform.f)//pad_transform.e) + 1
-        west = int((minx - pad_transform.c)//pad_transform.a)
-        # image extents
+        # extent of the leaflet map
         self.extent = np.array([minx, maxx, miny, maxy])
-        # clip image to map bounds
-        return padded.isel(x=slice(west, east), y=slice(north, south))
+        # compare data resolution and leaflet map resolution
+        resolution = np.abs(ds.x[1] - ds.x[0]).values
+        if (resolution > self.resolution):
+            # pad input image to map bounds
+            padded = ds.rio.pad_box(minx=minx, maxx=maxx, miny=miny, maxy=maxy)
+            # get affine transform of padded image
+            pad_transform = padded.rio.transform()
+            north = int((maxy - pad_transform.f)//pad_transform.e)
+            east = int((maxx - pad_transform.c)//pad_transform.a) + 1
+            south = int((miny - pad_transform.f)//pad_transform.e) + 1
+            west = int((minx - pad_transform.c)//pad_transform.a)
+            # clip image to map bounds
+            return padded.isel(x=slice(west, east), y=slice(north, south))
+        else:
+            # warp image to map bounds and resolution
+            # input and output affine transformations
+            src_transform = ds.rio.transform()
+            dst_transform = rasterio.transform.from_origin(minx, maxy,
+                self.resolution, self.resolution)
+            # allocate for output warped image
+            dst_width = int((maxx - minx)//self.resolution)
+            dst_height = int((maxy - miny)//self.resolution)
+            dst_data = np.zeros((dst_height, dst_width), dtype=ds.dtype.type)
+            # warp image to output resolution
+            rasterio.warp.reproject(source=ds.values, destination=dst_data,
+                src_transform=src_transform,
+                src_crs=self._ds.rio.crs,
+                src_nodata=np.nan,
+                dst_transform=dst_transform,
+                dst_crs=self.crs['name'],
+                dst_resolution=(self.resolution, self.resolution))
+            # calculate centered coordinates
+            transform = dst_transform * dst_transform.translation(0.5, 0.5)
+            x_coords, _ = transform * (np.arange(dst_width), np.zeros(dst_width))
+            _, y_coords = transform * (np.zeros(dst_height), np.arange(dst_height))
+            # return DataAarray with warped image
+            return xr.DataArray(
+                name=ds.name,
+                data=dst_data,
+                coords=dict(y=y_coords, x=x_coords),
+                dims=copy.deepcopy(ds.dims),
+                attrs=copy.deepcopy(ds.attrs),
+            )
 
     def get_image_url(self):
         """create the image url for the imageservice
