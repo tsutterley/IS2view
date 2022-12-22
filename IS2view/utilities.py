@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 u"""
 utilities.py
-Written by Tyler Sutterley (11/2022)
+Written by Tyler Sutterley (12/2022)
 Download and management utilities
 
 UPDATE HISTORY:
+    Updated 12/2022: functions for managing and maintaining git repositories
     Updated 11/2022: can query for zarr datasets
     Updated 10/2022: public release of NSIDC s3 access
     Written 07/2022
@@ -22,10 +23,12 @@ import shutil
 import base64
 import getpass
 import hashlib
+import inspect
 import logging
 import builtins
 import warnings
 import posixpath
+import subprocess
 import calendar, time
 if sys.version_info[0] == 2:
     from cookielib import CookieJar
@@ -51,6 +54,43 @@ except (ImportError, ModuleNotFoundError) as e:
     warnings.warn("Some functions will throw an exception if called")
 # ignore warnings
 warnings.filterwarnings("ignore")
+
+# PURPOSE: get the git hash value
+def get_git_revision_hash(refname='HEAD', short=False):
+    """
+    Get the git hash value for a particular reference
+
+    Parameters
+    ----------
+    refname: str, default HEAD
+        Symbolic reference name
+    short: bool, default False
+        Return the shorted hash value
+    """
+    # get path to .git directory from current file path
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    basepath = os.path.dirname(os.path.dirname(os.path.abspath(filename)))
+    gitpath = os.path.join(basepath,'.git')
+    # build command
+    cmd = ['git', f'--git-dir={gitpath}', 'rev-parse']
+    cmd.append('--short') if short else None
+    cmd.append(refname)
+    # get output
+    with warnings.catch_warnings():
+        return str(subprocess.check_output(cmd), encoding='utf8').strip()
+
+# PURPOSE: get the current git status
+def get_git_status():
+    """Get the status of a git repository as a boolean value
+    """
+    # get path to .git directory from current file path
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    basepath = os.path.dirname(os.path.dirname(os.path.abspath(filename)))
+    gitpath = os.path.join(basepath,'.git')
+    # build command
+    cmd = ['git', f'--git-dir={gitpath}', 'status', '--porcelain']
+    with warnings.catch_warnings():
+        return bool(subprocess.check_output(cmd))
 
 # PURPOSE: recursively split a url path
 def url_split(s):
@@ -87,6 +127,26 @@ def get_unix_time(time_string, format='%Y-%m-%d %H:%M:%S'):
         pass
     else:
         return calendar.timegm(parsed_time)
+
+# NASA on-prem DAAC providers
+_daac_providers = {
+    'gesdisc': 'GES_DISC',
+    'ghrcdaac': 'GHRC_DAAC',
+    'lpdaac': 'LPDAAC_ECS',
+    'nsidc': 'NSIDC_ECS',
+    'ornldaac': 'ORNL_DAAC',
+    'podaac': 'PODAAC',
+}
+
+# NASA Cumulus AWS providers
+_s3_providers = {
+    'gesdisc': 'GES_DISC',
+    'ghrcdaac': 'GHRC_DAAC',
+    'lpdaac': 'LPCLOUD',
+    'nsidc': 'NSIDC_CPRD',
+    'ornldaac': 'ORNL_CLOUD',
+    'podaac': 'POCLOUD',
+}
 
 # NASA Cumulus AWS S3 credential endpoints
 _s3_endpoints = {
@@ -904,10 +964,10 @@ def query_resources(**kwargs):
 
     # CMR providers
     provider = {}
-    provider['nsidc-s3'] = 'NSIDC_CPRD'
-    provider['atlas-s3'] = 'NSIDC_CPRD'
-    provider['nsidc-https'] = 'NSIDC_ECS'
-    provider['atlas-local'] = 'NSIDC_ECS'
+    provider['nsidc-s3'] = _s3_providers['nsidc']
+    provider['atlas-s3'] = _s3_providers['nsidc']
+    provider['nsidc-https'] = _daac_providers['nsidc']
+    provider['atlas-local'] = _daac_providers['nsidc']
     # CMR endpoints
     endpoint = {}
     endpoint['nsidc-s3'] = 's3'
