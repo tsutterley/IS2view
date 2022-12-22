@@ -4,23 +4,6 @@
 Recipes
 =======
 
-Set AWS Credentials
-###################
-
-Setting `AWS Environment Variables <https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html>`_
-for accessing ATL14/15 resources in ``atlas-s3`` asset
-
-.. code-block:: python
-
-   import os
-   os.environ['AWS_ACCESS_KEY_ID'] = "AKIAIOSFODNN7EXAMPLE"
-   os.environ['AWS_SECRET_ACCESS_KEY'] = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
-   os.environ['AWS_DEFAULT_REGION'] = "us-west-2"
-
-- ``AWS_ACCESS_KEY_ID``: AWS access key associated with an IAM user or role
-- ``AWS_SECRET_ACCESS_KEY``: AWS secret key associated with the access key
-- ``AWS_DEFAULT_REGION``: AWS region to send requests
-
 Add Contextual Layers
 #####################
 

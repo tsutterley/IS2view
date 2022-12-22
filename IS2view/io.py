@@ -41,6 +41,9 @@ except (ImportError, ModuleNotFoundError) as e:
 # ignore warnings
 warnings.filterwarnings("ignore")
 
+# set environmental variable for anonymous s3 access
+os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
+
 def from_file(granule, group=None, format='nc', **kwargs):
     """
     Wrapper function for reading gridded ICESat-2 files
