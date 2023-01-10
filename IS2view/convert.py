@@ -26,13 +26,13 @@ import numpy as np
 try:
     import netCDF4
 except (ImportError, ModuleNotFoundError) as e:
-    warnings.filterwarnings("always")
+    warnings.filterwarnings("module")
     warnings.warn("netCDF4 not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
     import xarray as xr
 except (ImportError, ModuleNotFoundError) as e:
-    warnings.filterwarnings("always")
+    warnings.filterwarnings("module")
     warnings.warn("xarray not available")
     warnings.warn("Some functions will throw an exception if called")
 # ignore warnings

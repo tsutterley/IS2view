@@ -44,13 +44,13 @@ from traitlets.utils.bunch import Bunch
 try:
     import ipywidgets
 except (ImportError, ModuleNotFoundError) as e:
-    warnings.filterwarnings("always")
+    warnings.filterwarnings("module")
     warnings.warn("ipywidgets not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
     import ipyleaflet
 except (ImportError, ModuleNotFoundError) as e:
-    warnings.filterwarnings("always")
+    warnings.filterwarnings("module")
     warnings.warn("ipyleaflet not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
@@ -60,20 +60,20 @@ try:
     import matplotlib.pyplot as plt
     import matplotlib.colors as colors
 except (ImportError, ModuleNotFoundError) as e:
-    warnings.filterwarnings("always")
+    warnings.filterwarnings("module")
     warnings.warn("matplotlib not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
     import rasterio.transform
     import rasterio.warp
 except (ImportError, ModuleNotFoundError) as e:
-    warnings.filterwarnings("always")
+    warnings.filterwarnings("module")
     warnings.warn("rasterio not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
     import xarray as xr
 except (ImportError, ModuleNotFoundError) as e:
-    warnings.filterwarnings("always")
+    warnings.filterwarnings("module")
     warnings.warn("xarray not available")
     warnings.warn("Some functions will throw an exception if called")
 # ignore warnings
