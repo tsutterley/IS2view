@@ -1,6 +1,6 @@
-==========
-IS2view.py
-==========
+=======
+IS2view
+=======
 
 `Jupyter notebook <https://jupyter.org/>`_, `user interface <https://ipywidgets.readthedocs.io/en/latest/>`_ and plotting tools for visualizing `rioxarray <https://corteva.github.io/rioxarray/stable/>`_ variables on `ipyleaflet <https://ipyleaflet.readthedocs.io/en/latest/>`_ maps
 

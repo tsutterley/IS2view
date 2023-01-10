@@ -43,13 +43,13 @@ else:
 try:
     import boto3
 except (ImportError, ModuleNotFoundError) as e:
-    warnings.filterwarnings("always")
+    warnings.filterwarnings("module")
     warnings.warn("boto3 not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
     import s3fs
 except (ImportError, ModuleNotFoundError) as e:
-    warnings.filterwarnings("always")
+    warnings.filterwarnings("module")
     warnings.warn("s3fs not available")
     warnings.warn("Some functions will throw an exception if called")
 # ignore warnings
@@ -58,7 +58,7 @@ warnings.filterwarnings("ignore")
 # PURPOSE: get the git hash value
 def get_git_revision_hash(refname='HEAD', short=False):
     """
-    Get the git hash value for a particular reference
+    Get the ``git`` hash value for a particular reference
 
     Parameters
     ----------
@@ -81,7 +81,7 @@ def get_git_revision_hash(refname='HEAD', short=False):
 
 # PURPOSE: get the current git status
 def get_git_status():
-    """Get the status of a git repository as a boolean value
+    """Get the status of a ``git`` repository as a boolean value
     """
     # get path to .git directory from current file path
     filename = inspect.getframeinfo(inspect.currentframe()).filename
@@ -332,9 +332,12 @@ def generate_presigned_url(bucket, key, expiration=3600):
     # The response contains the presigned URL
     return response
 
+# default ssl context
+_default_ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+
 # PURPOSE: attempt to build an opener with netrc
 def attempt_login(urs='urs.earthdata.nasa.gov',
-    context=ssl.SSLContext(),
+    context=_default_ssl_context,
     password_manager=True,
     get_ca_certs=False,
     redirect=False,
@@ -347,8 +350,8 @@ def attempt_login(urs='urs.earthdata.nasa.gov',
     ----------
     urs: str, default urs.earthdata.nasa.gov
         Earthdata login URS 3 host
-    context: obj, default ssl.SSLContext()
-        SSL context for url opener object
+    context: obj, default ssl.SSLContext(ssl.PROTOCOL_TLS)
+        SSL context for ``urllib`` opener object
     password_manager: bool, default True
         Create password manager context using default realm
     get_ca_certs: bool, default False
@@ -416,11 +419,11 @@ def attempt_login(urs='urs.earthdata.nasa.gov',
     raise RuntimeError('End of Retries: Check NASA Earthdata credentials')
 
 # PURPOSE: "login" to NASA Earthdata with supplied credentials
-def build_opener(username, password, context=ssl.SSLContext(),
+def build_opener(username, password, context=_default_ssl_context,
     password_manager=True, get_ca_certs=False, redirect=False,
     authorization_header=False, urs='https://urs.earthdata.nasa.gov'):
     """
-    build urllib opener for NASA Earthdata with supplied credentials
+    Build ``urllib`` opener for NASA Earthdata with supplied credentials
 
     Parameters
     ----------
@@ -428,8 +431,8 @@ def build_opener(username, password, context=ssl.SSLContext(),
         NASA Earthdata username
     password: str or NoneType, default None
         NASA Earthdata password
-    context: obj, default ssl.SSLContext()
-        SSL context for url opener object
+    context: obj, default ssl.SSLContext(ssl.PROTOCOL_TLS)
+        SSL context for ``urllib`` opener object
     password_manager: bool, default True
         Create password manager context using default realm
     get_ca_certs: bool, default False
@@ -651,7 +654,7 @@ bb
             raise TypeError("Please enter the region as a list or string")
         # check if user-entered region is currently not available
         if not set(_regions) & set(region_list):
-            warnings.filterwarnings("always")
+            warnings.filterwarnings("module")
             warnings.warn("Listed region is not presently available")
         return region_list
 
@@ -686,7 +689,7 @@ def cmr_resolutions(resolution):
             raise TypeError("Please enter the resolution as a list or string")
         # check if user-entered resolution is currently not available
         if not set(_resolutions) & set(resolution_list):
-            warnings.filterwarnings("always")
+            warnings.filterwarnings("module")
             warnings.warn("Listed resolution is not presently available")
         return resolution_list
 
@@ -828,7 +831,7 @@ def cmr(product=None, release=None, regions=None, resolutions=None,
         # Create cookie jar for storing cookies
         cookie_jar = CookieJar()
         handler.append(urllib2.HTTPCookieProcessor(cookie_jar))
-        handler.append(urllib2.HTTPSHandler(context=ssl.SSLContext()))
+        handler.append(urllib2.HTTPSHandler(context=_default_ssl_context))
         # create "opener" (OpenerDirector instance)
         opener = urllib2.build_opener(*handler)
     # build CMR query
