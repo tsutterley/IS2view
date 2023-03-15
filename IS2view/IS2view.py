@@ -43,13 +43,13 @@ from traitlets.utils.bunch import Bunch
 # attempt imports
 try:
     import ipywidgets
-except (ImportError, ModuleNotFoundError) as e:
+except (ImportError, ModuleNotFoundError) as exc:
     warnings.filterwarnings("module")
     warnings.warn("ipywidgets not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
     import ipyleaflet
-except (ImportError, ModuleNotFoundError) as e:
+except (ImportError, ModuleNotFoundError) as exc:
     warnings.filterwarnings("module")
     warnings.warn("ipyleaflet not available")
     warnings.warn("Some functions will throw an exception if called")
@@ -59,20 +59,20 @@ try:
     import matplotlib.colorbar
     import matplotlib.pyplot as plt
     import matplotlib.colors as colors
-except (ImportError, ModuleNotFoundError) as e:
+except (ImportError, ModuleNotFoundError) as exc:
     warnings.filterwarnings("module")
     warnings.warn("matplotlib not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
     import rasterio.transform
     import rasterio.warp
-except (ImportError, ModuleNotFoundError) as e:
+except (ImportError, ModuleNotFoundError) as exc:
     warnings.filterwarnings("module")
     warnings.warn("rasterio not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
     import xarray as xr
-except (ImportError, ModuleNotFoundError) as e:
+except (ImportError, ModuleNotFoundError) as exc:
     warnings.filterwarnings("module")
     warnings.warn("xarray not available")
     warnings.warn("Some functions will throw an exception if called")
@@ -429,7 +429,7 @@ class widgets:
         # try setting the max lag
         try:
             self.timelag.max = len(ds['time'])
-        except Exception as e:
+        except Exception as exc:
             self.timelag.max = 1
 
     def set_lag_visibility(self, sender):
@@ -733,19 +733,19 @@ class leaflet:
             for o in obj:
                 try:
                     self.map.add(o)
-                except ipyleaflet.LayerException as e:
+                except ipyleaflet.LayerException as exc:
                     logging.info(f"{o} already on map")
                     pass
-                except ipyleaflet.ControlException as e:
+                except ipyleaflet.ControlException as exc:
                     logging.info(f"{o} already on map")
                     pass
         else:
             try:
                 self.map.add(obj)
-            except ipyleaflet.LayerException as e:
+            except ipyleaflet.LayerException as exc:
                 logging.info(f"{obj} already on map")
                 pass
-            except ipyleaflet.ControlException as e:
+            except ipyleaflet.ControlException as exc:
                 logging.info(f"{obj} already on map")
                 pass
 
@@ -756,19 +756,19 @@ class leaflet:
             for o in obj:
                 try:
                     self.map.remove(o)
-                except ipyleaflet.LayerException as e:
+                except ipyleaflet.LayerException as exc:
                     logging.info(f"{o} already removed from map")
                     pass
-                except ipyleaflet.ControlException as e:
+                except ipyleaflet.ControlException as exc:
                     logging.info(f"{o} already removed from map")
                     pass
         else:
             try:
                 self.map.remove(obj)
-            except ipyleaflet.LayerException as e:
+            except ipyleaflet.LayerException as exc:
                 logging.info(f"{obj} already removed from map")
                 pass
-            except ipyleaflet.ControlException as e:
+            except ipyleaflet.ControlException as exc:
                 logging.info(f"{obj} already removed from map")
                 pass
 
@@ -1058,10 +1058,10 @@ class LeafletMap(HasTraits):
         """
         try:
             self.map.add(obj)
-        except ipyleaflet.LayerException as e:
+        except ipyleaflet.LayerException as exc:
             logging.info(f"{obj} already on map")
             pass
-        except ipyleaflet.ControlException as e:
+        except ipyleaflet.ControlException as exc:
             logging.info(f"{obj} already on map")
             pass
 
@@ -1070,10 +1070,10 @@ class LeafletMap(HasTraits):
         """
         try:
             self.map.remove(obj)
-        except ipyleaflet.LayerException as e:
+        except ipyleaflet.LayerException as exc:
             logging.info(f"{obj} already removed from map")
             pass
-        except ipyleaflet.ControlException as e:
+        except ipyleaflet.ControlException as exc:
             logging.info(f"{obj} already removed from map")
             pass
 
@@ -1143,7 +1143,7 @@ class LeafletMap(HasTraits):
         try:
             grid_mapping = self._ds[self._variable].attrs['grid_mapping']
             ds_crs = self._ds[grid_mapping].attrs['crs_wkt']
-        except Exception as e:
+        except Exception as exc:
             pass
         else:
             self._ds.rio.set_crs(ds_crs)
@@ -1151,7 +1151,7 @@ class LeafletMap(HasTraits):
         # get coordinate reference system from crs attribute
         try:
             ds_crs = self._ds.rio.crs.to_wkt()
-        except Exception as e:
+        except Exception as exc:
             pass
         else:
             self._ds.rio.set_crs(ds_crs)
@@ -1264,7 +1264,7 @@ class LeafletMap(HasTraits):
         try:
             self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
             self.get_image_url()
-        except Exception as e:
+        except Exception as exc:
             pass
         else:
             # update image url
@@ -1285,7 +1285,7 @@ class LeafletMap(HasTraits):
         try:
             grid_mapping = self._ds[self._variable].attrs['grid_mapping']
             crs = self._ds[grid_mapping].attrs['crs_wkt']
-        except Exception as e:
+        except Exception as exc:
             crs = self._ds.rio.crs.to_wkt()
         else:
             self._ds.rio.set_crs(crs)
@@ -1536,7 +1536,7 @@ class TimeSeries(HasTraits):
         try:
             grid_mapping = self._ds[self._variable].attrs['grid_mapping']
             ds_crs = self._ds[grid_mapping].attrs['crs_wkt']
-        except Exception as e:
+        except Exception as exc:
             pass
         else:
             self._ds.rio.set_crs(ds_crs)
@@ -1544,7 +1544,7 @@ class TimeSeries(HasTraits):
         # get coordinate reference system from crs attribute
         try:
             ds_crs = self._ds.rio.crs.to_wkt()
-        except Exception as e:
+        except Exception as exc:
             pass
         else:
             self._ds.rio.set_crs(ds_crs)
@@ -1958,7 +1958,7 @@ class Transect(HasTraits):
         try:
             grid_mapping = self._ds[self._variable].attrs['grid_mapping']
             ds_crs = self._ds[grid_mapping].attrs['crs_wkt']
-        except Exception as e:
+        except Exception as exc:
             pass
         else:
             self._ds.rio.set_crs(ds_crs)
@@ -1966,7 +1966,7 @@ class Transect(HasTraits):
         # get coordinate reference system from crs attribute
         try:
             ds_crs = self._ds.rio.crs.to_wkt()
-        except Exception as e:
+        except Exception as exc:
             pass
         else:
             self._ds.rio.set_crs(ds_crs)
