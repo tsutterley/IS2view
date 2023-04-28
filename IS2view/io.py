@@ -28,13 +28,13 @@ import numpy as np
 # attempt imports
 try:
     import rioxarray
-except (ImportError, ModuleNotFoundError) as e:
+except (ImportError, ModuleNotFoundError) as exc:
     warnings.filterwarnings("module")
     warnings.warn("rioxarray not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
     import xarray as xr
-except (ImportError, ModuleNotFoundError) as e:
+except (ImportError, ModuleNotFoundError) as exc:
     warnings.filterwarnings("module")
     warnings.warn("xarray not available")
     warnings.warn("Some functions will throw an exception if called")
