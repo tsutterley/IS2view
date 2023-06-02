@@ -1,10 +1,4 @@
-# Install ipyleaflet with image service layers
-conda install -y yarn jupyter_packaging geopandas
-cd /tmp; git clone https://github.com/jupyter-widgets/ipyleaflet
-cd ipyleaflet; pip install -e .
-# add extension for developing on JupyterLab
-jupyter labextension develop . --overwrite
-# build javascript
-cd js; yarn add webpack webpack-dev-server --dev; yarn run build
+# Install geopandas
+conda install -y geopandas
 # Install python package
 cd; pip install -e .

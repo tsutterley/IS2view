@@ -12,6 +12,10 @@ Download and management utilities
 General Methods
 ===============
 
+.. autofunction:: IS2view.utilities.get_data_path
+
+.. autofunction:: IS2view.utilities.get_hash
+
 .. autofunction:: IS2view.utilities.url_split
 
 .. autofunction:: IS2view.utilities.get_unix_time
@@ -31,6 +35,12 @@ General Methods
 .. autofunction:: IS2view.utilities.attempt_login
 
 .. autofunction:: IS2view.utilities.build_opener
+
+.. autofunction:: IS2view.utilities.get_token
+
+.. autofunction:: IS2view.utilities.list_tokens
+
+.. autofunction:: IS2view.utilities.revoke_token
 
 .. autofunction:: IS2view.utilities.check_credentials
 

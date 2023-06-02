@@ -1,16 +1,18 @@
 #!/usr/bin/env python
 u"""
 utilities.py
-Written by Tyler Sutterley (12/2022)
+Written by Tyler Sutterley (06/2023)
 Download and management utilities
 
 UPDATE HISTORY:
+    Updated 06/2023: using pathlib to define and expand paths
+        add functions to retrieve and revoke NASA Earthdata User tokens
     Updated 12/2022: functions for managing and maintaining git repositories
     Updated 11/2022: can query for zarr datasets
     Updated 10/2022: public release of NSIDC s3 access
     Written 07/2022
 """
-from __future__ import print_function, division
+from __future__ import print_function, division, annotations
 
 import sys
 import os
@@ -25,6 +27,7 @@ import getpass
 import hashlib
 import inspect
 import logging
+import pathlib
 import builtins
 import warnings
 import posixpath
@@ -55,8 +58,70 @@ except (ImportError, ModuleNotFoundError) as exc:
 # ignore warnings
 warnings.filterwarnings("ignore")
 
+# PURPOSE: get absolute path within a package from a relative path
+def get_data_path(relpath: list | str | pathlib.Path):
+    """
+    Get the absolute path within a package from a relative path
+
+    Parameters
+    ----------
+    relpath: list, str or pathlib.Path
+        relative path
+    """
+    # current file path
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    filepath = pathlib.Path(filename).absolute().parent
+    if isinstance(relpath, list):
+        # use *splat operator to extract from list
+        return filepath.joinpath(*relpath)
+    elif isinstance(relpath, (str, pathlib.Path)):
+        return filepath.joinpath(relpath)
+
+# PURPOSE: get the hash value of a file
+def get_hash(
+        local: str | io.IOBase | pathlib.Path,
+        algorithm: str = 'MD5'
+    ):
+    """
+    Get the hash value from a local file or ``BytesIO`` object
+
+    Parameters
+    ----------
+    local: obj, str or pathlib.Path
+        BytesIO object or path to file
+    algorithm: str, default 'MD5'
+        hashing algorithm for checksum validation
+
+            - ``'MD5'``: Message Digest
+            - ``'sha1'``: Secure Hash Algorithm
+    """
+    # check if open file object or if local file exists
+    if isinstance(local, io.IOBase):
+        if (algorithm == 'MD5'):
+            return hashlib.md5(local.getvalue()).hexdigest()
+        elif (algorithm == 'sha1'):
+            return hashlib.sha1(local.getvalue()).hexdigest()
+    elif isinstance(local, (str, pathlib.Path)):
+        # generate checksum hash for local file
+        local = pathlib.Path(local).expanduser()
+        # if file currently doesn't exist, return empty string
+        if not local.exists():
+            return ''
+        # open the local_file in binary read mode
+        with local.open(mode='rb') as local_buffer:
+            # generate checksum hash for a given type
+            if (algorithm == 'MD5'):
+                return hashlib.md5(local_buffer.read()).hexdigest()
+            elif (algorithm == 'sha1'):
+                return hashlib.sha1(local_buffer.read()).hexdigest()
+    else:
+        return ''
+
 # PURPOSE: get the git hash value
-def get_git_revision_hash(refname='HEAD', short=False):
+def get_git_revision_hash(
+        refname: str = 'HEAD',
+        short: bool = False
+    ):
     """
     Get the ``git`` hash value for a particular reference
 
@@ -69,8 +134,8 @@ def get_git_revision_hash(refname='HEAD', short=False):
     """
     # get path to .git directory from current file path
     filename = inspect.getframeinfo(inspect.currentframe()).filename
-    basepath = os.path.dirname(os.path.dirname(os.path.abspath(filename)))
-    gitpath = os.path.join(basepath,'.git')
+    basepath = pathlib.Path(filename).absolute().parent.parent
+    gitpath = basepath.joinpath('.git')
     # build command
     cmd = ['git', f'--git-dir={gitpath}', 'rev-parse']
     cmd.append('--short') if short else None
@@ -85,15 +150,15 @@ def get_git_status():
     """
     # get path to .git directory from current file path
     filename = inspect.getframeinfo(inspect.currentframe()).filename
-    basepath = os.path.dirname(os.path.dirname(os.path.abspath(filename)))
-    gitpath = os.path.join(basepath,'.git')
+    basepath = pathlib.Path(filename).absolute().parent.parent
+    gitpath = basepath.joinpath('.git')
     # build command
     cmd = ['git', f'--git-dir={gitpath}', 'status', '--porcelain']
     with warnings.catch_warnings():
         return bool(subprocess.check_output(cmd))
 
 # PURPOSE: recursively split a url path
-def url_split(s):
+def url_split(s: str):
     """
     Recursively split a url path into a list
 
@@ -103,14 +168,17 @@ def url_split(s):
         url string
     """
     head, tail = posixpath.split(s)
-    if head in ('http:', 'https:', 'ftp:', 's3:'):
+    if head in ('http:','https:','ftp:','s3:'):
         return s,
     elif head in ('', posixpath.sep):
         return tail,
     return url_split(head) + (tail,)
 
 # PURPOSE: returns the Unix timestamp value for a formatted date string
-def get_unix_time(time_string, format='%Y-%m-%d %H:%M:%S'):
+def get_unix_time(
+        time_string: str,
+        format: str = '%Y-%m-%d %H:%M:%S'
+    ):
     """
     Get the Unix timestamp value for a formatted date string
 
@@ -169,8 +237,11 @@ _s3_buckets = {
 }
 
 # PURPOSE: get AWS s3 client for NSIDC Cumulus
-def s3_client(HOST=_s3_endpoints['nsidc'],
-    timeout=None, region_name='us-west-2'):
+def s3_client(
+        HOST: str = _s3_endpoints['nsidc'],
+        timeout: int | None = None,
+        region_name: str = 'us-west-2'
+    ):
     """
     Get AWS s3 client for NSIDC data in the cloud
     https://data.nsidc.earthdatacloud.nasa.gov/s3credentials
@@ -202,8 +273,11 @@ def s3_client(HOST=_s3_endpoints['nsidc'],
     return client
 
 # PURPOSE: get AWS s3 file system for NSIDC Cumulus
-def s3_filesystem(HOST=_s3_endpoints['nsidc'],
-    timeout=None, region_name='us-west-2'):
+def s3_filesystem(
+        HOST: str = _s3_endpoints['nsidc'],
+        timeout: int | None = None,
+        region_name: str = 'us-west-2'
+    ):
     """
     Get AWS s3 file system object for NSIDC data in the cloud
     https://data.nsidc.earthdatacloud.nasa.gov/s3credentials
@@ -238,7 +312,7 @@ def s3_filesystem(HOST=_s3_endpoints['nsidc'],
     return session
 
 # PURPOSE: get a s3 bucket name from a presigned url
-def s3_bucket(presigned_url):
+def s3_bucket(presigned_url: str):
     """
     Get a s3 bucket name from a presigned url
 
@@ -257,7 +331,7 @@ def s3_bucket(presigned_url):
     return bucket
 
 # PURPOSE: get a s3 bucket key from a presigned url
-def s3_key(presigned_url):
+def s3_key(presigned_url: str):
     """
     Get a s3 bucket key from a presigned url
 
@@ -285,7 +359,10 @@ def s3_key(presigned_url):
     return key
 
 # PURPOSE: get a s3 presigned url from a bucket and key
-def s3_presigned_url(bucket, key):
+def s3_presigned_url(
+        bucket: str,
+        key: str
+    ):
     """
     Get a s3 presigned url from a bucket and object key
 
@@ -304,7 +381,11 @@ def s3_presigned_url(bucket, key):
     return posixpath.join('s3://', bucket, key)
 
 # PURPOSE: generate a s3 presigned https url from a bucket and key
-def generate_presigned_url(bucket, key, expiration=3600):
+def generate_presigned_url(
+        bucket: str,
+        key: str,
+        expiration: int = 3600
+    ):
     """
     Generate a presigned https URL to share an S3 object
 
@@ -314,6 +395,8 @@ def generate_presigned_url(bucket, key, expiration=3600):
         s3 bucket name
     key: str
         s3 bucket key for object
+    expiration: int
+        Time in seconds for the presigned URL to remain valid
 
     Returns
     -------
@@ -336,13 +419,15 @@ def generate_presigned_url(bucket, key, expiration=3600):
 _default_ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
 
 # PURPOSE: attempt to build an opener with netrc
-def attempt_login(urs='urs.earthdata.nasa.gov',
-    context=_default_ssl_context,
-    password_manager=True,
-    get_ca_certs=False,
-    redirect=False,
-    authorization_header=False,
-    **kwargs):
+def attempt_login(
+        urs: str = 'urs.earthdata.nasa.gov',
+        context=_default_ssl_context,
+        password_manager: bool = True,
+        get_ca_certs: bool = False,
+        redirect: bool = False,
+        authorization_header: bool = False,
+        **kwargs
+    ):
     """
     attempt to build a urllib opener for NASA Earthdata
 
@@ -378,10 +463,10 @@ def attempt_login(urs='urs.earthdata.nasa.gov',
     kwargs.setdefault('username', os.environ.get('EARTHDATA_USERNAME'))
     kwargs.setdefault('password', os.environ.get('EARTHDATA_PASSWORD'))
     kwargs.setdefault('retries', 5)
-    kwargs.setdefault('netrc', os.path.expanduser('~/.netrc'))
+    kwargs.setdefault('netrc', pathlib.Path.home().joinpath('.netrc'))
     try:
         # only necessary on jupyterhub
-        os.chmod(kwargs['netrc'], 0o600)
+        kwargs['netrc'].chmod(mode=0o600)
         # try retrieving credentials from netrc
         username, _, password = netrc.netrc(kwargs['netrc']).authenticators(urs)
     except Exception as exc:
@@ -419,9 +504,16 @@ def attempt_login(urs='urs.earthdata.nasa.gov',
     raise RuntimeError('End of Retries: Check NASA Earthdata credentials')
 
 # PURPOSE: "login" to NASA Earthdata with supplied credentials
-def build_opener(username, password, context=_default_ssl_context,
-    password_manager=True, get_ca_certs=False, redirect=False,
-    authorization_header=False, urs='https://urs.earthdata.nasa.gov'):
+def build_opener(
+        username: str,
+        password: str,
+        context=_default_ssl_context,
+        password_manager: bool = True,
+        get_ca_certs: bool = False,
+        redirect: bool = False,
+        authorization_header: bool = False,
+        urs: str = 'https://urs.earthdata.nasa.gov'
+    ):
     """
     Build ``urllib`` opener for NASA Earthdata with supplied credentials
 
@@ -483,6 +575,159 @@ def build_opener(username, password, context=_default_ssl_context,
     # HTTPPasswordMgrWithDefaultRealm will be confused.
     return opener
 
+# PURPOSE: generate a NASA Earthdata user token
+def get_token(
+        HOST: str = 'https://urs.earthdata.nasa.gov/api/users/token',
+        username: str | None = None,
+        password: str | None = None,
+        build: bool = True,
+        urs: str = 'urs.earthdata.nasa.gov',
+    ):
+    """
+    Generate a NASA Earthdata User Token
+
+    Parameters
+    ----------
+    HOST: str or list
+        NASA Earthdata token API host
+    username: str or NoneType, default None
+        NASA Earthdata username
+    password: str or NoneType, default None
+        NASA Earthdata password
+    build: bool, default True
+        Build opener and check WebDAV credentials
+    timeout: int or NoneType, default None
+        timeout in seconds for blocking operations
+    urs: str, default 'urs.earthdata.nasa.gov'
+        NASA Earthdata URS 3 host
+
+    Returns
+    -------
+    token: dict
+        JSON response with NASA Earthdata User Token
+    """
+    # attempt to build urllib2 opener and check credentials
+    if build:
+        attempt_login(urs,
+            username=username,
+            password=password,
+            password_manager=False,
+            authorization_header=True)
+    # create post response with Earthdata token API
+    try:
+        request = urllib2.Request(HOST, method='POST')
+        response = urllib2.urlopen(request)
+    except urllib2.HTTPError as exc:
+        logging.debug(exc.code)
+        raise RuntimeError(exc.reason) from exc
+    except urllib2.URLError as exc:
+        logging.debug(exc.reason)
+        raise RuntimeError('Check internet connection') from exc
+    # read and return JSON response
+    return json.loads(response.read())
+
+# PURPOSE: generate a NASA Earthdata user token
+def list_tokens(
+        HOST: str = 'https://urs.earthdata.nasa.gov/api/users/tokens',
+        username: str | None = None,
+        password: str | None = None,
+        build: bool = True,
+        urs: str = 'urs.earthdata.nasa.gov',
+    ):
+    """
+    List the current associated NASA Earthdata User Tokens
+
+    Parameters
+    ----------
+    HOST: str
+        NASA Earthdata list token API host
+    username: str or NoneType, default None
+        NASA Earthdata username
+    password: str or NoneType, default None
+        NASA Earthdata password
+    build: bool, default True
+        Build opener and check WebDAV credentials
+    timeout: int or NoneType, default None
+        timeout in seconds for blocking operations
+    urs: str, default 'urs.earthdata.nasa.gov'
+        NASA Earthdata URS 3 host
+
+    Returns
+    -------
+    tokens: list
+        JSON response with NASA Earthdata User Tokens
+    """
+    # attempt to build urllib2 opener and check credentials
+    if build:
+        attempt_login(urs,
+            username=username,
+            password=password,
+            password_manager=False,
+            authorization_header=True)
+    # create get response with Earthdata list tokens API
+    try:
+        request = urllib2.Request(HOST)
+        response = urllib2.urlopen(request)
+    except urllib2.HTTPError as exc:
+        logging.debug(exc.code)
+        raise RuntimeError(exc.reason) from exc
+    except urllib2.URLError as exc:
+        logging.debug(exc.reason)
+        raise RuntimeError('Check internet connection') from exc
+    # read and return JSON response
+    return json.loads(response.read())
+
+# PURPOSE: revoke a NASA Earthdata user token
+def revoke_token(
+        token: str,
+        HOST: str = f'https://urs.earthdata.nasa.gov/api/users/revoke_token',
+        username: str | None = None,
+        password: str | None = None,
+        build: bool = True,
+        urs: str = 'urs.earthdata.nasa.gov',
+    ):
+    """
+    Generate a NASA Earthdata User Token
+
+    Parameters
+    ----------
+    token: str
+        NASA Earthdata token to be revoked
+    HOST: str
+        NASA Earthdata revoke token API host
+    username: str or NoneType, default None
+        NASA Earthdata username
+    password: str or NoneType, default None
+        NASA Earthdata password
+    build: bool, default True
+        Build opener and check WebDAV credentials
+    timeout: int or NoneType, default None
+        timeout in seconds for blocking operations
+    urs: str, default 'urs.earthdata.nasa.gov'
+        NASA Earthdata URS 3 host
+    """
+    # attempt to build urllib2 opener and check credentials
+    if build:
+        attempt_login(urs,
+            username=username,
+            password=password,
+            password_manager=False,
+            authorization_header=True)
+    # full path for NASA Earthdata revoke token API
+    url = f'{HOST}?token={token}'
+    # create post response with Earthdata revoke tokens API
+    try:
+        request = urllib2.Request(url, method='POST')
+        response = urllib2.urlopen(request)
+    except urllib2.HTTPError as exc:
+        logging.debug(exc.code)
+        raise RuntimeError(exc.reason) from exc
+    except urllib2.URLError as exc:
+        logging.debug(exc.reason)
+        raise RuntimeError('Check internet connection') from exc
+    # verbose response
+    logging.debug(f'Token Revoked: {token}')
+
 # PURPOSE: check that entered NASA Earthdata credentials are valid
 def check_credentials():
     """
@@ -500,9 +745,20 @@ def check_credentials():
         return True
 
 # PURPOSE: download a file from a NSIDC https server
-def from_nsidc(HOST, username=None, password=None, build=True,
-    timeout=None, urs='urs.earthdata.nasa.gov', local=None,
-    hash='', chunk=16384, verbose=False, fid=sys.stdout, mode=0o775):
+def from_nsidc(
+        HOST: str | list,
+        username: str | None = None,
+        password: str | None = None,
+        build: bool = True,
+        timeout: int | None = None,
+        urs: str = 'urs.earthdata.nasa.gov',
+        local: str | pathlib.Path | None = None,
+        hash: str = '',
+        chunk: int = 16384,
+        verbose: bool = False,
+        fid=sys.stdout,
+        mode: oct = 0o775
+    ):
     """
     Download a file from a NSIDC https server
 
@@ -570,19 +826,18 @@ def from_nsidc(HOST, username=None, password=None, build=True,
         # compare checksums
         if local and (hash != remote_hash):
             # convert to absolute path
-            local = os.path.abspath(local)
+            local = pathlib.Path(local).expanduser().absolute()
             # create directory if non-existent
-            if not os.access(os.path.dirname(local), os.F_OK):
-                os.makedirs(os.path.dirname(local), mode)
+            local.parent.mkdir(mode=mode, parents=True, exist_ok=True)
             # print file information
-            args = (posixpath.join(*HOST), local)
+            args = (posixpath.join(*HOST), str(local))
             logging.info('{0} -->\n\t{1}'.format(*args))
             # store bytes to file using chunked transfer encoding
             remote_buffer.seek(0)
-            with open(os.path.expanduser(local), 'wb') as f:
+            with local.open(mode='wb') as f:
                 shutil.copyfileobj(remote_buffer, f, chunk)
             # change the permissions mode
-            os.chmod(local, mode)
+            local.chmod(mode=mode)
         # return the bytesIO object
         remote_buffer.seek(0)
         return (remote_buffer, None)
@@ -595,7 +850,7 @@ _atl15_resolutions = ('01km', '10km', '20km', '40km')
 _resolutions = _atl14_resolutions + _atl15_resolutions
 
 # PURPOSE: build formatted query string for ICESat-2 release
-def cmr_query_release(release):
+def cmr_query_release(release: str | int | None):
     """
     Build formatted query string for ICESat-2 release
 
@@ -625,7 +880,7 @@ def cmr_query_release(release):
     return query_params
 
 # PURPOSE: check if the submitted ATL14/15 regions are valid
-def cmr_regions(region):
+def cmr_regions(region: str | list | None):
     """
     Check if the submitted ATL14/15 regions are valid
 
@@ -659,7 +914,7 @@ bb
         return region_list
 
 # PURPOSE: check if the submitted ATL14/15 regions are valid
-def cmr_resolutions(resolution):
+def cmr_resolutions(resolution: str | list | None):
     """
     Check if the submitted ATL14/15 resolutions are valid
 
@@ -693,12 +948,14 @@ def cmr_resolutions(resolution):
             warnings.warn("Listed resolution is not presently available")
         return resolution_list
 
-def cmr_readable_granules(product, **kwargs):
+def cmr_readable_granules(product: str, **kwargs):
     """
     Create list of readable granule names for CMR queries
 
     Parameters
     ----------
+    product: str
+        ICESat-2 data product
     regions: str, list or NoneType, default None
         ICESat-2 ATL14/15 region name
     resolutions: str, list or NoneType, default None
@@ -727,8 +984,11 @@ def cmr_readable_granules(product, **kwargs):
     return readable_granule_list
 
 # PURPOSE: filter the CMR json response for desired data files
-def cmr_filter_json(search_results, endpoint="data",
-    request_type="application/x-hdfeos"):
+def cmr_filter_json(
+        search_results: dict,
+        endpoint: str = "data",
+        request_type: str = "application/x-hdfeos"
+    ):
     """
     Filter the CMR json response for desired data files
 
@@ -780,9 +1040,18 @@ def cmr_filter_json(search_results, endpoint="data",
     return (producer_granule_ids, granule_urls)
 
 # PURPOSE: cmr queries for gridded land ice products
-def cmr(product=None, release=None, regions=None, resolutions=None,
-    provider='NSIDC_ECS', endpoint='data', request_type="application/x-hdfeos",
-    opener=None, verbose=False, fid=sys.stdout):
+def cmr(
+        product: str = None,
+        release: str = None,
+        regions: str | list | None = None,
+        resolutions: str | list | None = None,
+        provider: str = 'NSIDC_ECS',
+        endpoint: str = 'data',
+        request_type: str = "application/x-hdfeos",
+        opener = None,
+        verbose: bool = False,
+        fid = sys.stdout
+    ):
     """
     Query the NASA Common Metadata Repository (CMR) for ICESat-2 data
 
@@ -1016,8 +1285,8 @@ def query_resources(**kwargs):
             granule = s3_presigned_url(kwargs['bucket'], key)
         elif (kwargs['asset'] == 'nsidc-https'):
             # verify that granule exists locally
-            granule = ids[0]
-            if not os.access(granule, os.F_OK):
+            granule = pathlib.Path(ids[0])
+            if not granule.exists():
                 from_nsidc(urls[0], local=granule)
         elif (kwargs['asset'] == 'atlas-local'):
             # update url if using different format
@@ -1025,12 +1294,12 @@ def query_resources(**kwargs):
                 prefix,_ = posixpath.splitext(ids[0])
                 ids[0] = f'{prefix}.{kwargs["format"]}'
             # verify that granule exists locally
-            directory = os.path.expanduser(kwargs['directory'] or '.')
-            granule = os.path.abspath(os.path.join(directory, ids[0]))
-            if not os.access(granule, os.F_OK) and (kwargs['format'] == 'nc'):
+            directory = pathlib.Path(kwargs['directory'] or '.')
+            granule = directory.joinpath(ids[0]).expanduser().absolute()
+            if not granule.exists() and (kwargs['format'] == 'nc'):
                 from_nsidc(urls[0], local=granule)
-            elif not os.access(granule, os.F_OK):
-                raise FileNotFoundError(granule)
+            elif not granule.exists():
+                raise FileNotFoundError(str(granule))
     except Exception:
         # unavailable granule
         pass
@@ -1066,11 +1335,11 @@ def query_resources(**kwargs):
         # unreleased granule from local or project s3
         if (kwargs['asset'] == 'atlas-local'):
             # local granule for unreleased data
-            directory = os.path.expanduser(kwargs['directory'] or '.')
-            granule = os.path.abspath(os.path.join(directory, file))
+            directory = pathlib.Path(kwargs['directory'] or '.')
+            granule = directory.joinpath(file).expanduser().absolute()
             # verify that unreleased granule exists locally
-            if not os.access(granule, os.F_OK):
-                raise FileNotFoundError(granule)
+            if not granule.exists():
+                raise FileNotFoundError(str(granule))
         elif (kwargs['asset'] == 'atlas-s3'):
             # s3 urls for unreleased data
             # full s3 key path
