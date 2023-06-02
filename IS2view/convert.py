@@ -1,6 +1,6 @@
 """
 convert.py
-Written by Tyler Sutterley (11/2022)
+Written by Tyler Sutterley (06/2023)
 Utilities for converting gridded ICESat-2 files from native netCDF4
 
 PYTHON DEPENDENCIES:
@@ -13,12 +13,13 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 06/2023: using pathlib to define and expand paths
     Updated 11/2022: output variables and attributes in top-level group
         use netCDF4 directly due to changes in xarray backends
     Written 07/2022
 """
-import os
 import logging
+import pathlib
 import warnings
 import numpy as np
 
@@ -69,12 +70,12 @@ class convert():
         self.output = kwds['output']
         # split extension from netCDF4 file
         if isinstance(self.filename, str):
-            fileBasename,_ = os.path.splitext(self.filename)
+            filename = pathlib.Path(self.filename)
         else:
-            fileBasename,_ = os.path.splitext(self.filename.filename)
+            filename = pathlib.Path(self.filename.filename)
         # output zarr file
         if self.output is None:
-            self.output = os.path.expanduser(f'{fileBasename}.zarr')
+            self.output = filename.with_suffix('.zarr')
         # log input and output files
         logging.info(self.filename)
         logging.info(self.output)
