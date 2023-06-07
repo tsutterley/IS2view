@@ -7,6 +7,6 @@ matplotlib
 netCDF4
 numpy
 rioxarray
-s3fs
+s3fs[boto3]
 xarray
 zarr
