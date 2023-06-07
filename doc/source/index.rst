@@ -32,3 +32,10 @@ Interactive visualization and data extraction tool for ICESat-2 ATL14/15 Gridded
     api_reference/convert.rst
     api_reference/io.rst
     api_reference/utilities.rst
+
+.. toctree::
+    :maxdepth: 1
+    :hidden:
+    :caption: Release Notes
+
+    release_notes/Release-Notes.rst
