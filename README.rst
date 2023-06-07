@@ -4,7 +4,9 @@ IS2view
 
 |Language|
 |License|
+|PyPI Version|
 |Documentation Status|
+|zenodo|
 
 .. |Language| image:: https://img.shields.io/badge/python-v3.8-green.svg
    :target: https://www.python.org/
@@ -12,8 +14,14 @@ IS2view
 .. |License| image:: https://img.shields.io/badge/license-MIT-green.svg
    :target: https://github.com/tsutterley/IS2view/blob/main/LICENSE
 
+.. |PyPI Version| image:: https://img.shields.io/pypi/v/IS2view.svg
+   :target: https://pypi.python.org/pypi/IS2view/
+
 .. |Documentation Status| image:: https://readthedocs.org/projects/is2view/badge/?version=latest
    :target: https://is2view.readthedocs.io/en/latest/?badge=latest
+
+.. |zenodo| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.8015463.svg
+   :target: https://doi.org/10.5281/zenodo.8015463
 
 Interactive visualization and data extraction tool for ICESat-2 ATL14/15 Gridded Land Ice Height Products
 
