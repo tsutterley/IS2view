@@ -13,7 +13,7 @@ is developed in conjunction with other ICESat-2 projects.
 
 If you have used ``IS2view`` in your work, please consider citing our library:
 
-    T. C. Sutterley,
+    T. C. Sutterley and B. E. Smith,
     "IS2view: Interactive visualization and data extraction tool for
     ICESat-2 ATL14/15 Gridded Land Ice Height Products", (2023).
     `doi: 10.5281/zenodo.8015463 <https://doi.org/10.5281/zenodo.8015463>`_

@@ -1,3 +1,18 @@
+/* color adjustments to fit logo theme */
+.wy-menu > .caption > span.caption-text {
+    color: #74b9ce;
+}
+.wy-nav-top {
+    background-color: #74b9ce;
+    color: #eafdfd;
+}
+.wy-side-nav-search {
+    background-color: #74b9ce;
+}
+.wy-side-nav-search input[type="text"] {
+    border-color: #040613;
+}
+
 /* fix for position of equation numbers
  * https://github.com/rtfd/sphinx_rtd_theme/issues/301
  */
@@ -13,4 +28,13 @@
     display: inline-block;
     visibility: visible;
     margin-right: -0.7em;
+}
+
+/* fix for property line spacing
+* https://github.com/rtfd/sphinx_rtd_theme/issues/1301
+*/
+.property {
+    display: block !important;
+    padding-right: 8px;
+    max-width: 100%;
 }
