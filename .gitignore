@@ -47,13 +47,19 @@ _*.c
 .Rhistory
 __pycache__
 build/
+_build/
 dist/
 develop-eggs/
 run/
 wheels/
+.eggs/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache
+pythonenv*/
+setup-miniconda-patched-environment.yml
+.vscode
 # OS generated files #
 ######################
 .DS_Store
