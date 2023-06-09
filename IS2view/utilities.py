@@ -7,6 +7,7 @@ Download and management utilities
 UPDATE HISTORY:
     Updated 06/2023: using pathlib to define and expand paths
         add functions to retrieve and revoke NASA Earthdata User tokens
+        updated netCDF4 request type for NSIDC s3 bucket CMR queries
     Updated 12/2022: functions for managing and maintaining git repositories
     Updated 11/2022: can query for zarr datasets
     Updated 10/2022: public release of NSIDC s3 access
@@ -1248,8 +1249,8 @@ def query_resources(**kwargs):
     endpoint['atlas-local'] = 'data'
     # CMR request types
     request_type = {}
-    request_type['nsidc-s3'] = 'application/netcdf'
-    request_type['atlas-s3'] = 'application/netcdf'
+    request_type['nsidc-s3'] = 'application/x-netcdf'
+    request_type['atlas-s3'] = 'application/x-netcdf'
     request_type['nsidc-https'] = 'application/netcdf'
     request_type['atlas-local'] = 'application/netcdf'
 
