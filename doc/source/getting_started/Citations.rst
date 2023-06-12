@@ -53,6 +53,7 @@ This software is also dependent on other commonly used Python packages:
 - `rasterio: Access to geospatial raster data <https://rasterio.readthedocs.io/en/latest/>`_
 - `rioxarray: geospatial xarray extension powered by rasterio <https://github.com/corteva/rioxarray>`_
 - `s3fs: Pythonic file interface to S3 built on top of botocore <https://s3fs.readthedocs.io/en/latest/>`_
+- `setuptools_scm: manager for python package versions using scm metadata <https://pypi.org/project/setuptools-scm>`_
 - `xarray: N-D labeled arrays and datasets in Python <https://docs.xarray.dev/en/stable/>`_
 - `zarr: Chunked, compressed, N-dimensional arrays in Python <https://zarr.readthedocs.io/en/stable/>`_
 

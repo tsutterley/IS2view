@@ -28,10 +28,11 @@ Interactive visualization and data extraction tool for ICESat-2 ATL14/15 Gridded
     :hidden:
     :caption: API Reference
 
-    api_reference/IS2view.rst
     api_reference/convert.rst
     api_reference/io.rst
+    api_reference/tools.rst
     api_reference/utilities.rst
+    api_reference/visualization.rst
 
 .. toctree::
     :maxdepth: 1
