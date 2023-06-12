@@ -16,5 +16,6 @@ dependencies:
   - numpy>=1.21
   - rioxarray
   - s3fs
+  - setuptools_scm
   - xarray
   - zarr

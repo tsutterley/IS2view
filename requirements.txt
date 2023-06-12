@@ -8,5 +8,6 @@ netCDF4
 numpy
 rioxarray
 s3fs[boto3]
+setuptools_scm
 xarray
 zarr

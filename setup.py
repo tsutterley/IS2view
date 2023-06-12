@@ -21,11 +21,19 @@ else:
 
 # get version
 with open('version.txt', mode='r', encoding='utf8') as fh:
-    version = fh.read()
+    fallback_version = fh.read()
+
+# semantic version configuration for setuptools-scm
+setup_requires = ["setuptools_scm"]
+use_scm_version = {
+    "relative_to": __file__,
+    "local_scheme": "node-and-date",
+    "version_scheme": "python-simplified-semver",
+    "fallback_version":fallback_version,
+}
 
 setup(
     name='IS2view',
-    version=version,
     description=description,
     long_description=long_description,
     long_description_content_type=long_description_content_type,
@@ -42,9 +50,13 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
     keywords=keywords,
     packages=find_packages(),
     install_requires=install_requires,
+    setup_requires=setup_requires,
+    use_scm_version=use_scm_version,
     include_package_data=True,
 )

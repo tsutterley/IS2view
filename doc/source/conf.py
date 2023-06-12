@@ -10,10 +10,11 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-import os
+# import os
 # import sys
 import datetime
 # sys.path.insert(0, os.path.abspath('.'))
+from pkg_resources import get_distribution
 
 
 # -- Project information -----------------------------------------------------
@@ -24,8 +25,10 @@ copyright = f"2022\u2013{year}, Tyler C. Sutterley"
 author = 'Tyler Sutterley'
 
 # The full version, including alpha/beta/rc tags
-with open(os.path.abspath('../../version.txt')) as fh:
-    release = fh.read()
+# get semantic version from setuptools-scm
+version = get_distribution("IS2view").version
+# append "v" before the version
+release = f"v{version}"
 
 # -- General configuration ---------------------------------------------------
 
