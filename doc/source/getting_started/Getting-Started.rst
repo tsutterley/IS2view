@@ -84,6 +84,9 @@ Presently the products are produced for the following regions:
 - ``SV``: Svalbard
 - ``RA``: Russian High Arctic
 
+.. image:: ../_assets/ICESat-2_ATL1415_polar.png
+  :alt: ATL1415 polar regions
+
 Coordinate Reference System
 ###########################
 
