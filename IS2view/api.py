@@ -426,15 +426,18 @@ class Leaflet:
         kwargs: dict, default {}
             Additional keyword arguments for ``plot``
         """
+        # return if no geometries
+        if (len(self.geometries['features']) == 0):
+            return
         # create figure axis if non-existent
         if (ax is None):
             _, ax = plt.subplots()
         # create a geopandas GeoDataFrame from the geometries
-        gdf = gpd.GeoDataFrame.from_features(self.geometries,
-            crs=self.geometries['crs'])
         # convert coordinate reference system to map crs
+        gdf = gpd.GeoDataFrame.from_features(self.geometries,
+            crs=self.geometries['crs']).to_crs(self.crs)
         # create plot with all geometries
-        gdf.to_crs(self.crs).plot(ax=ax, **kwargs)
+        gdf.plot(ax=ax, **kwargs)
 
     @property
     def layers(self):

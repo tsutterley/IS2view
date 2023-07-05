@@ -36,7 +36,6 @@ Dependencies
 - `bottleneck: Fast NumPy array functions written in C <https://github.com/pydata/bottleneck>`_
 - `dask: Parallel computing with task scheduling <https://www.dask.org/>`_
 - `geopandas: Python tools for geographic data <http://geopandas.readthedocs.io/>`_
-- `h5netcdf: Pythonic interface to netCDF4 via h5py <https://h5netcdf.org/>`_
 - `ipyleaflet: Interactive maps in the Jupyter notebook <https://ipyleaflet.readthedocs.io/en/latest/>`_
 - `matplotlib: Python 2D plotting library <https://matplotlib.org/>`_
 - `netCDF4: Python interface to the netCDF C library <https://unidata.github.io/netcdf4-python/>`_
