@@ -5,6 +5,7 @@ dependencies:
   - boto3
   - bottleneck
   - dask
+  - geopandas
   - h5netcdf
   - ipyleaflet
   - ipywidgets

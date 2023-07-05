@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 u"""
-visualization.py
-Written by Tyler Sutterley (06/2023)
+api.py
+Written by Tyler Sutterley (07/2023)
 Plotting tools for visualizing rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
     numpy: Scientific Computing Tools For Python
         https://numpy.org
         https://numpy.org/doc/stable/user/numpy-for-matlab-users.html
+    geopandas: Python tools for geographic data
+        http://geopandas.readthedocs.io/
     ipywidgets: interactive HTML widgets for Jupyter notebooks and IPython
         https://ipywidgets.readthedocs.io/en/latest/
     ipyleaflet: Jupyter / Leaflet bridge enabling interactive maps
@@ -22,8 +24,10 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 07/2023: renamed module from IS2view.py to api.py
+        add plot function for added map geometries
+        add imshow function for visualizing current leaflet map
     Updated 06/2023: moved widgets functions to separate moddule
-        renamed module from IS2view.py to visualization.py
     Updated 12/2022: added case for warping input image
     Updated 11/2022: modifications for dask-chunked rasters
     Written 07/2022
@@ -42,6 +46,12 @@ from traitlets import HasTraits, Float, Tuple, observe
 from traitlets.utils.bunch import Bunch
 
 # attempt imports
+try:
+    import geopandas as gpd
+except (ImportError, ModuleNotFoundError) as exc:
+    warnings.filterwarnings("module")
+    warnings.warn("geopandas not available")
+    warnings.warn("Some functions will throw an exception if called")
 try:
     import ipywidgets
 except (ImportError, ModuleNotFoundError) as exc:
@@ -152,7 +162,7 @@ except (NameError, AttributeError):
     pass
 
 # draw ipyleaflet map
-class leaflet:
+class Leaflet:
     """Create interactive leaflet maps for visualizing ATL14/15 data
 
     Parameters
@@ -352,7 +362,7 @@ class leaflet:
         """
         # dump the geometries to a geojson file
         kwargs.update(self.geometries)
-        with open(filename, 'w') as fid:
+        with open(filename, mode='w') as fid:
             json.dump(kwargs, fid)
         # print the filename and dictionary structure
         logging.info(filename)
@@ -403,6 +413,28 @@ class leaflet:
             except ipyleaflet.ControlException as exc:
                 logging.info(f"{obj} already removed from map")
                 pass
+
+    # plot geometries
+    def plot(self, ax=None, **kwargs):
+        """Plot the current geometries in the coordinate reference
+        system (``crs``) of the map
+
+        Parameters
+        ----------
+        ax: obj, default None
+            Figure axis
+        kwargs: dict, default {}
+            Additional keyword arguments for ``plot``
+        """
+        # create figure axis if non-existent
+        if (ax is None):
+            _, ax = plt.subplots()
+        # create a geopandas GeoDataFrame from the geometries
+        gdf = gpd.GeoDataFrame.from_features(self.geometries,
+            crs=self.geometries['crs'])
+        # convert coordinate reference system to map crs
+        # create plot with all geometries
+        gdf.to_crs(self.crs).plot(ax=ax, **kwargs)
 
     @property
     def layers(self):
@@ -983,6 +1015,42 @@ class LeafletMap(HasTraits):
         # add colorbar
         self.add(self.colorbar)
         plt.close()
+
+    # save the current map as an image
+    def imshow(self, ax=None, **kwargs):
+        """Save the current map as a static image
+
+        Parameters
+        ----------
+        ax: obj, default None
+            Figure axis
+        kwargs: dict, default {}
+            Additional keyword arguments for ``imshow``
+        """
+        # create figure axis if non-existent
+        if (ax is None):
+            _, ax = plt.subplots()
+        # extract units
+        longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+        units = self._ds[self._variable].attrs['units'][0]
+        # clip image to map bounds
+        visible = self.clip_image(self._ds_selected)
+        # color bar keywords
+        cbar_kwargs = dict(label=f'{longname} [{units}]', orientation='horizontal')
+        visible.plot.imshow(ax=ax,
+            norm=self.norm,
+            interpolation="nearest",
+            cmap=self.cmap,
+            alpha=self.opacity,
+            add_colorbar=True,
+            add_labels=True,
+            cbar_kwargs=cbar_kwargs,
+            **kwargs
+        )
+        # set image extent
+        ax.set_xlim(self.extent[0], self.extent[1])
+        ax.set_ylim(self.extent[2], self.extent[3])
+        ax.set_aspect('equal', adjustable='box')
 
 @xr.register_dataset_accessor('timeseries')
 class TimeSeries(HasTraits):
