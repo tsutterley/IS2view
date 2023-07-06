@@ -1,13 +1,7 @@
-boto3
-bottleneck
-dask
-h5netcdf
 ipyleaflet
 matplotlib
 netCDF4
 numpy
 rioxarray
-s3fs[boto3]
 setuptools_scm
 xarray
-zarr

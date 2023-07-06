@@ -5,7 +5,6 @@ dependencies:
   - boto3
   - bottleneck
   - dask
-  - h5netcdf
   - ipyleaflet
   - ipywidgets
   - matplotlib
@@ -18,4 +17,3 @@ dependencies:
   - s3fs
   - setuptools_scm
   - xarray
-  - zarr

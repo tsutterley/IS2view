@@ -26,6 +26,8 @@ Add Contextual Layers
 Plot a Transect
 ###############
 
+Requires optional ``geopandas`` dependency.
+
 .. code-block:: python
 
    import geopandas
@@ -47,6 +49,8 @@ Plot a Transect
 
 Plot Multiple Time Series
 #########################
+
+Requires optional ``geopandas`` and ``fiona`` dependencies.
 
 .. code-block:: python
 
@@ -83,6 +87,8 @@ Plot Multiple Time Series
 
 Calculate Area Averages
 #######################
+
+Requires optional ``geopandas`` dependency.
 
 .. code-block:: python
 
@@ -125,7 +131,7 @@ Calculate Area Averages
       # set axis ticks to not use constant offset
       ax.xaxis.get_major_formatter().set_useOffset(False)
       # save average plot
-      plt.savefig('ATL15_{0}_{1}_{2}.pdf'.format(release,subregion,variable))
+      plt.savefig(f'ATL15_{release}_{subregion}_{variable}.pdf')
       # drop features for subregion
       m.geometries['features'] = []
 
@@ -134,3 +140,26 @@ Calculate Area Averages
    :align: center
 
    MEaSUREs Antarctic Boundaries from `Mouginot et al. (2017) <https://nsidc.org/data/NSIDC-0709/versions/2>`_
+
+Save a Map to a File
+####################
+
+Requires optional ``geopandas`` and ``owslib`` dependencies.
+
+.. code-block:: python
+
+   import matplotlib.pyplot as plt
+   # create a figure and axis
+   fig,ax = plt.subplots()
+   # create image of basemap
+   m.plot_basemap(ax=ax)
+   # create image of current map
+   ds.leaflet.imshow(ax=ax)
+   # add all geometries to the map
+   m.plot_geometries(ax=ax, color='red')
+   # save map plot
+   plt.savefig('map.png', bbox_inches='tight', dpi=300)
+
+.. figure:: ../_assets/map.png
+   :width: 600
+   :align: center
