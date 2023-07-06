@@ -5,9 +5,6 @@ Written by Tyler Sutterley (07/2023)
 Plotting tools for visualizing rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
-    numpy: Scientific Computing Tools For Python
-        https://numpy.org
-        https://numpy.org/doc/stable/user/numpy-for-matlab-users.html
     geopandas: Python tools for geographic data
         http://geopandas.readthedocs.io/
     ipywidgets: interactive HTML widgets for Jupyter notebooks and IPython
@@ -17,6 +14,11 @@ PYTHON DEPENDENCIES:
     matplotlib: Python 2D plotting library
         http://matplotlib.org/
         https://github.com/matplotlib/matplotlib
+    numpy: Scientific Computing Tools For Python
+        https://numpy.org
+        https://numpy.org/doc/stable/user/numpy-for-matlab-users.html
+    OWSLib: Pythonic interface for Open Geospatial Consortium (OGC) web services
+        https://owslib.readthedocs.io/
     rasterio: Access to geospatial raster data
         https://github.com/rasterio/rasterio
         https://rasterio.readthedocs.io
@@ -25,7 +27,7 @@ PYTHON DEPENDENCIES:
 
 UPDATE HISTORY:
     Updated 07/2023: renamed module from IS2view.py to api.py
-        add plot function for added map geometries
+        add plot functions for map basemaps and added geometries
         add imshow function for visualizing current leaflet map
     Updated 06/2023: moved widgets functions to separate moddule
     Updated 12/2022: added case for warping input image
@@ -73,6 +75,12 @@ try:
 except (ImportError, ModuleNotFoundError) as exc:
     warnings.filterwarnings("module")
     warnings.warn("matplotlib not available")
+    warnings.warn("Some functions will throw an exception if called")
+try:
+    import owslib.wms
+except (ImportError, ModuleNotFoundError) as exc:
+    warnings.filterwarnings("module")
+    warnings.warn("owslib not available")
     warnings.warn("Some functions will throw an exception if called")
 try:
     import rasterio.transform
@@ -414,8 +422,47 @@ class Leaflet:
                 logging.info(f"{obj} already removed from map")
                 pass
 
+    # plot basemap
+    def plot_basemap(self, ax=None, **kwargs):
+        """Plot the current basemap
+
+        Parameters
+        ----------
+        ax: obj, default None
+            Figure axis
+        kwargs: dict, default {}
+            Additional keyword arguments for ``wms.getmap``
+        """
+        # set default keyword arguments
+        kwargs.setdefault('layers', ['BlueMarble_NextGeneration'])
+        kwargs.setdefault('format', 'image/png')
+        kwargs.setdefault('srs', self.map.crs['name'])
+        # create figure axis if non-existent
+        if (ax is None):
+            _, ax = plt.subplots()
+        # get the pixel bounds and resolution of the map
+        (left, top), (right, bottom) = self.map.pixel_bounds
+        resolution = self.map.crs['resolutions'][int(self.map.zoom)]
+        # calculate the size of the map in pixels
+        kwargs.setdefault('size', [int((right-left)), int((bottom-top))])
+        # calculate the bounding box of the map in projected coordinates
+        bbox = [None]*4
+        bbox[0] = self.map.crs['origin'][0] + left*resolution
+        bbox[1] = self.map.crs['origin'][1] - bottom*resolution
+        bbox[2] = self.map.crs['origin'][0] + right*resolution
+        bbox[3] = self.map.crs['origin'][1] - top*resolution
+        kwargs.setdefault('bbox', bbox)
+        # create WMS request for basemap image at bounds and resolution
+        srs = kwargs['srs'].replace(':', '').lower()
+        url = f'https://gibs.earthdata.nasa.gov/wms/{srs}/best/wms.cgi?'
+        wms = owslib.wms.WebMapService(url=url, version='1.1.1')
+        basemap = wms.getmap(**kwargs)
+        # read WMS layer and plot
+        img = plt.imread(io.BytesIO(basemap.read()))
+        ax.imshow(img, extent=[bbox[0],bbox[2],bbox[1],bbox[3]])
+
     # plot geometries
-    def plot(self, ax=None, **kwargs):
+    def plot_geometries(self, ax=None, **kwargs):
         """Plot the current geometries in the coordinate reference
         system (``crs``) of the map
 

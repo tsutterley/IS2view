@@ -26,6 +26,8 @@ Add Contextual Layers
 Plot a Transect
 ###############
 
+Requires optional ``geopandas`` dependency.
+
 .. code-block:: python
 
    import geopandas
@@ -47,6 +49,8 @@ Plot a Transect
 
 Plot Multiple Time Series
 #########################
+
+Requires optional ``geopandas`` and ``fiona`` dependencies.
 
 .. code-block:: python
 
@@ -83,6 +87,8 @@ Plot Multiple Time Series
 
 Calculate Area Averages
 #######################
+
+Requires optional ``geopandas`` dependency.
 
 .. code-block:: python
 
@@ -138,15 +144,19 @@ Calculate Area Averages
 Save a Map to a File
 ####################
 
+Requires optional ``geopandas`` and ``owslib`` dependencies.
+
 .. code-block:: python
 
    import matplotlib.pyplot as plt
    # create a figure and axis
    fig,ax = plt.subplots()
+   # create image of basemap
+   m.plot_basemap(ax=ax)
    # create image of current map
    ds.leaflet.imshow(ax=ax)
    # add all geometries to the map
-   m.plot(ax=ax, color='red')
+   m.plot_geometries(ax=ax, color='red')
    # save map plot
    plt.savefig('map.png', bbox_inches='tight', dpi=300)
 
