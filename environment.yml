@@ -2,9 +2,6 @@ name: IS2view
 channels:
   - conda-forge
 dependencies:
-  - boto3
-  - bottleneck
-  - dask
   - ipyleaflet
   - ipywidgets
   - matplotlib
@@ -14,6 +11,5 @@ dependencies:
   - python>=3.6
   - numpy>=1.21
   - rioxarray
-  - s3fs
   - setuptools_scm
   - xarray

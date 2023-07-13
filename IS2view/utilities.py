@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 u"""
 utilities.py
-Written by Tyler Sutterley (06/2023)
+Written by Tyler Sutterley (07/2023)
 Download and management utilities
 
 UPDATE HISTORY:
+    Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: using pathlib to define and expand paths
         add functions to retrieve and revoke NASA Earthdata User tokens
         updated netCDF4 request type for NSIDC s3 bucket CMR queries
@@ -47,17 +48,11 @@ else:
 try:
     import boto3
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("boto3 not available")
-    warnings.warn("Some functions will throw an exception if called")
+    logging.debug("boto3 not available")
 try:
     import s3fs
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("s3fs not available")
-    warnings.warn("Some functions will throw an exception if called")
-# ignore warnings
-warnings.filterwarnings("ignore")
+    logging.debug("s3fs not available")
 
 # PURPOSE: get absolute path within a package from a relative path
 def get_data_path(relpath: list | str | pathlib.Path):

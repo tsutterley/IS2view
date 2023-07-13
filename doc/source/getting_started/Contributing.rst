@@ -4,6 +4,7 @@ Contribution Guidelines
 
 We welcome and invite contributions from anyone at any career stage and with any amount of coding experience towards the development of ``IS2view``.
 We appreciate any and all contributions made to the project.
+Please read our `code of conduct <./Code-of-Conduct.html>`_ before contributing to ``IS2view`` development.
 You will be recognized for your work by being listed as one of the `project contributors <./Citations.html#contributors>`_.
 
 Ways to Contribute
@@ -51,7 +52,7 @@ Steps to Contribute
 2) Either by cloning to your local system or working in `GitHub Codespaces <https://github.com/features/codespaces>`_, create a work environment to make your changes.
 3) Add your fork as the ``origin`` remote and the original project repository as the ``upstream`` remote.  While this step isn't a necessary, it allows you to keep your fork up to date in the future.
 4) Create a new branch to do your work.
-5) Make your changes on the new branch and add yourself to the list of `project contributors <./Citations.html#contributors>`_.
+5) Make your changes on the new branch and add yourself to the list of project `contributors <https://github.com/tsutterley/IS2view/blob/main/CONTRIBUTORS.rst>`_.
 6) Push your work to GitHub under your fork of the project.
 7) Submit a `Pull Request <https://github.com/tsutterley/IS2view/pulls>`_ from your forked branch to the project repository.
 

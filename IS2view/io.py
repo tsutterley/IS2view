@@ -1,6 +1,6 @@
 """
 io.py
-Written by Tyler Sutterley (11/2022)
+Written by Tyler Sutterley (07/2023)
 Utilities for reading gridded ICESat-2 files using rasterio and xarray
 
 PYTHON DEPENDENCIES:
@@ -18,28 +18,22 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 07/2023: use logging instead of warnings for import attempts
     Written 11/2022
 """
 import os
 import logging
-import warnings
 import numpy as np
 
 # attempt imports
 try:
     import rioxarray
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("rioxarray not available")
-    warnings.warn("Some functions will throw an exception if called")
+    logging.critical("rioxarray not available")
 try:
     import xarray as xr
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("xarray not available")
-    warnings.warn("Some functions will throw an exception if called")
-# ignore warnings
-warnings.filterwarnings("ignore")
+    logging.critical("xarray not available")
 
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
