@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 tools.py
-Written by Tyler Sutterley (12/2022)
+Written by Tyler Sutterley (07/2023)
 User interface tools for Jupyter Notebooks
 
 PYTHON DEPENDENCIES:
@@ -15,6 +15,7 @@ PYTHON DEPENDENCIES:
         https://github.com/matplotlib/matplotlib
 
 UPDATE HISTORY:
+    Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: moved widgets functions to separate module
     Updated 12/2022: added case for warping input image
     Updated 11/2022: modifications for dask-chunked rasters
@@ -23,24 +24,17 @@ UPDATE HISTORY:
 import os
 import copy
 import logging
-import warnings
 import numpy as np
 
 # attempt imports
 try:
     import ipywidgets
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("ipywidgets not available")
-    warnings.warn("Some functions will throw an exception if called")
+    logging.debug("ipywidgets not available")
 try:
     import matplotlib.cm as cm
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("matplotlib not available")
-    warnings.warn("Some functions will throw an exception if called")
-# ignore warnings
-warnings.filterwarnings("ignore")
+    logging.debug("matplotlib not available")
 
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'

@@ -29,6 +29,7 @@ UPDATE HISTORY:
     Updated 07/2023: renamed module from IS2view.py to api.py
         add plot functions for map basemaps and added geometries
         add imshow function for visualizing current leaflet map
+        use logging instead of warnings for import attempts
     Updated 06/2023: moved widgets functions to separate moddule
     Updated 12/2022: added case for warping input image
     Updated 11/2022: modifications for dask-chunked rasters
@@ -41,7 +42,6 @@ import json
 import base64
 import asyncio
 import logging
-import warnings
 import numpy as np
 import collections.abc
 from traitlets import HasTraits, Float, Tuple, observe
@@ -51,21 +51,15 @@ from traitlets.utils.bunch import Bunch
 try:
     import geopandas as gpd
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("geopandas not available")
-    warnings.warn("Some functions will throw an exception if called")
+    logging.debug("geopandas not available")
 try:
     import ipywidgets
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("ipywidgets not available")
-    warnings.warn("Some functions will throw an exception if called")
+    logging.debug("ipywidgets not available")
 try:
     import ipyleaflet
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("ipyleaflet not available")
-    warnings.warn("Some functions will throw an exception if called")
+    logging.debug("ipyleaflet not available")
 try:
     import matplotlib
     import matplotlib.cm as cm
@@ -73,30 +67,20 @@ try:
     import matplotlib.pyplot as plt
     import matplotlib.colors as colors
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("matplotlib not available")
-    warnings.warn("Some functions will throw an exception if called")
+    logging.critical("matplotlib not available")
 try:
     import owslib.wms
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("owslib not available")
-    warnings.warn("Some functions will throw an exception if called")
+    logging.debug("owslib not available")
 try:
     import rasterio.transform
     import rasterio.warp
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("rasterio not available")
-    warnings.warn("Some functions will throw an exception if called")
+    logging.critical("rasterio not available")
 try:
     import xarray as xr
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("xarray not available")
-    warnings.warn("Some functions will throw an exception if called")
-# ignore warnings
-warnings.filterwarnings("ignore")
+    logging.critical("xarray not available")
 
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
@@ -454,6 +438,9 @@ class Leaflet:
         kwargs.setdefault('bbox', bbox)
         # create WMS request for basemap image at bounds and resolution
         srs = kwargs['srs'].replace(':', '').lower()
+        # url of NASA Global Imagery Browse Services (GIBS)
+        # https://wiki.earthdata.nasa.gov/display/GIBS
+        # https://worldview.earthdata.nasa.gov/
         url = f'https://gibs.earthdata.nasa.gov/wms/{srs}/best/wms.cgi?'
         wms = owslib.wms.WebMapService(url=url, version='1.1.1')
         basemap = wms.getmap(**kwargs)

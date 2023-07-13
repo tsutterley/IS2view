@@ -1,6 +1,6 @@
 """
 convert.py
-Written by Tyler Sutterley (06/2023)
+Written by Tyler Sutterley (07/2023)
 Utilities for converting gridded ICESat-2 files from native netCDF4
 
 PYTHON DEPENDENCIES:
@@ -13,6 +13,7 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: using pathlib to define and expand paths
     Updated 11/2022: output variables and attributes in top-level group
         use netCDF4 directly due to changes in xarray backends
@@ -20,24 +21,17 @@ UPDATE HISTORY:
 """
 import logging
 import pathlib
-import warnings
 import numpy as np
 
 # attempt imports
 try:
     import netCDF4
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("netCDF4 not available")
-    warnings.warn("Some functions will throw an exception if called")
+    logging.critical("netCDF4 not available")
 try:
     import xarray as xr
 except (ImportError, ModuleNotFoundError) as exc:
-    warnings.filterwarnings("module")
-    warnings.warn("xarray not available")
-    warnings.warn("Some functions will throw an exception if called")
-# ignore warnings
-warnings.filterwarnings("ignore")
+    logging.critical("xarray not available")
 
 class convert():
     np.seterr(invalid='ignore')
