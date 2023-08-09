@@ -106,3 +106,4 @@ None*.png
 #######################
 .ipynb_checkpoints
 Untitled.ipynb
+core.*

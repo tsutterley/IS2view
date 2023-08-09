@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 u"""
 utilities.py
-Written by Tyler Sutterley (07/2023)
+Written by Tyler Sutterley (08/2023)
 Download and management utilities
 
 UPDATE HISTORY:
+    Updated 08/2023: added ATL14/15 Release-03 data products
     Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: using pathlib to define and expand paths
         add functions to retrieve and revoke NASA Earthdata User tokens
@@ -840,7 +841,7 @@ def from_nsidc(
 
 # available regions and resolutions
 _products = ('ATL14', 'ATL15')
-_regions = ('AA', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV')
+_regions = ('AA', 'A1', 'A2', 'A3', 'A4', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV')
 _atl14_resolutions = ('100m',)
 _atl15_resolutions = ('01km', '10km', '20km', '40km')
 _resolutions = _atl14_resolutions + _atl15_resolutions
@@ -1225,7 +1226,7 @@ def query_resources(**kwargs):
     # verify inputs
     assert kwargs['asset'] in _assets
     assert kwargs['product'] in _products
-    assert kwargs['release'] in ('001', '002')
+    assert kwargs['release'] in ('001', '002', '003')
     assert kwargs['region'] in _regions
     assert kwargs['resolution'] in _resolutions
     assert kwargs['format'] in _formats
@@ -1317,6 +1318,7 @@ def query_resources(**kwargs):
         cycles = {}
         cycles['001'] = (3, 11)
         cycles['002'] = (3, 14)
+        cycles['003'] = (3, 19)
         # format granule for unreleased data
         file = file_format.format(
             kwargs['product'],
