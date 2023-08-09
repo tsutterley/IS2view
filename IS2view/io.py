@@ -1,6 +1,6 @@
 """
 io.py
-Written by Tyler Sutterley (07/2023)
+Written by Tyler Sutterley (08/2023)
 Utilities for reading gridded ICESat-2 files using rasterio and xarray
 
 PYTHON DEPENDENCIES:
@@ -18,12 +18,14 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 08/2023: use xarray h5netcdf to read files streaming from s3
     Updated 07/2023: use logging instead of warnings for import attempts
     Written 11/2022
 """
 import os
 import logging
 import numpy as np
+from io import IOBase
 
 # attempt imports
 try:
@@ -58,7 +60,9 @@ def from_file(granule, group=None, format='nc', **kwargs):
     ds: object
         xarray dataset
     """
-    if format in ('nc',):
+    if isinstance(granule, IOBase) and (format == 'nc'):
+        return from_xarray(granule, group=group, engine='h5netcdf', **kwargs)
+    elif format in ('nc',):
         return from_rasterio(granule, group=group, **kwargs)
     elif format in ('zarr',):
         return from_xarray(granule, group=group, engine=format, **kwargs)

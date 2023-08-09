@@ -15,13 +15,33 @@ These products are available for `regions around the Arctic and for the Antarcti
     :align: center
 
     digraph {
-        S [label="Select high-quality ATL11 data" shape=box style="filled" color="gray"]
-        M [label="Generate model fitting and regularization matrices" shape=box style="filled" color="gray"]
-        L [label="Applying least-squares fitting technique" shape=box style="filled" color="gray"]
-        E [label="Calculate model errors" shape=box style="filled" color="gray"]
-        S -> M
-        M -> L
-        L -> E
+        S [label="Select high-quality ATL11 data"
+            fontname="Lato"
+            fontsize=11
+            shape=box
+            style="filled"
+            color="gray"]
+        M [label="Generate model fitting and regularization matrices"
+            fontname="Lato"
+            fontsize=11
+            shape=box
+            style="filled"
+            color="gray"]
+        L [label="Applying least-squares fitting technique"
+            fontname="Lato"
+            fontsize=11
+            shape=box
+            style="filled"
+            color="gray"]
+        E [label="Calculate model errors"
+            fontname="Lato"
+            fontsize=11
+            shape=box
+            style="filled"
+            color="gray"]
+        S -> M [arrowsize=0.8]
+        M -> L [arrowsize=0.8]
+        L -> E [arrowsize=0.8]
     }
 
 The products derived from this technique include a static Digital Elevation Model (DEM)

@@ -2,21 +2,33 @@
 Setup and Installation
 ======================
 
-``IS2view`` is available for download from the `GitHub repository <https://github.com/tsutterley/IS2view>`_.
-and from `Python Package Index (pypi) <https://pypi.org/project/IS2view/>`_.
-The contents of the GitHub repository can be downloaded as a
-`zipped file <https://github.com/tsutterley/IS2view/archive/main.zip>`_  or cloned.
-To use this repository, please fork into your own account and then clone onto your system.
+``IS2view`` is available for download from the `GitHub repository <https://github.com/tsutterley/IS2view>`_,
+the `Python Package Index (pypi) <https://pypi.org/project/IS2view/>`_,
+and from `conda-forge <https://anaconda.org/conda-forge/is2view>`_.
+
+The simplest installation for most users will likely be using ``conda``:
+
+.. code-block:: bash
+
+    conda install -c conda-forge is2view
+
+``conda`` installed versions of ``IS2view`` can be upgraded to the latest stable release:
+
+.. code-block:: bash
+
+    conda update is2view
+
+To use the development repository, please fork ``IS2view`` into your own account and then clone onto your system:
 
 .. code-block:: bash
 
     git clone https://github.com/tsutterley/IS2view.git
 
-Can then install using ``setuptools``
+``IS2view`` can then be installed within the package directory using ``setuptools``:
 
 .. code-block:: bash
 
-    python setup.py install
+    python3 setup.py install
 
 or ``pip``
 
@@ -24,7 +36,7 @@ or ``pip``
 
     python3 -m pip install --user .
 
-Alternatively can install the utilities directly from GitHub with ``pip``:
+The development version of ``IS2view`` can also be installed directly from GitHub using ``pip``:
 
 .. code-block:: bash
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 tools.py
-Written by Tyler Sutterley (07/2023)
+Written by Tyler Sutterley (08/2023)
 User interface tools for Jupyter Notebooks
 
 PYTHON DEPENDENCIES:
@@ -15,6 +15,7 @@ PYTHON DEPENDENCIES:
         https://github.com/matplotlib/matplotlib
 
 UPDATE HISTORY:
+    Updated 08/2023: added options for ATL14/15 Release-03 data
     Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: moved widgets functions to separate module
     Updated 12/2022: added case for warping input image
@@ -76,19 +77,21 @@ class widgets:
         self.directory.layout.display = 'none'
 
         # dropdown menu for setting ATL14/15 release
-        release_list = ['001','002']
+        release_list = ['001','002','003']
         self.release = ipywidgets.Dropdown(
             options=release_list,
             value='002',
             description='Release:',
             description_tooltip=("Release: ATL14/15 data release\n\t"
                 "001: Release-01\n\t"
-                "002: Release-02"),
+                "002: Release-02\n\t"
+                "003: Release-03"),
             disabled=False,
             style=self.style,
         )
 
         # dropdown menu for setting ATL14/15 region
+        # currently set as a default the release 01 and 02 regions
         region_list = ['AA', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV']
         self.region = ipywidgets.Dropdown(
             options=region_list,
@@ -259,6 +262,10 @@ class widgets:
         """
         centers = {}
         centers['AA'] = (-90.0, 0.0)
+        centers['A1'] = (-90.0, 0.0)
+        centers['A2'] = (-90.0, 0.0)
+        centers['A3'] = (-90.0, 0.0)
+        centers['A4'] = (-90.0, 0.0)
         centers['CN'] = (79.0, -85.0)
         centers['CS'] = (70.0, -73.0)
         centers['GL'] = (72.5, -45.0)
@@ -273,6 +280,10 @@ class widgets:
         """
         zooms = {}
         zooms['AA'] = 1
+        zooms['A1'] = 1
+        zooms['A2'] = 1
+        zooms['A3'] = 1
+        zooms['A4'] = 1
         zooms['CN'] = 2
         zooms['CS'] = 2
         zooms['GL'] = 1
@@ -351,8 +362,38 @@ class widgets:
         # append lag12 group
         if (int(self.release.value) > 1):
             group_list.append('dhdt_lag12')
+        if (int(self.release.value) > 2):
+            group_list.append('dhdt_lag16')
         # set group list
         self.group.options = group_list
+        # change regions for Antarctica for Release-03+
+        if (int(self.release.value) > 2):
+            region_list = ['A1', 'A2', 'A3', 'A4', 'CN', 'CS',
+                'GL', 'IS', 'RA', 'SV']
+            description_tooltip=("Region: ATL14/15 region\n\t"
+                "A1: Antarctica (0\u00B0 to -90\u00B0\n\t"
+                "A2: Antarctica (-90\u00B0 to -180\u00B0)\n\t"
+                "A3: Antarctica (180\u00B0 to 90\u00B0)\n\t"
+                "A4: Antarctica (90\u00B0 to 0\u00B0)\n\t"
+                "CN: Northern Canadian Archipelago\n\t"
+                "CS: Southern Canadian Archipelago\n\t"
+                "GL: Greenland\n\t"
+                "IS: Iceland\n\t"
+                "SV: Svalbard\n\t"
+                "RA: Russian High Arctic")
+        else:
+            region_list = ['AA', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV']
+            description_tooltip=("Region: ATL14/15 region\n\t"
+                "AA: Antarctica\n\t"
+                "CN: Northern Canadian Archipelago\n\t"
+                "CS: Southern Canadian Archipelago\n\t"
+                "GL: Greenland\n\t"
+                "IS: Iceland\n\t"
+                "SV: Svalbard\n\t"
+                "RA: Russian High Arctic")
+        # set region list
+        self.region.options = region_list
+        self.region.description_tooltip = description_tooltip
 
     def set_variables(self, *args):
         """sets the list of available variables in a group

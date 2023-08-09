@@ -5,6 +5,7 @@ IS2view
 |Language|
 |License|
 |PyPI Version|
+|Anaconda-Server|
 |Documentation Status|
 |zenodo|
 
@@ -16,6 +17,9 @@ IS2view
 
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/IS2view.svg
    :target: https://pypi.python.org/pypi/IS2view/
+
+.. |Anaconda-Server| image:: https://img.shields.io/conda/vn/conda-forge/is2view
+   :target: https://anaconda.org/conda-forge/is2view
 
 .. |Documentation Status| image:: https://readthedocs.org/projects/is2view/badge/?version=latest
    :target: https://is2view.readthedocs.io/en/latest/?badge=latest
