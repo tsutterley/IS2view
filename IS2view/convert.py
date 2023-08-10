@@ -34,6 +34,9 @@ try:
 except (ImportError, ModuleNotFoundError) as exc:
     logging.critical("xarray not available")
 
+# default groups to skip
+_default_skip_groups = ('METADATA', 'orbit_info', 'quality_assessment',)
+
 class convert():
     np.seterr(invalid='ignore')
     def __init__(self, filename=None, output=None):
@@ -59,7 +62,7 @@ class convert():
         """
         kwds.setdefault('filename', self.filename)
         kwds.setdefault('output', self.output)
-        kwds.setdefault('skip_groups', ('METADATA',))
+        kwds.setdefault('skip_groups', _default_skip_groups)
         # update filenames
         self.filename = kwds['filename']
         self.output = kwds['output']
