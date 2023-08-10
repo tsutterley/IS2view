@@ -1227,13 +1227,6 @@ def query_resources(**kwargs):
     kwargs.setdefault('region', 'AA')
     kwargs.setdefault('resolution', '01km')
     kwargs.setdefault('format', 'nc')
-    # verify inputs
-    assert kwargs['asset'] in _assets
-    assert kwargs['product'] in _products
-    assert kwargs['release'] in ('001', '002', '003')
-    assert kwargs['region'] in _regions
-    assert kwargs['resolution'] in _resolutions
-    assert kwargs['format'] in _formats
 
     # CMR providers
     provider = {}
@@ -1258,6 +1251,15 @@ def query_resources(**kwargs):
         kwargs['region'] = ['A1', 'A2', 'A3', 'A4']
     elif isinstance(kwargs['region'], str):
         kwargs['region'] = [kwargs['region']]
+
+    # verify inputs
+    assert kwargs['asset'] in _assets
+    assert kwargs['product'] in _products
+    assert kwargs['release'] in ('001', '002', '003')
+    for r in kwargs['region']:
+        assert r in _regions
+    assert kwargs['resolution'] in _resolutions
+    assert kwargs['format'] in _formats
 
     # attempt to get resource
     granules = []
