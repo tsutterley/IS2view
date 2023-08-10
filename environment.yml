@@ -2,10 +2,10 @@ name: IS2view
 channels:
   - conda-forge
 dependencies:
+  - h5netcdf
   - ipyleaflet
   - ipywidgets
   - matplotlib
-  - netCDF4
   - notebook
   - pip
   - python>=3.6

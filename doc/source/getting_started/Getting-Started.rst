@@ -94,9 +94,12 @@ Regions
 #######
 
 ICESat-2 Gridded Land Ice Height products are produced for land ice regions where there are repeat track observations.
-Presently the products are produced for the following regions:
+For Release-03, the products are produced for the following regions:
 
-- ``AA``: Antarctica
+- ``A1``: Antarctica (0\ |degree| to 90\ |degree|\)
+- ``A2``: Antarctica (0\ |degree| to -90\ |degree|\)
+- ``A3``: Antarctica (-90\ |degree| to -180\ |degree|\)
+- ``A4``: Antarctica (90\ |degree| to 180\ |degree|\)
 - ``CN``: Northern Canadian Archipelago
 - ``CS``: Southern Canadian Archipelago
 - ``GL``: Greenland
@@ -104,8 +107,8 @@ Presently the products are produced for the following regions:
 - ``SV``: Svalbard
 - ``RA``: Russian High Arctic
 
-.. image:: ../_assets/ICESat-2_ATL1415_polar.png
-  :alt: ATL1415 polar regions
+.. image:: ../_assets/ICESat-2_ATL1415_003.png
+  :alt: ATL1415 regions
 
 Coordinate Reference System
 ###########################
@@ -132,7 +135,7 @@ are projected in the `EPSG:3413 <https://epsg.io/3413>`_ coordinate reference sy
 | Units                          | meters                                  |
 +--------------------------------+-----------------------------------------+
 
-The Southern Hemisphere regions (``AA``)
+The Southern Hemisphere regions (``A1``, ``A2``, ``A3``, ``A4``)
 are projected in the `EPSG:3031 <https://epsg.io/3413>`_ coordinate reference system.
 
 +--------------------------------+-----------------------------------------+

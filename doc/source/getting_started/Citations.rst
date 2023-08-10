@@ -44,7 +44,7 @@ This software is also dependent on other commonly used Python packages:
 
 - `ipyleaflet: Interactive maps in the Jupyter notebook <https://ipyleaflet.readthedocs.io/en/latest/>`_
 - `matplotlib: Python 2D plotting library <https://matplotlib.org/>`_
-- `netCDF4: Python interface to the netCDF C library <https://unidata.github.io/netcdf4-python/>`_
+- `h5netcdf: Pythonic interface to netCDF4 via h5py <https://h5netcdf.org/>`_
 - `numpy: Scientific Computing Tools For Python <https://numpy.org>`_
 - `rasterio: Access to geospatial raster data <https://rasterio.readthedocs.io/en/latest/>`_
 - `rioxarray: geospatial xarray extension powered by rasterio <https://github.com/corteva/rioxarray>`_
@@ -58,7 +58,6 @@ Optional Dependencies
 - `bottleneck: Fast NumPy array functions written in C <https://github.com/pydata/bottleneck>`_
 - `dask: Parallel computing with task scheduling <https://www.dask.org/>`_
 - `geopandas: Python tools for geographic data <http://geopandas.readthedocs.io/>`_
-- `h5netcdf: Pythonic interface to netCDF4 via h5py <https://h5netcdf.org/>`_
 - `OWSLib: Pythonic interface for Open Geospatial Consortium (OGC) web services <https://owslib.readthedocs.io/>`_
 - `s3fs: Pythonic file interface to S3 built on top of botocore <https://s3fs.readthedocs.io/en/latest/>`_
 - `zarr: Chunked, compressed, N-dimensional arrays in Python <https://zarr.readthedocs.io/en/stable/>`_
