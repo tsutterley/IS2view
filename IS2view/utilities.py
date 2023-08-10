@@ -1120,6 +1120,10 @@ def cmr(
     # append keys for querying specific granules
     CMR_KEYS.append("&options[readable_granule_name][pattern]=true")
     CMR_KEYS.append("&options[spatial][or]=true")
+    # set regions for Release-3+
+    if (int(release) > 2) and (regions == 'AA'):
+        region = ['A1', 'A2', 'A3', 'A4']
+    # get the list of readable granules
     readable_granule_list = cmr_readable_granules(product,
         regions=regions, resolutions=resolutions)
     for gran in readable_granule_list:
@@ -1249,9 +1253,14 @@ def query_resources(**kwargs):
     request_type['atlas-s3'] = 'application/x-netcdf'
     request_type['nsidc-https'] = 'application/netcdf'
     request_type['atlas-local'] = 'application/netcdf'
+    # set regions for Release-3+
+    if (int(kwargs['release']) > 2) and (kwargs['region'] == 'AA'):
+        kwargs['region'] = ['A1', 'A2', 'A3', 'A4']
+    elif isinstance(kwargs['region'], str):
+        kwargs['region'] = [kwargs['region']]
 
     # attempt to get resource
-    granule = None
+    granules = []
     try:
         # query CMR
         ids, urls = cmr(product=kwargs['product'],
@@ -1271,38 +1280,56 @@ def query_resources(**kwargs):
                 authorization_header=True)
             # get AWS s3 file system object
             session = s3_filesystem(_s3_endpoints['nsidc'])
-            granule = session.open(urls[0], mode='rb')
+            # append to granules
+            for i,url in enumerate(urls):
+                granules.append(session.open(url, mode='rb'))
         elif (kwargs['asset'] == 'atlas-s3'):
-            # update url if using different format
-            if kwargs['format'] in ('zarr',):
-                prefix,_ = posixpath.splitext(urls[0])
-                urls[0] = f'{prefix}.{kwargs["format"]}'
-            # get presigned url for granule
-            key = s3_key(urls[0])
-            granule = s3_presigned_url(kwargs['bucket'], key)
+            # for each url from CMR
+            for i,url in enumerate(urls):
+                # update url if using different format
+                if kwargs['format'] in ('zarr',):
+                    prefix,_ = posixpath.splitext(url)
+                    url = f'{prefix}.{kwargs["format"]}'
+                # get presigned url for granule
+                key = s3_key(url)
+                # append to granules
+                granules.append(s3_presigned_url(kwargs['bucket'], key))
         elif (kwargs['asset'] == 'nsidc-https'):
-            # verify that granule exists locally
-            granule = pathlib.Path(ids[0])
-            if not granule.exists():
-                from_nsidc(urls[0], local=granule)
+            # for each url from CMR
+            for i,url in enumerate(urls):
+                # verify that granule exists locally
+                granule = pathlib.Path(ids[i])
+                if not granule.exists():
+                    from_nsidc(url, local=granule)
+                # append to granules
+                granules.append(granule)
         elif (kwargs['asset'] == 'atlas-local'):
-            # update url if using different format
-            if kwargs['format'] in ('zarr',):
-                prefix,_ = posixpath.splitext(ids[0])
-                ids[0] = f'{prefix}.{kwargs["format"]}'
-            # verify that granule exists locally
-            directory = pathlib.Path(kwargs['directory'] or '.')
-            granule = directory.joinpath(ids[0]).expanduser().absolute()
-            if not granule.exists() and (kwargs['format'] == 'nc'):
-                from_nsidc(urls[0], local=granule)
-            elif not granule.exists():
-                raise FileNotFoundError(str(granule))
+            # for each url from CMR
+            for i,url in enumerate(urls):
+                # update url if using different format
+                if kwargs['format'] in ('zarr',):
+                    prefix,_ = posixpath.splitext(ids[i])
+                    ids[i] = f'{prefix}.{kwargs["format"]}'
+                # verify that granule exists locally
+                directory = pathlib.Path(kwargs['directory'] or '.')
+                granule = directory.joinpath(ids[i]).expanduser().absolute()
+                if not granule.exists() and (kwargs['format'] == 'nc'):
+                    from_nsidc(url, local=granule)
+                elif not granule.exists():
+                    raise FileNotFoundError(str(granule))
+                # append to granules
+                granules.append(granule)
     except Exception:
         # unavailable granule
         pass
     else:
-        # return the granule
-        return granule
+        # return the granules
+        if (len(granules) == 1):
+            # return as string for a single granule
+            return granules[0]
+        else:
+            # return as list for multiple granules
+            return granules
 
     # try getting unreleased or old granule
     try:
@@ -1319,39 +1346,48 @@ def query_resources(**kwargs):
         cycles['001'] = (3, 11)
         cycles['002'] = (3, 14)
         cycles['003'] = (3, 19)
-        # format granule for unreleased data
-        file = file_format.format(
-            kwargs['product'],
-            kwargs['region'],
-            cycles[kwargs['release']][0],
-            cycles[kwargs['release']][1],
-            kwargs['resolution'],
-            int(kwargs['release']),
-            int(kwargs['version']),
-            kwargs['format']
-        )
-        # unreleased granule from local or project s3
-        if (kwargs['asset'] == 'atlas-local'):
-            # local granule for unreleased data
-            directory = pathlib.Path(kwargs['directory'] or '.')
-            granule = directory.joinpath(file).expanduser().absolute()
-            # verify that unreleased granule exists locally
-            if not granule.exists():
-                raise FileNotFoundError(str(granule))
-        elif (kwargs['asset'] == 'atlas-s3'):
-            # s3 urls for unreleased data
-            # full s3 key path
-            key = posixpath.join('ATLAS', kwargs['product'],
-                kwargs['release'], '2019', file)
-            # get presigned url for granule
-            granule = s3_presigned_url(kwargs['bucket'], key)
+        # for each requested region
+        for region in kwargs['region']:
+            # format granule for unreleased data
+            file = file_format.format(
+                kwargs['product'],
+                region,
+                cycles[kwargs['release']][0],
+                cycles[kwargs['release']][1],
+                kwargs['resolution'],
+                int(kwargs['release']),
+                int(kwargs['version']),
+                kwargs['format']
+            )
+            # unreleased granule from local or project s3
+            if (kwargs['asset'] == 'atlas-local'):
+                # local granule for unreleased data
+                directory = pathlib.Path(kwargs['directory'] or '.')
+                granule = directory.joinpath(file).expanduser().absolute()
+                # verify that unreleased granule exists locally
+                if not granule.exists():
+                    raise FileNotFoundError(str(granule))
+            elif (kwargs['asset'] == 'atlas-s3'):
+                # s3 urls for unreleased data
+                # full s3 key path
+                key = posixpath.join('ATLAS', kwargs['product'],
+                    kwargs['release'], '2019', file)
+                # get presigned url for granule
+                granule = s3_presigned_url(kwargs['bucket'], key)
+            # append to granules
+            granules.append(granule)
     except Exception:
         # unavailable granule
         pass
     else:
-        # return the granule
-        return granule
+        # return the granules
+        if (len(granules) == 1):
+            # return as string for a single granule
+            return granules[0]
+        else:
+            # return as list for multiple granules
+            return granules
 
     # raise exception if no granule available
-    if granule is None:
+    if (len(granule) == 0):
         raise ValueError('Unavailable granule')
