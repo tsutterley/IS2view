@@ -94,7 +94,7 @@ Regions
 #######
 
 ICESat-2 Gridded Land Ice Height products are produced for land ice regions where there are repeat track observations.
-For Release-03, the products are produced for the following regions:
+Starting with Release-03, the products are produced for the following regions:
 
 - ``A1``: Antarctica (0\ |degree| to 90\ |degree|\)
 - ``A2``: Antarctica (0\ |degree| to -90\ |degree|\)
