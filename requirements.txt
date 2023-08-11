@@ -1,6 +1,6 @@
+h5netcdf
 ipyleaflet
 matplotlib
-netCDF4
 numpy
 rioxarray
 setuptools_scm

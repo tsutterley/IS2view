@@ -4,8 +4,8 @@ Written by Tyler Sutterley (08/2023)
 Utilities for reading gridded ICESat-2 files using rasterio and xarray
 
 PYTHON DEPENDENCIES:
-    netCDF4: Python interface to the netCDF C library
-        https://unidata.github.io/netcdf4-python/netCDF4/index.html
+    h5netcdf: Pythonic interface to netCDF4 via h5py
+        https://h5netcdf.org/
     numpy: Scientific Computing Tools For Python
         https://numpy.org
         https://numpy.org/doc/stable/user/numpy-for-matlab-users.html
@@ -19,17 +19,17 @@ PYTHON DEPENDENCIES:
 
 UPDATE HISTORY:
     Updated 08/2023: use xarray h5netcdf to read files streaming from s3
+        add merging of datasets in preparation for Release-3 data
     Updated 07/2023: use logging instead of warnings for import attempts
     Written 11/2022
 """
 import os
 import logging
-import numpy as np
-from io import IOBase
 
 # attempt imports
 try:
     import rioxarray
+    import rioxarray.merge
 except (ImportError, ModuleNotFoundError) as exc:
     logging.critical("rioxarray not available")
 try:
@@ -40,36 +40,51 @@ except (ImportError, ModuleNotFoundError) as exc:
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
 
+# default engine for xarray
+_default_engine = dict(nc='h5netcdf', zarr='zarr')
+
 def from_file(granule, group=None, format='nc', **kwargs):
     """
-    Wrapper function for reading gridded ICESat-2 files
+    Opens gridded ICESat-2 files as ``xarray`` datasets
 
     Parameters
     ----------
-    granule: str
-        presigned url or path for granule
+    granule: str or list
+        presigned url or path for granule(s)
     group: str or NoneType, default None
         Data group to read
     format: str, default 'nc'
         Data format to read
     kwargs: dict
-        Keyword arguments to pass to nc reader
+        Keyword arguments to pass to ``xarray`` reader
 
     Returns
     -------
     ds: object
-        xarray dataset
+        ``xarray`` dataset
     """
-    if isinstance(granule, IOBase) and (format == 'nc'):
-        return from_xarray(granule, group=group, engine='h5netcdf', **kwargs)
-    elif format in ('nc',):
-        return from_rasterio(granule, group=group, **kwargs)
-    elif format in ('zarr',):
-        return from_xarray(granule, group=group, engine=format, **kwargs)
+    # set default engine
+    kwargs.setdefault('engine', _default_engine[format])
+    # check if merging multiple granules
+    if isinstance(granule, list):
+        # merge multiple granules
+        datasets = []
+        # read each granule and append to list
+        for g in granule:
+            datasets.append(from_xarray(g, group=group, **kwargs))
+        # merge datasets
+        ds = rioxarray.merge.merge_datasets(datasets)
+    elif isinstance(granule, str) and format in ('nc',):
+        ds = from_rasterio(granule, group=group, **kwargs)
+    else:
+        # read a single granule
+        ds = from_xarray(granule, group=group, **kwargs)
+    # return the dataset
+    return ds
 
 def from_rasterio(granule, group=None, **kwargs):
     """
-    Reads gridded ICESat-2 files using rioxarray
+    Reads gridded ICESat-2 files using ``rioxarray``
 
     Parameters
     ----------
@@ -78,19 +93,19 @@ def from_rasterio(granule, group=None, **kwargs):
     group: str or NoneType, default None
         Data group to read
     kwargs: dict
-        Keyword arguments to pass to rioxarray
+        Keyword arguments to pass to ``rioxarray``
 
     Returns
     -------
     ds: object
-        xarray dataset
+        ``xarray`` dataset
     """
     ds = rioxarray.open_rasterio(granule, group=group, masked=True, **kwargs)
     return ds
 
-def from_xarray(granule, group=None, engine='zarr', **kwargs):
+def from_xarray(granule, group=None, engine='h5netcdf', **kwargs):
     """
-    Reads gridded ICESat-2 files using xarray
+    Reads gridded ICESat-2 files using ``xarray``
 
     Parameters
     ----------
@@ -98,15 +113,15 @@ def from_xarray(granule, group=None, engine='zarr', **kwargs):
         presigned url or path for granule
     group: str or NoneType, default None
         Data group to read
-    engine: str, default 'zarr'
+    engine: str, default 'h5netcdf'
         Engine to use when reading files
     kwargs: dict
-        Keyword arguments to pass to xarray
+        Keyword arguments to pass to ``xarray``
 
     Returns
     -------
     ds: object
-        xarray dataset
+        ``xarray`` dataset
     """
     kwargs.setdefault('variable', [])
     variable = kwargs.pop('variable')

@@ -36,9 +36,9 @@ Interactive visualization and data extraction tool for ICESat-2 ATL14/15 Gridded
 Dependencies
 ############
 
+- `h5netcdf: Pythonic interface to netCDF4 via h5py <https://h5netcdf.org/>`_
 - `ipyleaflet: Interactive maps in the Jupyter notebook <https://ipyleaflet.readthedocs.io/en/latest/>`_
 - `matplotlib: Python 2D plotting library <https://matplotlib.org/>`_
-- `netCDF4: Python interface to the netCDF C library <https://unidata.github.io/netcdf4-python/>`_
 - `numpy: Scientific Computing Tools For Python <https://numpy.org>`_
 - `rasterio: Access to geospatial raster data <https://rasterio.readthedocs.io/en/latest/>`_
 - `rioxarray: geospatial xarray extension powered by rasterio <https://github.com/corteva/rioxarray>`_

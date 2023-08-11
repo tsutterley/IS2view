@@ -1,11 +1,11 @@
 """
 convert.py
-Written by Tyler Sutterley (07/2023)
+Written by Tyler Sutterley (08/2023)
 Utilities for converting gridded ICESat-2 files from native netCDF4
 
 PYTHON DEPENDENCIES:
-    netCDF4: Python interface to the netCDF C library
-        https://unidata.github.io/netcdf4-python/netCDF4/index.html
+    h5netcdf: Pythonic interface to netCDF4 via h5py
+        https://h5netcdf.org/
     numpy: Scientific Computing Tools For Python
         https://numpy.org
         https://numpy.org/doc/stable/user/numpy-for-matlab-users.html
@@ -13,6 +13,7 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 08/2023: use h5netcdf as the netCDF4 driver for xarray
     Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: using pathlib to define and expand paths
     Updated 11/2022: output variables and attributes in top-level group
@@ -25,13 +26,16 @@ import numpy as np
 
 # attempt imports
 try:
-    import netCDF4
+    import h5netcdf
 except (ImportError, ModuleNotFoundError) as exc:
-    logging.critical("netCDF4 not available")
+    logging.critical("h5netcdf not available")
 try:
     import xarray as xr
 except (ImportError, ModuleNotFoundError) as exc:
     logging.critical("xarray not available")
+
+# default groups to skip
+_default_skip_groups = ('METADATA', 'orbit_info', 'quality_assessment',)
 
 class convert():
     np.seterr(invalid='ignore')
@@ -58,7 +62,7 @@ class convert():
         """
         kwds.setdefault('filename', self.filename)
         kwds.setdefault('output', self.output)
-        kwds.setdefault('skip_groups', ('METADATA',))
+        kwds.setdefault('skip_groups', _default_skip_groups)
         # update filenames
         self.filename = kwds['filename']
         self.output = kwds['output']
@@ -74,10 +78,10 @@ class convert():
         logging.info(self.filename)
         logging.info(self.output)
         # find each group within the input netCDF4 file
-        with netCDF4.Dataset(self.filename) as source:
+        with h5netcdf.File(self.filename) as source:
             # copy variables and attributes from the top-level group
             # copy everything from the netCDF4 file to the zarr file
-            ds = xr.open_dataset(xr.backends.NetCDF4DataStore(source))
+            ds = xr.open_dataset(xr.backends.h5netcdf_.H5NetCDFStore(source))
             ds.to_zarr(store=self.output, mode='a')
             # for each group
             for group in source.groups.keys():
@@ -88,5 +92,5 @@ class convert():
                 logging.info(group)
                 nc = source.groups.get(group)
                 # copy everything from the netCDF4 group to the zarr file
-                ds = xr.open_dataset(xr.backends.NetCDF4DataStore(nc))
+                ds = xr.open_dataset(xr.backends.h5netcdf_.H5NetCDFStore(nc))
                 ds.to_zarr(store=self.output, mode='a', group=group)

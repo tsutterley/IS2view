@@ -52,7 +52,7 @@ class widgets:
         self.style = copy.copy(kwargs['style'])
 
         # dropdown menu for setting asset
-        asset_list = ['nsidc-https','nsidc-s3','atlas-s3','atlas-local']
+        asset_list = ['nsidc-https', 'nsidc-s3', 'atlas-s3', 'atlas-local']
         self.asset = ipywidgets.Dropdown(
             options=asset_list,
             value='nsidc-https',
@@ -77,7 +77,7 @@ class widgets:
         self.directory.layout.display = 'none'
 
         # dropdown menu for setting ATL14/15 release
-        release_list = ['001','002','003']
+        release_list = ['001', '002', '003']
         self.release = ipywidgets.Dropdown(
             options=release_list,
             value='002',
@@ -247,6 +247,10 @@ class widgets:
         """
         projections = {}
         projections['AA'] = 'South'
+        projections['A1'] = 'South'
+        projections['A2'] = 'South'
+        projections['A3'] = 'South'
+        projections['A4'] = 'South'
         projections['CN'] = 'North'
         projections['CS'] = 'North'
         projections['GL'] = 'North'
@@ -368,13 +372,14 @@ class widgets:
         self.group.options = group_list
         # change regions for Antarctica for Release-03+
         if (int(self.release.value) > 2):
-            region_list = ['A1', 'A2', 'A3', 'A4', 'CN', 'CS',
+            region_list = ['AA', 'A1', 'A2', 'A3', 'A4', 'CN', 'CS',
                 'GL', 'IS', 'RA', 'SV']
             description_tooltip=("Region: ATL14/15 region\n\t"
-                "A1: Antarctica (0\u00B0 to -90\u00B0\n\t"
-                "A2: Antarctica (-90\u00B0 to -180\u00B0)\n\t"
-                "A3: Antarctica (180\u00B0 to 90\u00B0)\n\t"
-                "A4: Antarctica (90\u00B0 to 0\u00B0)\n\t"
+                "AA: Antarctica (merged)\n\t"
+                "A1: Antarctica (0\u00B0 to 90\u00B0)\n\t"
+                "A2: Antarctica (0\u00B0 to -90\u00B0)\n\t"
+                "A3: Antarctica (-90\u00B0 to -180\u00B0)\n\t"
+                "A4: Antarctica (90\u00B0 to 180\u00B0)\n\t"
                 "CN: Northern Canadian Archipelago\n\t"
                 "CS: Southern Canadian Archipelago\n\t"
                 "GL: Greenland\n\t"
