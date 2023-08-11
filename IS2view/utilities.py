@@ -1120,9 +1120,9 @@ def cmr(
     # append keys for querying specific granules
     CMR_KEYS.append("&options[readable_granule_name][pattern]=true")
     CMR_KEYS.append("&options[spatial][or]=true")
-    # set regions for Release-3+
+    # set as subregions for Release-3+ for merging into single dataset
     if (int(release) > 2) and (regions == 'AA'):
-        region = ['A1', 'A2', 'A3', 'A4']
+        regions = ['A1', 'A2', 'A3', 'A4']
     # get the list of readable granules
     readable_granule_list = cmr_readable_granules(product,
         regions=regions, resolutions=resolutions)
