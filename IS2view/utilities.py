@@ -1391,5 +1391,5 @@ def query_resources(**kwargs):
             return granules
 
     # raise exception if no granule available
-    if (len(granule) == 0):
+    if (len(granules) == 0):
         raise ValueError('Unavailable granule')
