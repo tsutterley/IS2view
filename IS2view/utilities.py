@@ -6,6 +6,7 @@ Download and management utilities
 
 UPDATE HISTORY:
     Updated 08/2023: added ATL14/15 Release-03 data products
+        add option to specify the start and end cycle for a local granule
     Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: using pathlib to define and expand paths
         add functions to retrieve and revoke NASA Earthdata User tokens
@@ -34,6 +35,7 @@ import pathlib
 import builtins
 import warnings
 import posixpath
+import traceback
 import subprocess
 import calendar, time
 if sys.version_info[0] == 2:
@@ -1224,6 +1226,7 @@ def query_resources(**kwargs):
     kwargs.setdefault('product', 'ATL15')
     kwargs.setdefault('release', '002')
     kwargs.setdefault('version', '01')
+    kwargs.setdefault('cycles', None)
     kwargs.setdefault('region', 'AA')
     kwargs.setdefault('resolution', '01km')
     kwargs.setdefault('format', 'nc')
@@ -1323,6 +1326,7 @@ def query_resources(**kwargs):
                 granules.append(granule)
     except Exception:
         # unavailable granule
+        logging.debug(traceback.format_exc())
         pass
     else:
         # return the granules
@@ -1343,19 +1347,22 @@ def query_resources(**kwargs):
         # 6: data release
         # 7: data version
         file_format = '{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.{7}'
-        # start and end cycle for releases
-        cycles = {}
-        cycles['001'] = (3, 11)
-        cycles['002'] = (3, 14)
-        cycles['003'] = (3, 19)
+        # use default start and end cycle
+        if kwargs['cycles'] is None:
+            # start and end cycle for releases
+            cycles = {}
+            cycles['001'] = (3, 11)
+            cycles['002'] = (3, 14)
+            cycles['003'] = (3, 19)
+            kwargs['cycles'] = cycles[kwargs['release']]
         # for each requested region
         for region in kwargs['region']:
             # format granule for unreleased data
             file = file_format.format(
                 kwargs['product'],
                 region,
-                cycles[kwargs['release']][0],
-                cycles[kwargs['release']][1],
+                int(kwargs['cycles'][0]),
+                int(kwargs['cycles'][1]),
                 kwargs['resolution'],
                 int(kwargs['release']),
                 int(kwargs['version']),
@@ -1380,6 +1387,7 @@ def query_resources(**kwargs):
             granules.append(granule)
     except Exception:
         # unavailable granule
+        logging.debug(traceback.format_exc())
         pass
     else:
         # return the granules
