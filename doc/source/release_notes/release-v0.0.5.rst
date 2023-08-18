@@ -8,6 +8,10 @@
 * ``feat``: add merging of ``xarray`` datasets for R003 Antarctica (`#32 <https://github.com/tsutterley/IS2view/pull/32>`_)
 * ``docs``: add plot Release-3 Antarctic subregions (`#32 <https://github.com/tsutterley/IS2view/pull/32>`_)
 * ``feat``: can query multiple granules for merging (`#32 <https://github.com/tsutterley/IS2view/pull/32>`_)
+* ``docs``: switch to RTD ``build.os`` (`#33 <https://github.com/tsutterley/IS2view/pull/33>`_)
+* ``ci``: use ``mamba`` for CI builds (`#33 <https://github.com/tsutterley/IS2view/pull/33>`_)
+* ``feat``: add option for viewing full screen leaflet map (`#33 <https://github.com/tsutterley/IS2view/pull/33>`_)
+* ``feat``: add option to specify the start and end cycle for a local granule (`#33 <https://github.com/tsutterley/IS2view/pull/33>`_)
 
 .. __: https://github.com/tsutterley/IS2view/releases/tag/0.0.5
 
