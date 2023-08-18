@@ -23,16 +23,22 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up conda ${{ matrix.python-version }}
-      uses: conda-incubator/setup-miniconda@v2
+    - name: Set up mamba ${{ matrix.python-version }}
+      uses: mamba-org/setup-micromamba@v1
       with:
-        auto-update-conda: true
-        python-version: ${{ matrix.python-version }}
-        activate-environment: IS2view
+        micromamba-version: '1.3.1-0'
         environment-file: environment.yml
-    - name: Create conda Test Environment
-      run: |
-        conda install flake8 pytest pytest-cov pytest-runner cython
+        init-shell: bash
+        environment-name: IS2view
+        cache-environment: true
+        post-cleanup: 'all'
+        create-args: >-
+          python=${{ matrix.python-version }}
+          flake8
+          pytest
+          pytest-cov
+          pytest-runner
+          cython
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
