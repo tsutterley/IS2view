@@ -1249,9 +1249,13 @@ def query_resources(**kwargs):
     request_type['atlas-s3'] = 'application/x-netcdf'
     request_type['nsidc-https'] = 'application/netcdf'
     request_type['atlas-local'] = 'application/netcdf'
-    # set regions for Release-3+
-    if (int(kwargs['release']) > 2) and (kwargs['region'] == 'AA'):
+    # convert region variable to list
+    if (int(kwargs['release']) > 2) and (kwargs['region'].upper() == 'AA'):
+        # set Antarctic sub-regions for Release-3+
         kwargs['region'] = ['A1', 'A2', 'A3', 'A4']
+    elif (kwargs['region'].lower() == 'north'):
+        # set for merging Arctic regions into a single dataset
+        kwargs['region'] = ['CS', 'CN', 'GL', 'IS', 'RA', 'SV']
     elif isinstance(kwargs['region'], str):
         kwargs['region'] = [kwargs['region']]
 
@@ -1259,6 +1263,8 @@ def query_resources(**kwargs):
     assert kwargs['asset'] in _assets
     assert kwargs['product'] in _products
     assert kwargs['release'] in ('001', '002', '003')
+    if kwargs['cycles'] is not None:
+        assert (len(kwargs['cycles']) == 2), 'cycles should be length 2'
     for r in kwargs['region']:
         assert r in _regions
     assert kwargs['resolution'] in _resolutions
