@@ -1353,7 +1353,7 @@ def query_resources(**kwargs):
             cycles = {}
             cycles['001'] = (3, 11)
             cycles['002'] = (3, 14)
-            cycles['003'] = (3, 19)
+            cycles['003'] = (3, 18)
             kwargs['cycles'] = cycles[kwargs['release']]
         # for each requested region
         for region in kwargs['region']:
