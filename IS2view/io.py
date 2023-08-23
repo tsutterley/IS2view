@@ -82,7 +82,7 @@ def open_dataset(granule,
             )
         # merge datasets
         ds = rioxarray.merge.merge_datasets(datasets)
-    elif isinstance(granule, str):
+    else:
         # read a single granule
         ds = from_file(granule,
             group=group,
