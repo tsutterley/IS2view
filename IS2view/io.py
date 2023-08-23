@@ -51,7 +51,7 @@ def open_dataset(granule,
         **kwargs
     ):
     """
-    Opens gridded ICESat-2 files as ``xarray`` datasets
+    Reads and optionally merges gridded ICESat-2 files
 
     Parameters
     ----------
@@ -98,7 +98,7 @@ def from_file(granule,
         **kwargs
     ):
     """
-    Opens a gridded ICESat-2 file as a ``xarray`` datasets
+    Reads a gridded ICESat-2 file using ``rioxarray`` or ``xarray``
 
     Parameters
     ----------
