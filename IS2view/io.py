@@ -69,21 +69,24 @@ def open_dataset(granule,
     ds: object
         ``xarray`` dataset
     """
-    # set default engine
-    kwargs.setdefault('engine', _default_engine[format])
     # check if merging multiple granules
     if isinstance(granule, list):
         # merge multiple granules
         datasets = []
         # read each granule and append to list
         for g in granule:
-            datasets.append(from_file(g, group=group, **kwargs))
+            datasets.append(from_file(g,
+                group=group,
+                format=format,
+                **kwargs)
+            )
         # merge datasets
         ds = rioxarray.merge.merge_datasets(datasets)
     elif isinstance(granule, str):
         # read a single granule
         ds = from_file(granule,
             group=group,
+            format=format,
             **kwargs
         )
     # return the dataset
@@ -91,6 +94,7 @@ def open_dataset(granule,
 
 def from_file(granule,
         group: str | None = None,
+        format: str = 'nc',
         **kwargs
     ):
     """
@@ -102,6 +106,8 @@ def from_file(granule,
         presigned url or path for granule
     group: str or NoneType, default None
         Data group to read
+    format: str, default 'nc'
+        Data format to read
     kwargs: dict
         Keyword arguments to pass to ``xarray`` reader
 
@@ -110,6 +116,8 @@ def from_file(granule,
     ds: object
         ``xarray`` dataset
     """
+    # set default engine
+    kwargs.setdefault('engine', _default_engine[format])
     if isinstance(granule, str) and format in ('nc',):
         ds = from_rasterio(granule,
             group=group,
