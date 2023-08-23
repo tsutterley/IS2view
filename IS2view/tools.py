@@ -50,6 +50,9 @@ class widgets:
         logging.basicConfig(level=kwargs['loglevel'])
         # set style
         self.style = copy.copy(kwargs['style'])
+        # pass through some ipywidgets objects
+        self.HBox = ipywidgets.HBox
+        self.VBox = ipywidgets.VBox
 
         # dropdown menu for setting asset
         asset_list = ['nsidc-https', 'nsidc-s3', 'atlas-s3', 'atlas-local']
