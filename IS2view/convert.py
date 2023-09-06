@@ -27,11 +27,11 @@ import numpy as np
 # attempt imports
 try:
     import h5netcdf
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("h5netcdf not available")
 try:
     import xarray as xr
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("xarray not available")
 
 # default groups to skip

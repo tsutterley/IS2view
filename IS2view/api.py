@@ -51,15 +51,15 @@ from traitlets.utils.bunch import Bunch
 # attempt imports
 try:
     import geopandas as gpd
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("geopandas not available")
 try:
     import ipywidgets
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("ipywidgets not available")
 try:
     import ipyleaflet
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("ipyleaflet not available")
 try:
     import matplotlib
@@ -67,20 +67,20 @@ try:
     import matplotlib.colorbar
     import matplotlib.pyplot as plt
     import matplotlib.colors as colors
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("matplotlib not available")
 try:
     import owslib.wms
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("owslib not available")
 try:
     import rasterio.transform
     import rasterio.warp
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("rasterio not available")
 try:
     import xarray as xr
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("xarray not available")
 
 # set environmental variable for anonymous s3 access

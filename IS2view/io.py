@@ -32,11 +32,11 @@ import logging
 try:
     import rioxarray
     import rioxarray.merge
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("rioxarray not available")
 try:
     import xarray as xr
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("xarray not available")
 
 # set environmental variable for anonymous s3 access

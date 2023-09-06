@@ -50,11 +50,11 @@ else:
 # attempt imports
 try:
     import boto3
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("boto3 not available")
 try:
     import s3fs
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("s3fs not available")
 
 # PURPOSE: get absolute path within a package from a relative path

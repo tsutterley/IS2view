@@ -30,11 +30,11 @@ import numpy as np
 # attempt imports
 try:
     import ipywidgets
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("ipywidgets not available")
 try:
     import matplotlib.cm as cm
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("matplotlib not available")
 
 # set environmental variable for anonymous s3 access
