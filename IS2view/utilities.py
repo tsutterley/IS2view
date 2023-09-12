@@ -1224,7 +1224,7 @@ def query_resources(**kwargs):
     kwargs.setdefault('bucket', 'is2view')
     kwargs.setdefault('directory', None)
     kwargs.setdefault('product', 'ATL15')
-    kwargs.setdefault('release', '002')
+    kwargs.setdefault('release', '003')
     kwargs.setdefault('version', '01')
     kwargs.setdefault('cycles', None)
     kwargs.setdefault('region', 'AA')

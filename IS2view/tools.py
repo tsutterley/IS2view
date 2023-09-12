@@ -83,7 +83,7 @@ class widgets:
         release_list = ['001', '002', '003']
         self.release = ipywidgets.Dropdown(
             options=release_list,
-            value='002',
+            value='003',
             description='Release:',
             description_tooltip=("Release: ATL14/15 data release\n\t"
                 "001: Release-01\n\t"
@@ -94,13 +94,18 @@ class widgets:
         )
 
         # dropdown menu for setting ATL14/15 region
-        # currently set as a default the release 01 and 02 regions
-        region_list = ['AA', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV']
+        # set as a default the release 03+ regions
+        region_list = ['AA', 'A1', 'A2', 'A3', 'A4', 'CN', 'CS',
+            'GL', 'IS', 'RA', 'SV']
         self.region = ipywidgets.Dropdown(
             options=region_list,
             description='Region:',
             description_tooltip=("Region: ATL14/15 region\n\t"
-                "AA: Antarctica\n\t"
+                "AA: Antarctica (merged)\n\t"
+                "A1: Antarctica (0\u00B0 to 90\u00B0)\n\t"
+                "A2: Antarctica (0\u00B0 to -90\u00B0)\n\t"
+                "A3: Antarctica (-90\u00B0 to -180\u00B0)\n\t"
+                "A4: Antarctica (90\u00B0 to 180\u00B0)\n\t"
                 "CN: Northern Canadian Archipelago\n\t"
                 "CS: Southern Canadian Archipelago\n\t"
                 "GL: Greenland\n\t"
