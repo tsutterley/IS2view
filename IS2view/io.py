@@ -56,7 +56,7 @@ def open_dataset(granule,
     Parameters
     ----------
     granule: str or list
-        presigned url or path for granule(s)
+        presigned url or path for granule(s) as a s3fs object
     group: str or NoneType, default None
         Data group to read
     format: str, default 'nc'
