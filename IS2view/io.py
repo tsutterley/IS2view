@@ -160,7 +160,6 @@ def from_rasterio(granule,
     )
     return ds
 
-
 def from_xarray(granule,
         group: str | None = None,
         engine: str = 'h5netcdf',

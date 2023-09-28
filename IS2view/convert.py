@@ -58,7 +58,7 @@ class convert():
         Parameters
         ----------
         **kwds: dict
-            keyword arguments for output zarr converter
+            keyword arguments for output
         """
         kwds.setdefault('filename', self.filename)
         kwds.setdefault('output', self.output)
@@ -67,7 +67,7 @@ class convert():
         self.filename = kwds['filename']
         self.output = kwds['output']
         # split extension from netCDF4 file
-        if isinstance(self.filename, str):
+        if isinstance(self.filename, (str, pathlib.Path)):
             filename = pathlib.Path(self.filename)
         else:
             filename = pathlib.Path(self.filename.filename)
