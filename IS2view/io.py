@@ -35,6 +35,10 @@ try:
 except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("rioxarray not available")
 try:
+    import dask
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
+    logging.critical("dask not available")
+try:
     import xarray as xr
 except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("xarray not available")
@@ -48,6 +52,7 @@ _default_engine = dict(nc='h5netcdf', zarr='zarr')
 def open_dataset(granule,
         group: str | None = None,
         format: str = 'nc',
+        parallel: bool = True,
         **kwargs
     ):
     """
@@ -73,13 +78,24 @@ def open_dataset(granule,
     if isinstance(granule, list):
         # merge multiple granules
         datasets = []
+        closers = []
+        if parallel:
+            opener = dask.delayed(from_file)
+            getattrs = dask.delayed(getattr)
+        else:
+            opener = from_file
+            getattrs = getattr
         # read each granule and append to list
         for g in granule:
-            datasets.append(from_file(g,
+            datasets.append(opener(g,
                 group=group,
                 format=format,
                 **kwargs)
             )
+        closers = [getattrs(ds, "_close") for ds in datasets]
+        # read datasets as dask arrays
+        if parallel:
+            datasets, closers = dask.compute(datasets, closers)
         # merge datasets
         ds = rioxarray.merge.merge_datasets(datasets)
     else:
