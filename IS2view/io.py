@@ -66,6 +66,8 @@ def open_dataset(granule,
         Data group to read
     format: str, default 'nc'
         Data format to read
+    parallel: bool, default True
+        Open files in parallel using ``dask.delayed``
     kwargs: dict
         Keyword arguments to pass to ``xarray`` reader
 
