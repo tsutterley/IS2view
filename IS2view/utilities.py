@@ -1160,7 +1160,7 @@ def cmr(
 
 # available assets for finding data
 _assets = ('nsidc-s3', 'atlas-s3', 'nsidc-https', 'atlas-local')
-# availabel formats for accessing data
+# available formats for accessing data
 _formats = ('nc', 'zarr')
 
 # PURPOSE: queries CMR or s3 for available granules
