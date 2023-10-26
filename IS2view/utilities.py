@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 u"""
 utilities.py
-Written by Tyler Sutterley (08/2023)
+Written by Tyler Sutterley (10/2023)
 Download and management utilities
 
 UPDATE HISTORY:
+    Updated 10/2023: filter CMR request type using regular expressions
     Updated 08/2023: added ATL14/15 Release-03 data products
         add option to specify the start and end cycle for a local granule
     Updated 07/2023: use logging instead of warnings for import attempts
@@ -986,7 +987,7 @@ def cmr_readable_granules(product: str, **kwargs):
 def cmr_filter_json(
         search_results: dict,
         endpoint: str = "data",
-        request_type: str = "application/x-hdfeos"
+        request_type: str = r"application/x-hdfeos"
     ):
     """
     Filter the CMR json response for desired data files
@@ -1032,7 +1033,7 @@ def cmr_filter_json(
             if ('type' not in link.keys()):
                 continue
             # append if selected endpoint and request type
-            if (link['rel'] == rel[endpoint]) and (link['type'] == request_type):
+            if (link['rel'] == rel[endpoint]) and re.match(request_type, link['type']):
                 granule_urls.append(link['href'])
                 break
     # return the list of urls and granule ids
@@ -1046,7 +1047,7 @@ def cmr(
         resolutions: str | list | None = None,
         provider: str = 'NSIDC_ECS',
         endpoint: str = 'data',
-        request_type: str = "application/x-hdfeos",
+        request_type: str = r"application/x-hdfeos",
         opener = None,
         verbose: bool = False,
         fid = sys.stdout
@@ -1245,10 +1246,10 @@ def query_resources(**kwargs):
     endpoint['atlas-local'] = 'data'
     # CMR request types
     request_type = {}
-    request_type['nsidc-s3'] = 'application/x-netcdf'
-    request_type['atlas-s3'] = 'application/x-netcdf'
-    request_type['nsidc-https'] = 'application/netcdf'
-    request_type['atlas-local'] = 'application/netcdf'
+    request_type['nsidc-s3'] = r'application/(x-)?netcdf'
+    request_type['atlas-s3'] = r'application/(x-)?netcdf'
+    request_type['nsidc-https'] = r'application/(x-)?netcdf'
+    request_type['atlas-local'] = r'application/(x-)?netcdf'
     # convert region variable to list
     if (int(kwargs['release']) > 2) and (kwargs['region'].upper() == 'AA'):
         # set Antarctic sub-regions for Release-3+
