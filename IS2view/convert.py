@@ -27,11 +27,11 @@ import numpy as np
 # attempt imports
 try:
     import h5netcdf
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("h5netcdf not available")
 try:
     import xarray as xr
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("xarray not available")
 
 # default groups to skip
@@ -58,7 +58,7 @@ class convert():
         Parameters
         ----------
         **kwds: dict
-            keyword arguments for output zarr converter
+            keyword arguments for output
         """
         kwds.setdefault('filename', self.filename)
         kwds.setdefault('output', self.output)
@@ -67,7 +67,7 @@ class convert():
         self.filename = kwds['filename']
         self.output = kwds['output']
         # split extension from netCDF4 file
-        if isinstance(self.filename, str):
+        if isinstance(self.filename, (str, pathlib.Path)):
             filename = pathlib.Path(self.filename)
         else:
             filename = pathlib.Path(self.filename.filename)

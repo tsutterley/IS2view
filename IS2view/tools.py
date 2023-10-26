@@ -30,11 +30,11 @@ import numpy as np
 # attempt imports
 try:
     import ipywidgets
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("ipywidgets not available")
 try:
     import matplotlib.cm as cm
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("matplotlib not available")
 
 # set environmental variable for anonymous s3 access
@@ -50,6 +50,9 @@ class widgets:
         logging.basicConfig(level=kwargs['loglevel'])
         # set style
         self.style = copy.copy(kwargs['style'])
+        # pass through some ipywidgets objects
+        self.HBox = ipywidgets.HBox
+        self.VBox = ipywidgets.VBox
 
         # dropdown menu for setting asset
         asset_list = ['nsidc-https', 'nsidc-s3', 'atlas-s3', 'atlas-local']
@@ -80,7 +83,7 @@ class widgets:
         release_list = ['001', '002', '003']
         self.release = ipywidgets.Dropdown(
             options=release_list,
-            value='002',
+            value='003',
             description='Release:',
             description_tooltip=("Release: ATL14/15 data release\n\t"
                 "001: Release-01\n\t"
@@ -91,13 +94,18 @@ class widgets:
         )
 
         # dropdown menu for setting ATL14/15 region
-        # currently set as a default the release 01 and 02 regions
-        region_list = ['AA', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV']
+        # set as a default the release 03+ regions
+        region_list = ['AA', 'A1', 'A2', 'A3', 'A4', 'CN', 'CS',
+            'GL', 'IS', 'RA', 'SV']
         self.region = ipywidgets.Dropdown(
             options=region_list,
             description='Region:',
             description_tooltip=("Region: ATL14/15 region\n\t"
-                "AA: Antarctica\n\t"
+                "AA: Antarctica (merged)\n\t"
+                "A1: Antarctica (0\u00B0 to 90\u00B0)\n\t"
+                "A2: Antarctica (0\u00B0 to -90\u00B0)\n\t"
+                "A3: Antarctica (-90\u00B0 to -180\u00B0)\n\t"
+                "A4: Antarctica (90\u00B0 to 180\u00B0)\n\t"
                 "CN: Northern Canadian Archipelago\n\t"
                 "CS: Southern Canadian Archipelago\n\t"
                 "GL: Greenland\n\t"

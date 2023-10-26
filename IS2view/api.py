@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 api.py
-Written by Tyler Sutterley (07/2023)
+Written by Tyler Sutterley (08/2023)
 Plotting tools for visualizing rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
@@ -26,6 +26,7 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 08/2023: add option for viewing full screen leaflet map
     Updated 07/2023: renamed module from IS2view.py to api.py
         add plot functions for map basemaps and added geometries
         add imshow function for visualizing current leaflet map
@@ -50,15 +51,15 @@ from traitlets.utils.bunch import Bunch
 # attempt imports
 try:
     import geopandas as gpd
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("geopandas not available")
 try:
     import ipywidgets
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("ipywidgets not available")
 try:
     import ipyleaflet
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("ipyleaflet not available")
 try:
     import matplotlib
@@ -66,20 +67,20 @@ try:
     import matplotlib.colorbar
     import matplotlib.pyplot as plt
     import matplotlib.colors as colors
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("matplotlib not available")
 try:
     import owslib.wms
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("owslib not available")
 try:
     import rasterio.transform
     import rasterio.warp
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("rasterio not available")
 try:
     import xarray as xr
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("xarray not available")
 
 # set environmental variable for anonymous s3 access
@@ -167,6 +168,8 @@ class Leaflet:
         Include spatial scale bar to map
     cursor_control : bool, default True
         Include display for cursor location
+    full_screen_control: bool, default False
+        Include control for full screen map view
     layer_control : bool, default True
         Include control for added map layers
     draw_control : bool, default False
@@ -199,6 +202,7 @@ class Leaflet:
         # set default keyword arguments
         kwargs.setdefault('map', None)
         kwargs.setdefault('attribution', False)
+        kwargs.setdefault('full_screen_control', False)
         kwargs.setdefault('scale_control', False)
         kwargs.setdefault('cursor_control', True)
         kwargs.setdefault('layer_control', True)
@@ -227,6 +231,10 @@ class Leaflet:
             # use a predefined ipyleaflet map
             self.map = kwargs['map']
             self.crs = self.map.crs['name']
+        # add control for full screen
+        if kwargs['full_screen_control']:
+            self.full_screen_control = ipyleaflet.FullScreenControl()
+            self.map.add(self.full_screen_control)
         # add control for layers
         if kwargs['layer_control']:
             self.layer_control = ipyleaflet.LayersControl(position='topleft')
@@ -239,7 +247,7 @@ class Leaflet:
         if kwargs['cursor_control']:
             self.cursor = ipywidgets.Label()
             cursor_control = ipyleaflet.WidgetControl(widget=self.cursor,
-                position='bottomleft')
+                position='bottomright')
             self.map.add(cursor_control)
             # keep track of cursor position
             self.map.on_interaction(self.handle_interaction)

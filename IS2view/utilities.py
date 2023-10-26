@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 u"""
 utilities.py
-Written by Tyler Sutterley (08/2023)
+Written by Tyler Sutterley (10/2023)
 Download and management utilities
 
 UPDATE HISTORY:
+    Updated 10/2023: filter CMR request type using regular expressions
     Updated 08/2023: added ATL14/15 Release-03 data products
+        add option to specify the start and end cycle for a local granule
     Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: using pathlib to define and expand paths
         add functions to retrieve and revoke NASA Earthdata User tokens
@@ -34,6 +36,7 @@ import pathlib
 import builtins
 import warnings
 import posixpath
+import traceback
 import subprocess
 import calendar, time
 if sys.version_info[0] == 2:
@@ -48,11 +51,11 @@ else:
 # attempt imports
 try:
     import boto3
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("boto3 not available")
 try:
     import s3fs
-except (ImportError, ModuleNotFoundError) as exc:
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("s3fs not available")
 
 # PURPOSE: get absolute path within a package from a relative path
@@ -984,7 +987,7 @@ def cmr_readable_granules(product: str, **kwargs):
 def cmr_filter_json(
         search_results: dict,
         endpoint: str = "data",
-        request_type: str = "application/x-hdfeos"
+        request_type: str = r"application/x-hdfeos"
     ):
     """
     Filter the CMR json response for desired data files
@@ -1030,7 +1033,7 @@ def cmr_filter_json(
             if ('type' not in link.keys()):
                 continue
             # append if selected endpoint and request type
-            if (link['rel'] == rel[endpoint]) and (link['type'] == request_type):
+            if (link['rel'] == rel[endpoint]) and re.match(request_type, link['type']):
                 granule_urls.append(link['href'])
                 break
     # return the list of urls and granule ids
@@ -1044,7 +1047,7 @@ def cmr(
         resolutions: str | list | None = None,
         provider: str = 'NSIDC_ECS',
         endpoint: str = 'data',
-        request_type: str = "application/x-hdfeos",
+        request_type: str = r"application/x-hdfeos",
         opener = None,
         verbose: bool = False,
         fid = sys.stdout
@@ -1158,7 +1161,7 @@ def cmr(
 
 # available assets for finding data
 _assets = ('nsidc-s3', 'atlas-s3', 'nsidc-https', 'atlas-local')
-# availabel formats for accessing data
+# available formats for accessing data
 _formats = ('nc', 'zarr')
 
 # PURPOSE: queries CMR or s3 for available granules
@@ -1222,8 +1225,9 @@ def query_resources(**kwargs):
     kwargs.setdefault('bucket', 'is2view')
     kwargs.setdefault('directory', None)
     kwargs.setdefault('product', 'ATL15')
-    kwargs.setdefault('release', '002')
+    kwargs.setdefault('release', '003')
     kwargs.setdefault('version', '01')
+    kwargs.setdefault('cycles', None)
     kwargs.setdefault('region', 'AA')
     kwargs.setdefault('resolution', '01km')
     kwargs.setdefault('format', 'nc')
@@ -1242,13 +1246,17 @@ def query_resources(**kwargs):
     endpoint['atlas-local'] = 'data'
     # CMR request types
     request_type = {}
-    request_type['nsidc-s3'] = 'application/x-netcdf'
-    request_type['atlas-s3'] = 'application/x-netcdf'
-    request_type['nsidc-https'] = 'application/netcdf'
-    request_type['atlas-local'] = 'application/netcdf'
-    # set regions for Release-3+
-    if (int(kwargs['release']) > 2) and (kwargs['region'] == 'AA'):
+    request_type['nsidc-s3'] = r'application/(x-)?netcdf'
+    request_type['atlas-s3'] = r'application/(x-)?netcdf'
+    request_type['nsidc-https'] = r'application/(x-)?netcdf'
+    request_type['atlas-local'] = r'application/(x-)?netcdf'
+    # convert region variable to list
+    if (int(kwargs['release']) > 2) and (kwargs['region'].upper() == 'AA'):
+        # set Antarctic sub-regions for Release-3+
         kwargs['region'] = ['A1', 'A2', 'A3', 'A4']
+    elif (kwargs['region'].lower() == 'north'):
+        # set for merging Arctic regions into a single dataset
+        kwargs['region'] = ['CS', 'CN', 'GL', 'IS', 'RA', 'SV']
     elif isinstance(kwargs['region'], str):
         kwargs['region'] = [kwargs['region']]
 
@@ -1256,6 +1264,8 @@ def query_resources(**kwargs):
     assert kwargs['asset'] in _assets
     assert kwargs['product'] in _products
     assert kwargs['release'] in ('001', '002', '003')
+    if kwargs['cycles'] is not None:
+        assert (len(kwargs['cycles']) == 2), 'cycles should be length 2'
     for r in kwargs['region']:
         assert r in _regions
     assert kwargs['resolution'] in _resolutions
@@ -1323,6 +1333,7 @@ def query_resources(**kwargs):
                 granules.append(granule)
     except Exception:
         # unavailable granule
+        logging.debug(traceback.format_exc())
         pass
     else:
         # return the granules
@@ -1343,19 +1354,22 @@ def query_resources(**kwargs):
         # 6: data release
         # 7: data version
         file_format = '{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.{7}'
-        # start and end cycle for releases
-        cycles = {}
-        cycles['001'] = (3, 11)
-        cycles['002'] = (3, 14)
-        cycles['003'] = (3, 19)
+        # use default start and end cycle
+        if kwargs['cycles'] is None:
+            # start and end cycle for releases
+            cycles = {}
+            cycles['001'] = (3, 11)
+            cycles['002'] = (3, 14)
+            cycles['003'] = (3, 18)
+            kwargs['cycles'] = cycles[kwargs['release']]
         # for each requested region
         for region in kwargs['region']:
             # format granule for unreleased data
             file = file_format.format(
                 kwargs['product'],
                 region,
-                cycles[kwargs['release']][0],
-                cycles[kwargs['release']][1],
+                int(kwargs['cycles'][0]),
+                int(kwargs['cycles'][1]),
                 kwargs['resolution'],
                 int(kwargs['release']),
                 int(kwargs['version']),
@@ -1380,6 +1394,7 @@ def query_resources(**kwargs):
             granules.append(granule)
     except Exception:
         # unavailable granule
+        logging.debug(traceback.format_exc())
         pass
     else:
         # return the granules
@@ -1391,5 +1406,5 @@ def query_resources(**kwargs):
             return granules
 
     # raise exception if no granule available
-    if (len(granule) == 0):
+    if (len(granules) == 0):
         raise ValueError('Unavailable granule')

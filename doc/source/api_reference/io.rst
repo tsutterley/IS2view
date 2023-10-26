@@ -12,6 +12,8 @@ Utilities for reading gridded ICESat-2 files using rasterio and xarray
 General Methods
 ===============
 
+.. autofunction:: IS2view.io.open_dataset
+
 .. autofunction:: IS2view.io.from_file
 
 .. autofunction:: IS2view.io.from_rasterio
