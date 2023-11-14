@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 u"""
-version.py (04/2021)
-Gets semantic version number and commit hash from setuptools-scm
+version.py (11/2023)
+Gets version number of a package
 """
-from pkg_resources import get_distribution
+import importlib.metadata
 
-# get semantic version from setuptools-scm
-version = get_distribution("IS2view").version
+# package metadata
+metadata = importlib.metadata.metadata("IS2view")
+# get version
+version = metadata["version"]
 # append "v" before the version
-full_version = f"v{version}"
+full_version = "v{0}".format(version)
 # get project name
-project_name = get_distribution("IS2view").project_name
+project_name = metadata["Name"]
