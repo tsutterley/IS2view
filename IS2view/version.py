@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 version.py (11/2023)
-Gets version number of a package
+Gets semantic version number and commit hash from setuptools-scm
 """
 import importlib.metadata
 
