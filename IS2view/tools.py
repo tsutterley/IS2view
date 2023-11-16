@@ -15,9 +15,8 @@ PYTHON DEPENDENCIES:
         https://github.com/matplotlib/matplotlib
 
 UPDATE HISTORY:
-    Updated 11/2023: setting dynamic colormap with float64 min and max
-        rather than nans due to future deprecation of JSON serialization
-    Updated 10/2023: set time steps using decimal years rather than lags
+    Updated 11/2023: set time steps using decimal years rather than lags
+        setting dynamic colormap with float64 min and max
     Updated 08/2023: added options for ATL14/15 Release-03 data
     Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: moved widgets functions to separate module
