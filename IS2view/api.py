@@ -26,6 +26,8 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 11/2023: setting dynamic colormap with float64 min and max
+        rather than nans due to future deprecation of JSON serialization
     Updated 08/2023: add option for viewing full screen leaflet map
     Updated 07/2023: renamed module from IS2view.py to api.py
         add plot functions for map basemaps and added geometries
@@ -701,11 +703,13 @@ class LeafletMap(HasTraits):
         # set colorbar limits to 2-98 percentile
         # if not using a defined plot range
         clim = self._ds_selected.chunk(dict(y=-1,x=-1)).quantile((0.02, 0.98)).values
-        if (kwargs['vmin'] is None) or np.isnan(kwargs['vmin']):
+        fmin = np.finfo(np.float64).min
+        if (kwargs['vmin'] is None) or np.isclose(kwargs['vmin'], fmin):
             vmin = clim[0]
         else:
             vmin = np.copy(kwargs['vmin'])
-        if (kwargs['vmax'] is None) or np.isnan(kwargs['vmax']):
+        fmax = np.finfo(np.float64).max
+        if (kwargs['vmax'] is None) or np.isclose(kwargs['vmax'], fmax):
             vmax = clim[-1]
         else:
             vmax = np.copy(kwargs['vmax'])

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 tools.py
-Written by Tyler Sutterley (08/2023)
+Written by Tyler Sutterley (11/2023)
 User interface tools for Jupyter Notebooks
 
 PYTHON DEPENDENCIES:
@@ -15,6 +15,9 @@ PYTHON DEPENDENCIES:
         https://github.com/matplotlib/matplotlib
 
 UPDATE HISTORY:
+    Updated 11/2023: setting dynamic colormap with float64 min and max
+        rather than nans due to future deprecation of JSON serialization
+    Updated 10/2023: set time steps using decimal years rather than lags
     Updated 08/2023: added options for ATL14/15 Release-03 data
     Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: moved widgets functions to separate module
@@ -434,9 +437,11 @@ class widgets:
         """sets variable normalization range if dynamic
         """
         if self.dynamic.value:
-            self.range.min = -100
-            self.range.max = 100
-            self.range.value = [np.nan, np.nan]
+            fmin = np.finfo(np.float64).min
+            fmax = np.finfo(np.float64).max
+            self.range.min = fmin
+            self.range.max = fmax
+            self.range.value = [fmin, fmax]
             self.range.layout.display = 'none'
         else:
             self.range.min = -10
