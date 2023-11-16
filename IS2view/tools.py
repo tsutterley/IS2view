@@ -164,6 +164,14 @@ class widgets:
             style=self.style,
         )
 
+        # dropdown menu for selecting time lag to draw on map
+        self.timelag = ipywidgets.IntSlider(
+            description='Lag:',
+            description_tooltip="Lag: time lag to draw on leaflet map",
+            disabled=False,
+            style=self.style,
+        )
+
         # dropdown menu for selecting time step to draw on map
         self.timestep = ipywidgets.FloatSlider(
             description='Time:',
@@ -190,6 +198,7 @@ class widgets:
         self.release.observe(self.set_groups)
         self.dynamic.observe(self.set_dynamic)
         self.variable.observe(self.set_time_visibility)
+        self.timestep.observe(self.set_lag)
 
         # slider for normalization range
         self.range = ipywidgets.FloatRangeSlider(
@@ -441,14 +450,27 @@ class widgets:
         # try setting the min and max time step
         try:
             # convert time to units
-            self._time = epoch + (ds.time.values)/365.25
-            self.timestep.max = self._time[-1]
-            self.timestep.min = self._time[0]
-            self.timestep.value = self._time[0]
+            self.time = list(epoch + ds.time.values/365.25)
+            self.timestep.max = self.time[-1]
+            self.timestep.min = self.time[0]
+            self.timestep.value = self.time[0]
         except Exception as exc:
+            self.time = []
             self.timestep.max = 1
             self.timestep.min = 0
             self.timestep.value = 0
+
+    def set_lag(self, sender):
+        """sets available time range for lags
+        """
+        self.timelag.min = 1
+        # try setting the max lag and value
+        try:
+            self.timelag.value = self.time.index(self.timestep.value) + 1
+            self.timelag.max = len(self.time)
+        except Exception as exc:
+            self.timelag.value = 1
+            self.timelag.max = 1
 
     def set_time_visibility(self, sender):
         """updates the visibility of the time widget
@@ -467,4 +489,4 @@ class widgets:
     def lag(self):
         """return the 0-based index for the time lag
         """
-        return self.timestep.index
+        return self.timelag.value - 1
