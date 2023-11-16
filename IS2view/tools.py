@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 tools.py
-Written by Tyler Sutterley (08/2023)
+Written by Tyler Sutterley (11/2023)
 User interface tools for Jupyter Notebooks
 
 PYTHON DEPENDENCIES:
@@ -15,6 +15,8 @@ PYTHON DEPENDENCIES:
         https://github.com/matplotlib/matplotlib
 
 UPDATE HISTORY:
+    Updated 11/2023: set time steps using decimal years rather than lags
+        setting dynamic colormap with float64 min and max
     Updated 08/2023: added options for ATL14/15 Release-03 data
     Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: moved widgets functions to separate module
@@ -172,11 +174,22 @@ class widgets:
             style=self.style,
         )
 
+        # dropdown menu for selecting time step to draw on map
+        self.timestep = ipywidgets.FloatSlider(
+            description='Time:',
+            description_tooltip="Time: time step to draw on leaflet map",
+            step=0.25,
+            readout=True,
+            readout_format='.2f',
+            disabled=False,
+            style=self.style,
+        )
+
         # Reverse the colormap
         self.dynamic = ipywidgets.Checkbox(
             value=False,
             description='Dynamic',
-            description_tooltip=("Dynamic: Dynamically set normalization range"),
+            description_tooltip="Dynamic: Dynamically set normalization range",
             disabled=False,
             style=self.style,
         )
@@ -186,7 +199,8 @@ class widgets:
         self.asset.observe(self.set_format_visibility)
         self.release.observe(self.set_groups)
         self.dynamic.observe(self.set_dynamic)
-        self.variable.observe(self.set_lag_visibility)
+        self.variable.observe(self.set_time_visibility)
+        self.timestep.observe(self.set_lag)
 
         # slider for normalization range
         self.range = ipywidgets.FloatRangeSlider(
@@ -422,9 +436,11 @@ class widgets:
         """sets variable normalization range if dynamic
         """
         if self.dynamic.value:
-            self.range.min = -100
-            self.range.max = 100
-            self.range.value = [np.nan, np.nan]
+            fmin = np.finfo(np.float64).min
+            fmax = np.finfo(np.float64).max
+            self.range.min = fmin
+            self.range.max = fmax
+            self.range.value = [fmin, fmax]
             self.range.layout.display = 'none'
         else:
             self.range.min = -10
@@ -432,19 +448,36 @@ class widgets:
             self.range.value = [-5, 5]
             self.range.layout.display = 'inline-flex'
 
-    def set_lags(self, ds):
+    def set_time_steps(self, ds, epoch=2018.0):
+        """sets available time range
+        """
+        # try setting the min and max time step
+        try:
+            # convert time to units
+            self.time = list(epoch + ds.time.values/365.25)
+            self.timestep.max = self.time[-1]
+            self.timestep.min = self.time[0]
+            self.timestep.value = self.time[0]
+        except Exception as exc:
+            self.time = []
+            self.timestep.max = 1
+            self.timestep.min = 0
+            self.timestep.value = 0
+
+    def set_lag(self, sender):
         """sets available time range for lags
         """
-        self.timelag.value = 1
         self.timelag.min = 1
-        # try setting the max lag
+        # try setting the max lag and value
         try:
-            self.timelag.max = len(ds['time'])
+            self.timelag.value = self.time.index(self.timestep.value) + 1
+            self.timelag.max = len(self.time)
         except Exception as exc:
+            self.timelag.value = 1
             self.timelag.max = 1
 
-    def set_lag_visibility(self, sender):
-        """updates the visibility of the time lag widget
+    def set_time_visibility(self, sender):
+        """updates the visibility of the time widget
         """
         # list of invariant parameters
         invariant_parameters = ['ice_mask']
@@ -452,9 +485,9 @@ class widgets:
             invariant_parameters.append('cell_area')
         # check if setting an invariant variable
         if self.variable.value in invariant_parameters:
-            self.timelag.layout.display = 'none'
+            self.timestep.layout.display = 'none'
         else:
-            self.timelag.layout.display = 'inline-flex'
+            self.timestep.layout.display = 'inline-flex'
 
     @property
     def lag(self):
