@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 u"""
 utilities.py
-Written by Tyler Sutterley (10/2023)
+Written by Tyler Sutterley (11/2023)
 Download and management utilities
 
 UPDATE HISTORY:
+    Updated 11/2023: updated ssl context to fix deprecation error
     Updated 10/2023: filter CMR request type using regular expressions
     Updated 08/2023: added ATL14/15 Release-03 data products
         add option to specify the start and end cycle for a local granule
@@ -415,8 +416,35 @@ def generate_presigned_url(
     # The response contains the presigned URL
     return response
 
+def _create_default_ssl_context() -> ssl.SSLContext:
+    """Creates the default SSL context
+    """
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    _set_ssl_context_options(context)
+    context.options |= ssl.OP_NO_COMPRESSION
+    return context
+
+def _create_ssl_context_no_verify() -> ssl.SSLContext:
+    """Creates an SSL context for unverified connections
+    """
+    context = _create_default_ssl_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE
+    return context
+
+def _set_ssl_context_options(context: ssl.SSLContext) -> None:
+    """Sets the default options for the SSL context
+    """
+    if sys.version_info >= (3, 10) or ssl.OPENSSL_VERSION_INFO >= (1, 1, 0, 7):
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
+    else:
+        context.options |= ssl.OP_NO_SSLv2
+        context.options |= ssl.OP_NO_SSLv3
+        context.options |= ssl.OP_NO_TLSv1
+        context.options |= ssl.OP_NO_TLSv1_1
+
 # default ssl context
-_default_ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+_default_ssl_context = _create_ssl_context_no_verify()
 
 # PURPOSE: attempt to build an opener with netrc
 def attempt_login(
@@ -429,13 +457,13 @@ def attempt_login(
         **kwargs
     ):
     """
-    attempt to build a urllib opener for NASA Earthdata
+    attempt to build a ``urllib`` opener for NASA Earthdata
 
     Parameters
     ----------
     urs: str, default urs.earthdata.nasa.gov
         Earthdata login URS 3 host
-    context: obj, default ssl.SSLContext(ssl.PROTOCOL_TLS)
+    context: obj, default IS2view.utilities._default_ssl_context
         SSL context for ``urllib`` opener object
     password_manager: bool, default True
         Create password manager context using default realm
@@ -523,7 +551,7 @@ def build_opener(
         NASA Earthdata username
     password: str or NoneType, default None
         NASA Earthdata password
-    context: obj, default ssl.SSLContext(ssl.PROTOCOL_TLS)
+    context: obj, default IS2view.utilities._default_ssl_context
         SSL context for ``urllib`` opener object
     password_manager: bool, default True
         Create password manager context using default realm
@@ -539,7 +567,7 @@ def build_opener(
     Returns
     -------
     opener: obj
-        OpenerDirector instance
+        ``OpenerDirector`` instance
     """
     # https://docs.python.org/3/howto/urllib2.html#id5
     handler = []
@@ -567,7 +595,7 @@ def build_opener(
     # add Authorization header to opener
     if authorization_header:
         b64 = base64.b64encode(f'{username}:{password}'.encode())
-        opener.addheaders = [("Authorization", "Basic {0}".format(b64.decode()))]
+        opener.addheaders = [("Authorization", f"Basic {b64.decode()}")]
     # Now all calls to urllib2.urlopen use our opener.
     urllib2.install_opener(opener)
     # All calls to urllib2.urlopen will now use handler
@@ -1049,6 +1077,7 @@ def cmr(
         endpoint: str = 'data',
         request_type: str = r"application/x-hdfeos",
         opener = None,
+        context: ssl.SSLContext = _default_ssl_context,
         verbose: bool = False,
         fid = sys.stdout
     ):
@@ -1076,7 +1105,9 @@ def cmr(
     request_type: str, default 'application/x-hdfeos'
         data type for reducing CMR query
     opener: obj or NoneType, default None
-        OpenerDirector instance
+        ``OpenerDirector`` instance
+    context: obj, default IS2view.utilities._default_ssl_context
+        SSL context for ``urllib`` opener object
     verbose: bool, default False
         print file transfer information
     fid: obj, default sys.stdout
@@ -1100,7 +1131,7 @@ def cmr(
         # Create cookie jar for storing cookies
         cookie_jar = CookieJar()
         handler.append(urllib2.HTTPCookieProcessor(cookie_jar))
-        handler.append(urllib2.HTTPSHandler(context=_default_ssl_context))
+        handler.append(urllib2.HTTPSHandler(context=context))
         # create "opener" (OpenerDirector instance)
         opener = urllib2.build_opener(*handler)
     # build CMR query
