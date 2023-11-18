@@ -32,6 +32,12 @@ General Methods
 
 .. autofunction:: IS2view.utilities.generate_presigned_url
 
+.. autofunction:: IS2view.utilities._create_default_ssl_context
+
+.. autofunction:: IS2view.utilities._create_ssl_context_no_verify
+
+.. autofunction:: IS2view.utilities._set_ssl_context_options
+
 .. autofunction:: IS2view.utilities.attempt_login
 
 .. autofunction:: IS2view.utilities.build_opener
