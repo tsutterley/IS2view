@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 api.py
-Written by Tyler Sutterley (08/2023)
+Written by Tyler Sutterley (03/2024)
 Plotting tools for visualizing rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
@@ -24,8 +24,12 @@ PYTHON DEPENDENCIES:
         https://rasterio.readthedocs.io
     xarray: N-D labeled arrays and datasets in Python
         https://docs.xarray.dev/en/stable/
+    xyzservices: Source of XYZ tiles providers
+        https://xyzservices.readthedocs.io/en/stable/
 
 UPDATE HISTORY:
+    Updated 03/2024: add fix for broken xyzservice links
+        fix deprecation of copying ipyleaflet layers
     Updated 11/2023: setting dynamic colormap with float64 min and max
         rather than nans due to future deprecation of JSON serialization
     Updated 08/2023: add option for viewing full screen leaflet map
@@ -84,6 +88,10 @@ try:
     import xarray as xr
 except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("xarray not available")
+try:
+    import xyzservices
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
+    logging.debug("xyzservices not available")
 
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
@@ -132,13 +140,21 @@ projections['EPSG:3031'] = dict(
     ]
 )
 
+# attributions for the different basemaps and images
+nasa_attribution = """
+Imagery provided by services from the Global Imagery Browse Services (GIBS),
+operated by the NASA/GSFC/Earth Science Data and Information System
+with funding provided by NASA/HQ.
+"""
+pgc_attribution = """Esri, PGC, UMN, NSF, NGA, DigitalGlobe"""
+
 # define optional background ipyleaflet image service layers
 layers = Bunch()
 try:
     # ArcticDEM
     layers.ArcticDEM = ipyleaflet.ImageService(
         name="ArcticDEM",
-        attribution="""Esri, PGC, UMN, NSF, NGA, DigitalGlobe""",
+        attribution=pgc_attribution,
         format='jpgpng',
         transparent=True,
         url='https://elevation2.arcgis.com/arcgis/rest/services/Polar/ArcticDEM/ImageServer',
@@ -147,7 +163,7 @@ try:
     # Reference Elevation Map of Antarctica (REMA)
     layers.REMA = ipyleaflet.ImageService(
         name="REMA",
-        attribution="""Esri, PGC, UMN, NSF, NGA, DigitalGlobe""",
+        attribution=pgc_attribution,
         format='jpgpng',
         transparent=True,
         url='https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer',
@@ -155,6 +171,41 @@ try:
     )
 except (NameError, AttributeError):
     pass
+
+# define background ipyleaflet tile providers
+providers = {
+    "NASAGIBS": {
+        "BlueMarble3031": {
+            "name": "NASAGIBS.BlueMarble3031",
+            "attribution": nasa_attribution,
+            "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3031/best/BlueMarble_NextGeneration/default/500m/{z}/{y}/{x}.jpeg",
+        },
+        "BlueMarble3413": {
+            "name": "NASAGIBS.BlueMarble3413",
+            "attribution": nasa_attribution,
+            "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3413/best/BlueMarble_NextGeneration/default/500m/{z}/{y}/{x}.jpeg",
+        }
+    }
+}
+
+# load basemap providers from dict
+# https://github.com/geopandas/xyzservices/blob/main/xyzservices/lib.py
+def _load_dict(data):
+    """Creates a xyzservices TileProvider object from a dictionary
+    """
+    providers = Bunch()
+    for provider_name in data.keys():
+        provider = data[provider_name]
+        if "url" in provider.keys():
+            providers[provider_name] = xyzservices.lib.TileProvider(provider)
+        else:
+            providers[provider_name] = Bunch(
+                {i: xyzservices.lib.TileProvider(provider[i]) for i in provider.keys()}
+            )
+    return providers
+
+# create traitlets of basemap providers
+basemaps = _load_dict(providers)
 
 # draw ipyleaflet map
 class Leaflet:
@@ -164,6 +215,8 @@ class Leaflet:
     ----------
     map : obj or NoneType, default None
         ``ipyleaflet.Map``
+    basemap : obj or NoneType
+        Basemap for the ``ipyleaflet.Map``
     attribution : bool, default False
         Include layer attributes on leaflet map
     scale_control : bool, default False
@@ -216,17 +269,23 @@ class Leaflet:
         kwargs.setdefault('zoom', 1)
         # create basemap in projection
         if (projection == 'North'):
+            kwargs.setdefault('basemap',
+                ipyleaflet.basemaps.NASAGIBS.BlueMarble3413
+            )
             self.map = ipyleaflet.Map(center=kwargs['center'],
                 zoom=kwargs['zoom'], max_zoom=5,
                 attribution_control=kwargs['attribution'],
-                basemap=ipyleaflet.basemaps.NASAGIBS.BlueMarble3413,
+                basemap=kwargs['basemap'],
                 crs=projections['EPSG:3413'])
             self.crs = 'EPSG:3413'
         elif (projection == 'South'):
+            kwargs.setdefault('basemap',
+                ipyleaflet.basemaps.NASAGIBS.BlueMarble3031
+            )
             self.map = ipyleaflet.Map(center=kwargs['center'],
                 zoom=kwargs['zoom'], max_zoom=5,
                 attribution_control=kwargs['attribution'],
-                basemap=ipyleaflet.basemaps.NASAGIBS.BlueMarble3031,
+                basemap=kwargs['basemap'],
                 crs=projections['EPSG:3031'])
             self.crs = 'EPSG:3031'
         else:
@@ -547,7 +606,7 @@ def image_service_layer(name, raster='hillshade'):
     if raster not in mapping.keys():
         raise ValueError(f'Unknown raster function {raster}')
     # add rendering rule to layer
-    layer = copy.copy(layers[name])
+    layer = layers[name]
     layer.rendering_rule = {"rasterFunction": mapping[raster]}
     return layer
 
