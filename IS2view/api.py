@@ -197,12 +197,20 @@ def _load_dict(data):
     for provider_name in data.keys():
         provider = data[provider_name]
         if "url" in provider.keys():
-            providers[provider_name] = xyzservices.lib.TileProvider(provider)
+            providers[provider_name] = _tile_provider(provider)
         else:
             providers[provider_name] = Bunch(
-                {i: xyzservices.lib.TileProvider(provider[i]) for i in provider.keys()}
+                {i: _tile_provider(provider[i]) for i in provider.keys()}
             )
     return providers
+
+def _tile_provider(provider):
+    """Creates a xyzservices TileProvider object
+    """
+    try:
+        return xyzservices.lib.TileProvider(provider)
+    except (NameError, AttributeError):
+        pass
 
 # create traitlets of basemap providers
 basemaps = _load_dict(providers)
