@@ -2,7 +2,6 @@ h5netcdf
 ipyleaflet
 matplotlib
 numpy
-panel
 rioxarray
 setuptools_scm
 xarray

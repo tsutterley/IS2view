@@ -7,7 +7,6 @@ dependencies:
   - ipywidgets
   - matplotlib
   - notebook
-  - panel
   - pip
   - python>=3.6
   - numpy>=1.21
