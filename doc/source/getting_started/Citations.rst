@@ -46,6 +46,7 @@ This software is also dependent on other commonly used Python packages:
 - `matplotlib: Python 2D plotting library <https://matplotlib.org/>`_
 - `h5netcdf: Pythonic interface to netCDF4 via h5py <https://h5netcdf.org/>`_
 - `numpy: Scientific Computing Tools For Python <https://numpy.org>`_
+- `panel: Powerful Data Exploration & Web App Framework for Python <https://panel.holoviz.org/index.html>`_
 - `rasterio: Access to geospatial raster data <https://rasterio.readthedocs.io/en/latest/>`_
 - `rioxarray: geospatial xarray extension powered by rasterio <https://github.com/corteva/rioxarray>`_
 - `setuptools_scm: manager for python package versions using scm metadata <https://pypi.org/project/setuptools-scm>`_

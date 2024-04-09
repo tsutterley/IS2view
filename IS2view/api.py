@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 api.py
-Written by Tyler Sutterley (03/2024)
+Written by Tyler Sutterley (04/2024)
 Plotting tools for visualizing rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
@@ -28,6 +28,8 @@ PYTHON DEPENDENCIES:
         https://xyzservices.readthedocs.io/en/stable/
 
 UPDATE HISTORY:
+    Updated 04/2024: add connections and functions for changing variables
+        and other attributes of the leaflet map visualization
     Updated 03/2024: add fix for broken xyzservice links
         fix deprecation of copying ipyleaflet layers
     Updated 11/2023: setting dynamic colormap with float64 min and max
@@ -73,6 +75,9 @@ try:
     import matplotlib.colorbar
     import matplotlib.pyplot as plt
     import matplotlib.colors as colors
+    matplotlib.rcParams['font.family'] = 'sans-serif'
+    matplotlib.rcParams['font.sans-serif'] = ['Arial', 'Helvetica', 'DejaVu Sans']
+    matplotlib.rcParams['mathtext.default'] = 'regular'
 except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("matplotlib not available")
 try:
@@ -316,7 +321,7 @@ class Leaflet:
         if kwargs['cursor_control']:
             self.cursor = ipywidgets.Label()
             cursor_control = ipyleaflet.WidgetControl(widget=self.cursor,
-                position='bottomright')
+                position='bottomleft')
             self.map.add(cursor_control)
             # keep track of cursor position
             self.map.on_interaction(self.handle_interaction)
@@ -671,11 +676,11 @@ class LeafletMap(HasTraits):
         """Update image on boundary change
         """
         # add image object to map
-        if self.image is not None:
+        if self._image is not None:
             # attempt to remove layer
-            self.remove(self.image)
+            self.remove(self._image)
             # create new image service layer
-            self.image = ipyleaflet.ImageService(
+            self._image = ipyleaflet.ImageService(
                 name=self._variable,
                 crs=self.crs,
                 interactive=True,
@@ -683,10 +688,10 @@ class LeafletMap(HasTraits):
                 endpoint='local')
         # add click handler for popups
         if self.enable_popups:
-            self.image.on_click(self.handle_click)
+            self._image.on_click(self.handle_click)
         # set the image url
         self.set_image_url()
-        self.add(self.image)
+        self.add(self._image)
 
     def __init__(self, ds):
         # initialize map
@@ -701,14 +706,14 @@ class LeafletMap(HasTraits):
         self._ds_selected = None
         self._variable = None
         # initialize image and colorbars
-        self.image = None
+        self._image = None
         self.cmap = None
         self.norm = None
         self.opacity = None
-        self.colorbar = None
+        self._colorbar = None
         # initialize attributes for popup
         self.enable_popups = False
-        self.popup = None
+        self._popup = None
         self._data = None
         self._units = None
 
@@ -767,22 +772,11 @@ class LeafletMap(HasTraits):
             self._ds_selected = self._ds[self._variable].sel(band=1)
         else:
             self._ds_selected = self._ds[self._variable]
-        # set colorbar limits to 2-98 percentile
-        # if not using a defined plot range
-        clim = self._ds_selected.chunk(dict(y=-1,x=-1)).quantile((0.02, 0.98)).values
-        fmin = np.finfo(np.float64).min
-        if (kwargs['vmin'] is None) or np.isclose(kwargs['vmin'], fmin):
-            vmin = clim[0]
-        else:
-            vmin = np.copy(kwargs['vmin'])
-        fmax = np.finfo(np.float64).max
-        if (kwargs['vmax'] is None) or np.isclose(kwargs['vmax'], fmax):
-            vmax = clim[-1]
-        else:
-            vmax = np.copy(kwargs['vmax'])
+        # get the normalization bounds
+        self.get_norm_bounds(**kwargs)
         # create matplotlib normalization
         if kwargs['norm'] is None:
-            self.norm = colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
+            self.norm = colors.Normalize(vmin=self.vmin, vmax=self.vmax, clip=True)
         else:
             self.norm = copy.copy(kwargs['norm'])
         # get colormap
@@ -791,7 +785,7 @@ class LeafletMap(HasTraits):
         self.opacity = float(kwargs['opacity'])
         # wait for changes
         asyncio.ensure_future(self.async_wait_for_bounds())
-        self.image = ipyleaflet.ImageService(
+        self._image = ipyleaflet.ImageService(
             name=self._variable,
             crs=self.crs,
             interactive=True,
@@ -799,19 +793,21 @@ class LeafletMap(HasTraits):
             endpoint='local')
         # add click handler for popups
         if self.enable_popups:
-            self.image.on_click(self.handle_click)
+            self._image.on_click(self.handle_click)
         # set the image url
         self.set_image_url()
         # add image object to map
-        self.add(self.image)
+        self.add(self._image)
         # add colorbar
-        if kwargs['colorbar']:
+        self.colorbar = kwargs['colorbar']
+        self.colorbar_position = kwargs['position']
+        if self.colorbar:
             self.add_colorbar(
                 label=self._variable,
                 cmap=self.cmap,
                 opacity=self.opacity,
                 norm=self.norm,
-                position=kwargs['position']
+                position=self.colorbar_position
             )
 
     def wait_for_change(self, widget, value):
@@ -883,9 +879,9 @@ class LeafletMap(HasTraits):
                 (control.widget._model_name == 'ImageModel'):
                 self.remove(control)
         # reset layers and controls
-        self.image = None
-        self.popup = None
-        self.colorbar = None
+        self._image = None
+        self._popup = None
+        self._colorbar = None
 
     # get map bounding box in projected coordinates
     def get_bbox(self):
@@ -938,6 +934,53 @@ class LeafletMap(HasTraits):
             return
         # raise exception
         raise Exception('Unknown coordinate reference system')
+    
+    def get_norm_bounds(self, **kwargs):
+        """
+        Get the colorbar normalization bounds
+
+        Parameters
+        ----------
+        vmin : float or NoneType
+            Minimum value for normalization
+        vmax : float or NoneType
+            Maximum value for normalization
+        """
+        # set default keyword arguments
+        kwargs.setdefault('vmin', None)
+        kwargs.setdefault('vmax', None)
+        # set colorbar limits to 2-98 percentile
+        # if not using a defined plot range
+        clim = self._ds_selected.chunk(dict(y=-1,x=-1)).quantile((0.02, 0.98)).values
+        # set minimum for normalization
+        fmin = np.finfo(np.float64).min
+        if (kwargs['vmin'] is None) or np.isclose(kwargs['vmin'], fmin):
+            self.vmin = clim[0]
+            self._dynamic = True
+        else:
+            self.vmin = np.copy(kwargs['vmin'])
+            self._dynamic = False
+        # set maximum for normalization
+        fmax = np.finfo(np.float64).max
+        if (kwargs['vmax'] is None) or np.isclose(kwargs['vmax'], fmax):
+            self.vmax = clim[-1]
+            self._dynamic = True
+        else:
+            self.vmax = np.copy(kwargs['vmax'])
+            self._dynamic = False
+
+    def validate_norm(self):
+        """
+        Validate the colorbar normalization bounds
+        """
+        fmin = np.finfo(np.float64).min
+        fmax = np.finfo(np.float64).max
+        if np.isclose(self.vmin, fmin):
+            self.vmin = -5
+            self._dynamic = False
+        if np.isclose(self.vmax, fmax):
+            self.vmax = 5
+            self._dynamic = False
 
     def clip_image(self, ds):
         """clip or warp xarray image to bounds of leaflet map
@@ -1030,7 +1073,98 @@ class LeafletMap(HasTraits):
         """
         self.get_bounds()
         self.get_image_url()
-        self.image.url = self.url
+        self._image.url = self.url
+
+    def redraw(self, *args, **kwargs):
+        """
+        Redraw the image on the map
+        """
+        # try to update the selected dataset
+        try:
+            self.get_image_url()
+        except Exception as exc:
+            pass
+        else:
+            # update image url
+            self._image.url = self.url
+            # force redrawing of map by removing and adding layer
+            self.remove(self._image)
+            self.add(self._image)
+
+    def redraw_colorbar(self, *args, **kwargs):
+        """
+        Redraw the colorbar on the map
+        """
+        try:
+            if self.colorbar:
+                self.add_colorbar(
+                    label=self._variable,
+                    cmap=self.cmap,
+                    opacity=self.opacity,
+                    norm=self.norm,
+                    position=self.colorbar_position
+                )
+        except Exception as exc:
+            pass
+
+    # observe changes in widget parameters
+    def observe_widget(self, widget, **kwargs):
+        """observe changes in widget parameters
+        """
+        # connect variable widget to set function
+        try:
+            widget.variable.observe(self.set_variable)
+        except AttributeError:
+            pass
+        # connect time lag widget to time slice function
+        try:
+            widget.timelag.observe(self.set_lag)
+        except AttributeError:
+            pass
+        # connect normalization widget to set function
+        try:
+            widget.range.observe(self.set_norm)
+        except AttributeError:
+            pass
+        # connect dynamic normalization widget to set function
+        try:
+            widget.dynamic.observe(self.set_dynamic)
+        except AttributeError:
+            pass
+        # connect colormap widget to set function
+        try:
+            widget.cmap.observe(self.set_colormap)
+        except AttributeError:
+            pass
+        # connect reverse colormap widget to set function
+        try:
+            widget.reverse.observe(self.set_colormap)
+        except AttributeError:
+            pass
+
+    def set_variable(self, sender):
+        """update the dataframe variable for a new selected variable
+        """
+        # only update variable if a new final
+        if isinstance(sender['new'], str):
+            self._variable = sender['new']
+        else:
+            return
+        # reduce to variable and lag
+        if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
+            self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
+        elif (self._ds[self._variable].ndim == 3) and ('band' in self._ds[self._variable].dims):
+            self._ds_selected = self._ds[self._variable].sel(band=1)
+        else:
+            self._ds_selected = self._ds[self._variable]
+        # check if dynamic normalization is enabled
+        if self._dynamic:
+            self.get_norm_bounds()
+            self.norm.vmin = self.vmin
+            self.norm.vmax = self.vmax
+        # try to redraw the selected dataset
+        self.redraw()
+        self.redraw_colorbar()
 
     def set_lag(self, sender):
         """update the time lag for the selected variable
@@ -1041,17 +1175,70 @@ class LeafletMap(HasTraits):
         else:
             return
         # try to update the selected dataset
-        try:
-            self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
-            self.get_image_url()
-        except Exception as exc:
-            pass
+        self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
+        # check if dynamic normalization is enabled
+        if self._dynamic:
+            self.get_norm_bounds()
+            self.norm.vmin = self.vmin
+            self.norm.vmax = self.vmax
+        # try to redraw the selected dataset
+        self.redraw()
+        if self._dynamic:
+            self.redraw_colorbar()
+
+    def set_dynamic(self, sender):
+        """set dynamic normalization for the selected variable
+        """
+        # only update dynamic norm if a new final
+        if isinstance(sender['new'], bool) and sender['new']:
+            self.get_norm_bounds()
+            self._dynamic = True
+        elif isinstance(sender['new'], bool):
+            self.vmin, self.vmax = (-5, 5)
+            self._dynamic = False
         else:
-            # update image url
-            self.image.url = self.url
-            # force redrawing of map by removing and adding layer
-            self.remove(self.image)
-            self.add(self.image)
+            return
+        # set the normalization bounds
+        self.validate_norm()
+        self.norm.vmin = self.vmin
+        self.norm.vmax = self.vmax
+        # try to redraw the selected dataset
+        self.redraw()
+        self.redraw_colorbar()
+
+    def set_norm(self, sender):
+        """update the normalization for the selected variable
+        """
+        # only update norm if a new final
+        if isinstance(sender['new'], (tuple, list)):
+            self.vmin, self.vmax = sender['new']
+        else:
+            return
+        # set the normalization bounds
+        self.validate_norm()
+        self.norm.vmin = self.vmin
+        self.norm.vmax = self.vmax
+        # try to redraw the selected dataset
+        self.redraw()
+        self.redraw_colorbar()
+
+    def set_colormap(self, sender):
+        """update the colormap for the selected variable
+        """
+        # only update colormap if a new final
+        if isinstance(sender['new'], str):
+            cmap_name = self.cmap.name
+            cmap_reverse_flag = '_r' if cmap_name.endswith('_r') else ''
+            self.cmap = cm.get_cmap(sender['new'] + cmap_reverse_flag)
+        elif isinstance(sender['new'], bool):
+            cmap_name = self.cmap.name.strip('_r')
+            cmap_reverse_flag = '_r' if sender['new'] else ''
+            self.cmap = cm.get_cmap(cmap_name + cmap_reverse_flag)
+        else:
+            return
+        # try to redraw the selected dataset
+        self.redraw()
+        self.redraw_colorbar()
 
     # functional calls for click events
     def handle_click(self, **kwargs):
@@ -1059,8 +1246,8 @@ class LeafletMap(HasTraits):
         """
         lat, lon = kwargs.get('coordinates')
         # remove any prior instances of popup
-        if self.popup is not None:
-            self.remove(self.popup)
+        if self._popup is not None:
+            self.remove(self._popup)
         # attempt to get the coordinate reference system of the dataset
         try:
             grid_mapping = self._ds[self._variable].attrs['grid_mapping']
@@ -1080,9 +1267,9 @@ class LeafletMap(HasTraits):
         # create contextual popup
         child = ipywidgets.HTML()
         child.value = '{0:0.1f} {1}'.format(np.squeeze(self._data), self._units)
-        self.popup = ipyleaflet.Popup(location=(lat, lon),
+        self._popup = ipyleaflet.Popup(location=(lat, lon),
             child=child, name='popup')
-        self.add(self.popup)
+        self.add(self._popup)
 
     # add colorbar widget to leaflet map
     def add_colorbar(self, **kwargs):
@@ -1102,14 +1289,14 @@ class LeafletMap(HasTraits):
         kwargs.setdefault('cmap', 'viridis')
         kwargs.setdefault('norm', None)
         kwargs.setdefault('opacity', 1.0)
-        kwargs.setdefault('orientation', 'horizontal')
+        kwargs.setdefault('orientation', 'vertical')
         kwargs.setdefault('label', 'delta_h')
         kwargs.setdefault('position', 'topright')
-        kwargs.setdefault('width', 6.0)
-        kwargs.setdefault('height', 0.4)
+        kwargs.setdefault('width', 0.2)
+        kwargs.setdefault('height', 3.0)
         # remove any prior instances of a colorbar
-        if self.colorbar is not None:
-            self.remove(self.colorbar)
+        if self._colorbar is not None:
+            self.remove(self._colorbar)
         # create matplotlib colorbar
         _, ax = plt.subplots(figsize=(kwargs['width'], kwargs['height']))
         cbar = matplotlib.colorbar.ColorbarBase(ax,
@@ -1122,14 +1309,15 @@ class LeafletMap(HasTraits):
         cbar.ax.tick_params(which='both', width=1, direction='in')
         # save colorbar to in-memory png object
         png = io.BytesIO()
-        plt.savefig(png, bbox_inches='tight', format='png', transparent=True)
+        plt.savefig(png, bbox_inches='tight', pad_inches=0.075,
+            format='png', transparent=True)
         png.seek(0)
         # create output widget
         output = ipywidgets.Image(value=png.getvalue(), format='png')
-        self.colorbar = ipyleaflet.WidgetControl(widget=output,
-            transparent_bg=True, position=kwargs['position'])
+        self._colorbar = ipyleaflet.WidgetControl(widget=output,
+            transparent_bg=False, position=kwargs['position'])
         # add colorbar
-        self.add(self.colorbar)
+        self.add(self._colorbar)
         plt.close()
 
     # save the current map as an image

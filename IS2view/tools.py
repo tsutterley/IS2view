@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 tools.py
-Written by Tyler Sutterley (11/2023)
+Written by Tyler Sutterley (04/2024)
 User interface tools for Jupyter Notebooks
 
 PYTHON DEPENDENCIES:
@@ -13,8 +13,11 @@ PYTHON DEPENDENCIES:
     matplotlib: Python 2D plotting library
         http://matplotlib.org/
         https://github.com/matplotlib/matplotlib
+    panel: Powerful Data Exploration & Web App Framework for Python
+        https://panel.holoviz.org/index.html
 
 UPDATE HISTORY:
+    Updated 04/2024: include panel import to create a row of widgets
     Updated 11/2023: set time steps using decimal years rather than lags
         setting dynamic colormap with float64 min and max
     Updated 08/2023: added options for ATL14/15 Release-03 data
@@ -34,6 +37,12 @@ try:
     import ipywidgets
 except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.debug("ipywidgets not available")
+try:
+    import panel as pn
+except (AttributeError, ImportError, ModuleNotFoundError) as exc:
+    logging.debug("panel not available")
+else:
+    pn.extension('ipywidgets')
 try:
     import matplotlib.cm as cm
 except (AttributeError, ImportError, ModuleNotFoundError) as exc:
@@ -55,6 +64,9 @@ class widgets:
         # pass through some ipywidgets objects
         self.HBox = ipywidgets.HBox
         self.VBox = ipywidgets.VBox
+        # pass through some panel objects
+        self.Row = pn.Row
+        self.Column = pn.Column
 
         # dropdown menu for setting asset
         asset_list = ['nsidc-https', 'nsidc-s3', 'atlas-s3', 'atlas-local']
