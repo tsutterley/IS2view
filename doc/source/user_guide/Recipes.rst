@@ -85,6 +85,38 @@ Requires optional ``geopandas`` and ``fiona`` dependencies.
 
    Antarctic subglacial lake delineations from `Fricker et al. (2007) <https://doi.org/10.1126/science.1136897>`_
 
+Plot an Area Average
+####################
+
+Requires optional ``geopandas`` dependency.
+
+.. code-block:: python
+
+   import geopandas
+   import matplotlib.pyplot as plt
+   # read Greenland basins
+   gdf = geopandas.read_file('Greenland_Basins_PS_v1.4.2.zip')
+   # reduce to NW region
+   subregion = 'NW'
+   region = gdf[gdf['SUBREGION1'] == subregion].dissolve(by='SUBREGION1')
+   region['NAME'] = f'{subregion} Greenland'
+   # add geodataframe
+   m.add_geodataframe(region)
+   # iterate over features
+   for feature in m.geometries['features']:
+      ds.timeseries.plot(feature, legend=True,
+         variable=IS2widgets.variable.value,
+         color='mediumseagreen'
+      )
+   # show average plot
+   plt.show()
+
+.. figure:: ../_assets/nwgreenland.png
+   :width: 400
+   :align: center
+
+   Greenland drainage basins from `Mouginot and Rignot (2019) <https://doi.org/10.7280/D1WT11>`_
+
 Calculate Area Averages
 #######################
 
