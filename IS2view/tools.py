@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 tools.py
-Written by Tyler Sutterley (04/2024)
+Written by Tyler Sutterley (03/2023)
 User interface tools for Jupyter Notebooks
 
 PYTHON DEPENDENCIES:
