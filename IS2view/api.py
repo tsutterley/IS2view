@@ -30,6 +30,7 @@ PYTHON DEPENDENCIES:
 UPDATE HISTORY:
     Updated 04/2024: add connections and functions for changing variables
         and other attributes of the leaflet map visualization
+        simplify and generalize mapping between observables and functionals
     Updated 03/2024: add fix for broken xyzservice links
         fix deprecation of copying ipyleaflet layers
     Updated 11/2023: setting dynamic colormap with float64 min and max
@@ -189,6 +190,16 @@ providers = {
             "name": "NASAGIBS.BlueMarble3413",
             "attribution": nasa_attribution,
             "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3413/best/BlueMarble_NextGeneration/default/500m/{z}/{y}/{x}.jpeg",
+        },
+        "BlueMarbleBathymetry3031": {
+            "name": "NASAGIBS.BlueMarbleBathymetry3031",
+            "attribution": nasa_attribution,
+            "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3031/best/BlueMarble_ShadedRelief_Bathymetry/default/500m/{z}/{y}/{x}.jpeg",
+        },
+        "BlueMarbleBathymetry3413": {
+            "name": "NASAGIBS.BlueMarbleBathymetry3413",
+            "attribution": nasa_attribution,
+            "url": "https://gibs.earthdata.nasa.gov/wmts/epsg3413/best/BlueMarble_ShadedRelief_Bathymetry/default/500m/{z}/{y}/{x}.jpeg",
         }
     }
 }
@@ -1108,39 +1119,34 @@ class LeafletMap(HasTraits):
             pass
 
     # observe changes in widget parameters
-    def observe_widget(self, widget, **kwargs):
+    def set_observables(self, widget, **kwargs):
         """observe changes in widget parameters
         """
-        # connect variable widget to set function
-        try:
-            widget.variable.observe(self.set_variable)
-        except AttributeError:
-            pass
-        # connect time lag widget to time slice function
-        try:
-            widget.timelag.observe(self.set_lag)
-        except AttributeError:
-            pass
-        # connect normalization widget to set function
-        try:
-            widget.range.observe(self.set_norm)
-        except AttributeError:
-            pass
-        # connect dynamic normalization widget to set function
-        try:
-            widget.dynamic.observe(self.set_dynamic)
-        except AttributeError:
-            pass
-        # connect colormap widget to set function
-        try:
-            widget.cmap.observe(self.set_colormap)
-        except AttributeError:
-            pass
-        # connect reverse colormap widget to set function
-        try:
-            widget.reverse.observe(self.set_colormap)
-        except AttributeError:
-            pass
+        # set default keyword arguments
+        # to map widget changes to functions
+        kwargs.setdefault('variable', [self.set_variable])
+        kwargs.setdefault('timelag', [self.set_lag])
+        kwargs.setdefault('range', [self.set_norm])
+        kwargs.setdefault('dynamic', [self.set_dynamic])
+        kwargs.setdefault('cmap', [self.set_colormap])
+        kwargs.setdefault('reverse', [self.set_colormap])
+        # connect each widget with a set function
+        for key, val in kwargs.items():
+            # try to retrieve the functional
+            try:
+                observable = getattr(widget, key)
+            except AttributeError as exc:
+                continue
+            # assert that observable is an ipywidgets object
+            assert isinstance(observable, ipywidgets.widgets.widget.Widget)
+            assert hasattr(observable, 'observe')
+            # for each functional to map
+            for i, functional in enumerate(val):
+                # try to connect the widget to the functional
+                try:
+                    observable.observe(functional)
+                except (AttributeError, NameError, ValueError) as exc:
+                    pass
 
     def set_variable(self, sender):
         """update the dataframe variable for a new selected variable
