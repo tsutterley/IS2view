@@ -28,16 +28,12 @@ import os
 import copy
 import logging
 import numpy as np
+from IS2view.utilities import import_dependency
 
 # attempt imports
-try:
-    import ipywidgets
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("ipywidgets not available")
-try:
-    import matplotlib.cm as cm
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("matplotlib not available")
+datatree = import_dependency('datatree')
+ipywidgets = import_dependency('ipywidgets')
+cm = import_dependency('matplotlib.cm')
 
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
@@ -166,7 +162,7 @@ class widgets:
             style=self.style,
         )
 
-        # dropdown menu for selecting time lag to draw on map
+        # slider for selecting time lag to draw on map
         self.timelag = ipywidgets.IntSlider(
             description='Lag:',
             description_tooltip="Lag: time lag to draw on leaflet map",
@@ -174,7 +170,7 @@ class widgets:
             style=self.style,
         )
 
-        # dropdown menu for selecting time step to draw on map
+        # slider for selecting time step to draw on map
         self.timestep = ipywidgets.FloatSlider(
             description='Time:',
             description_tooltip="Time: time step to draw on leaflet map",
@@ -182,6 +178,7 @@ class widgets:
             readout=True,
             readout_format='.2f',
             disabled=False,
+            continuous_update=False,
             style=self.style,
         )
 
@@ -199,6 +196,9 @@ class widgets:
         self.asset.observe(self.set_format_visibility)
         self.release.observe(self.set_groups)
         self.dynamic.observe(self.set_dynamic)
+        self.group.observe(self.set_variables)
+        self.group.observe(self.set_time_steps)
+        self.group.observe(self.set_atl15_defaults)
         self.variable.observe(self.set_time_visibility)
         self.timestep.observe(self.set_lag)
 
@@ -381,7 +381,7 @@ class widgets:
         # set default variable for group
         self.variable.value = variables[group]
 
-    def set_groups(self, sender):
+    def set_groups(self, *args):
         """sets the list of available groups for a release
         """
         group_list = ['delta_h', 'dhdt_lag1', 'dhdt_lag4', 'dhdt_lag8']
@@ -423,11 +423,15 @@ class widgets:
         self.region.description_tooltip = description_tooltip
 
     def set_variables(self, *args):
-        """sets the list of available variables in a group
+        """sets the list of available variables
         """
-        if any(args):
+        if isinstance(self.data_vars, dict):
+            # set list of available variables in group
+            group = self.group.value
+            self.variable.options = sorted(self.data_vars[group])
+        elif isinstance(self.data_vars, list):
             # set list of available variables
-            self.variable.options = sorted(args[0].keys())
+            self.variable.options = sorted(self.data_vars)
         else:
             # return to temporary defaults
             self.variable.options = ['delta_h', 'dhdt']
@@ -448,13 +452,44 @@ class widgets:
             self.range.value = [-5, 5]
             self.range.layout.display = 'inline-flex'
 
-    def set_time_steps(self, ds, epoch=2018.0):
+    def get_variables(self, d):
+        """
+        Gets the available variables and time steps
+        
+        Parameters
+        ----------
+        d : datatree.DataTree or xarray.Dataset
+            DataTree or xarray.Dataset object
+        """
+        # check if a DataTree object
+        if isinstance(d, datatree.DataTree):
+            self.data_vars = {g.strip('/'):sorted(d[g].data_vars)
+                for g in d.groups if d[g].data_vars}
+            self.time_vars = {g.strip('/'):d[g].time.values
+                for g in d.groups if 'time' in d[g]}
+        else:
+            self.data_vars = sorted(d.data_vars)
+            self.time_vars = d.time.values if 'time' in d else None
+        # set the default groups
+        self.set_groups()
+        # set the default variables
+        self.set_variables()
+        # set the default time steps
+        self.set_time_steps()
+        
+    def set_time_steps(self, *args, epoch=2018.0):
         """sets available time range
         """
+        if isinstance(self.time_vars, dict):
+            # check if a DataTree object
+            group = self.group.value
+            self.time = list(epoch + self.time_vars[group]/365.25)
+        elif isinstance(self.time_vars, (list, np.ndarray)):
+            # set list of available variables
+            self.time = list(epoch + self.time_vars/365.25)
         # try setting the min and max time step
         try:
             # convert time to units
-            self.time = list(epoch + ds.time.values/365.25)
             self.timestep.max = self.time[-1]
             self.timestep.min = self.time[0]
             self.timestep.value = self.time[0]

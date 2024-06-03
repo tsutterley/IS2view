@@ -1,9 +1,11 @@
 """
 io.py
-Written by Tyler Sutterley (10/2023)
+Written by Tyler Sutterley (05/2024)
 Utilities for reading gridded ICESat-2 files using rasterio and xarray
 
 PYTHON DEPENDENCIES:
+    datatree: Tree-like hierarchical data structure for xarray
+        https://xarray-datatree.readthedocs.io
     h5netcdf: Pythonic interface to netCDF4 via h5py
         https://h5netcdf.org/
     numpy: Scientific Computing Tools For Python
@@ -18,6 +20,8 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 05/2024: use wrapper to importlib for optional dependencies
+        added function to use datatree to merge hierarchical datasets
     Updated 10/2023: use dask.delayed to read multiple files in parallel
     Updated 08/2023: use xarray h5netcdf to read files streaming from s3
         add open_dataset function for opening multiple granules
@@ -27,28 +31,58 @@ UPDATE HISTORY:
 """
 from __future__ import annotations
 import os
-import logging
+from IS2view.utilities import import_dependency
 
 # attempt imports
-try:
-    import rioxarray
-    import rioxarray.merge
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("rioxarray not available")
-try:
-    import dask
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("dask not available")
-try:
-    import xarray as xr
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("xarray not available")
+datatree = import_dependency('datatree')
+rioxarray = import_dependency('rioxarray')
+riomerge = import_dependency('rioxarray.merge')
+dask = import_dependency('dask')
+xr = import_dependency('xarray')
 
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
 
 # default engine for xarray
 _default_engine = dict(nc='h5netcdf', zarr='zarr')
+
+def open_datatree(granule,
+        name: str | None = None,
+        **kwargs
+    ):
+    """
+    Converts a dataset dictionary to a ``DataTree``
+
+    Parameters
+    ----------
+    granule: str or list
+        presigned url or path for granule(s) as a s3fs object
+    name: str or NoneType, default None
+        Name of the ``DataTree``
+    kwargs: dict
+        Keyword arguments to pass to ``open_dataset``
+
+    Returns
+    -------
+    dt: object
+        merged ``DataTree``
+    """
+    # create a dictionary of datasets
+    d = {}
+    # open the primary groups
+    for group in ['delta_h', 'dhdt_lag1']:
+        d[group] = open_dataset(granule, group=group, **kwargs)
+    # extend possible time lags to 16 years post-launch
+    for timelag in range(4, 68, 4):
+        group = f'dhdt_lag{timelag:d}'
+        # attempt to open the group
+        try:
+            d[group] = open_dataset(granule, group=group, **kwargs)
+        except:
+            break
+    # create a datatree object
+    dt = datatree.DataTree.from_dict(d, name=name)
+    return dt
 
 def open_dataset(granule,
         group: str | None = None,
@@ -100,7 +134,7 @@ def open_dataset(granule,
         if parallel:
             datasets, closers = dask.compute(datasets, closers)
         # merge datasets
-        ds = rioxarray.merge.merge_datasets(datasets)
+        ds = riomerge.merge_datasets(datasets)
     else:
         # read a single granule
         ds = from_file(granule,

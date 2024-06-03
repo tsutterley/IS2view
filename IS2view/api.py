@@ -5,6 +5,8 @@ Written by Tyler Sutterley (04/2024)
 Plotting tools for visualizing rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
+    datatree: Tree-like hierarchical data structure for xarray
+        https://xarray-datatree.readthedocs.io
     geopandas: Python tools for geographic data
         http://geopandas.readthedocs.io/
     ipywidgets: interactive HTML widgets for Jupyter notebooks and IPython
@@ -56,20 +58,20 @@ import numpy as np
 import collections.abc
 from traitlets import HasTraits, Float, Tuple, observe
 from traitlets.utils.bunch import Bunch
+from IS2view.utilities import import_dependency
 
 # attempt imports
-try:
-    import geopandas as gpd
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("geopandas not available")
-try:
-    import ipywidgets
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("ipywidgets not available")
-try:
-    import ipyleaflet
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("ipyleaflet not available")
+datatree = import_dependency('datatree')
+gpd = import_dependency('geopandas')
+ipywidgets = import_dependency('ipywidgets')
+ipyleaflet = import_dependency('ipyleaflet')
+wms = import_dependency('owslib.wms')
+riotransform = import_dependency('rasterio.transform')
+riowarp = import_dependency('rasterio.warp')
+xr = import_dependency('xarray')
+xyzservices = import_dependency('xyzservices')
+
+# attempt matplotlib imports
 try:
     import matplotlib
     import matplotlib.cm as cm
@@ -81,23 +83,6 @@ try:
     matplotlib.rcParams['mathtext.default'] = 'regular'
 except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("matplotlib not available")
-try:
-    import owslib.wms
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("owslib not available")
-try:
-    import rasterio.transform
-    import rasterio.warp
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("rasterio not available")
-try:
-    import xarray as xr
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("xarray not available")
-try:
-    import xyzservices
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("xyzservices not available")
 
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
@@ -230,6 +215,8 @@ def _tile_provider(provider):
 
 # create traitlets of basemap providers
 basemaps = _load_dict(providers)
+# set default map dimensions
+_default_layout = ipywidgets.Layout(width='70%', height='600px')
 
 # draw ipyleaflet map
 class Leaflet:
@@ -241,6 +228,8 @@ class Leaflet:
         ``ipyleaflet.Map``
     basemap : obj or NoneType
         Basemap for the ``ipyleaflet.Map``
+    layout : obj, default ``ipywidgets.Layout(width='70%', height='600px')``
+        Layout for the ``ipyleaflet.Map``
     attribution : bool, default False
         Include layer attributes on leaflet map
     scale_control : bool, default False
@@ -280,6 +269,7 @@ class Leaflet:
     def __init__(self, projection, **kwargs):
         # set default keyword arguments
         kwargs.setdefault('map', None)
+        kwargs.setdefault('layout', _default_layout)
         kwargs.setdefault('attribution', False)
         kwargs.setdefault('full_screen_control', False)
         kwargs.setdefault('scale_control', False)
@@ -300,7 +290,9 @@ class Leaflet:
                 zoom=kwargs['zoom'], max_zoom=5,
                 attribution_control=kwargs['attribution'],
                 basemap=kwargs['basemap'],
-                crs=projections['EPSG:3413'])
+                crs=projections['EPSG:3413'],
+                layout=kwargs['layout']
+            )
             self.crs = 'EPSG:3413'
         elif (projection == 'South'):
             kwargs.setdefault('basemap',
@@ -310,7 +302,9 @@ class Leaflet:
                 zoom=kwargs['zoom'], max_zoom=5,
                 attribution_control=kwargs['attribution'],
                 basemap=kwargs['basemap'],
-                crs=projections['EPSG:3031'])
+                crs=projections['EPSG:3031'],
+                layout=kwargs['layout']
+            )
             self.crs = 'EPSG:3031'
         else:
             # use a predefined ipyleaflet map
@@ -535,8 +529,8 @@ class Leaflet:
         # https://wiki.earthdata.nasa.gov/display/GIBS
         # https://worldview.earthdata.nasa.gov/
         url = f'https://gibs.earthdata.nasa.gov/wms/{srs}/best/wms.cgi?'
-        wms = owslib.wms.WebMapService(url=url, version='1.1.1')
-        basemap = wms.getmap(**kwargs)
+        mappingservice = wms.WebMapService(url=url, version='1.1.1')
+        basemap = mappingservice.getmap(**kwargs)
         # read WMS layer and plot
         img = plt.imread(io.BytesIO(basemap.read()))
         ax.imshow(img, extent=[bbox[0],bbox[2],bbox[1],bbox[3]])
@@ -777,12 +771,8 @@ class LeafletMap(HasTraits):
         # reduce to variable and lag
         self._variable = copy.copy(kwargs['variable'])
         self.lag = int(kwargs['lag'])
-        if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
-            self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
-        elif (self._ds[self._variable].ndim == 3) and ('band' in self._ds[self._variable].dims):
-            self._ds_selected = self._ds[self._variable].sel(band=1)
-        else:
-            self._ds_selected = self._ds[self._variable]
+        # select data variable
+        self.set_dataset()
         # get the normalization bounds
         self.get_norm_bounds(**kwargs)
         # create matplotlib normalization
@@ -911,7 +901,7 @@ class LeafletMap(HasTraits):
         """get the bounds of the leaflet map in geographical coordinates
         """
         self.get_bbox()
-        lon, lat = rasterio.warp.transform(
+        lon, lat = riowarp.transform(
             self.crs['name'], 'EPSG:4326',
             [self.sw['x'], self.ne['x']],
             [self.sw['y'], self.ne['y']])
@@ -1000,7 +990,7 @@ class LeafletMap(HasTraits):
         # attempt to get the coordinate reference system of the dataset
         self.get_crs()
         # convert map bounds to coordinate reference system of image
-        minx, miny, maxx, maxy = rasterio.warp.transform_bounds(
+        minx, miny, maxx, maxy = riowarp.transform_bounds(
             self.crs['name'], self._ds.rio.crs,
             self.sw['x'], self.sw['y'],
             self.ne['x'], self.ne['y'])
@@ -1023,14 +1013,14 @@ class LeafletMap(HasTraits):
             # warp image to map bounds and resolution
             # input and output affine transformations
             src_transform = ds.rio.transform()
-            dst_transform = rasterio.transform.from_origin(minx, maxy,
+            dst_transform = riotransform.from_origin(minx, maxy,
                 self.resolution, self.resolution)
             # allocate for output warped image
             dst_width = int((maxx - minx)//self.resolution)
             dst_height = int((maxy - miny)//self.resolution)
             dst_data = np.zeros((dst_height, dst_width), dtype=ds.dtype.type)
             # warp image to output resolution
-            rasterio.warp.reproject(source=ds.values, destination=dst_data,
+            riowarp.reproject(source=ds.values, destination=dst_data,
                 src_transform=src_transform,
                 src_crs=self._ds.rio.crs,
                 src_nodata=np.nan,
@@ -1148,14 +1138,10 @@ class LeafletMap(HasTraits):
                 except (AttributeError, NameError, ValueError) as exc:
                     pass
 
-    def set_variable(self, sender):
-        """update the dataframe variable for a new selected variable
+    def set_dataset(self):
+        """Select the dataset for the selected variable
+        and time lag
         """
-        # only update variable if a new final
-        if isinstance(sender['new'], str):
-            self._variable = sender['new']
-        else:
-            return
         # reduce to variable and lag
         if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
             self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
@@ -1163,6 +1149,17 @@ class LeafletMap(HasTraits):
             self._ds_selected = self._ds[self._variable].sel(band=1)
         else:
             self._ds_selected = self._ds[self._variable]
+
+    def set_variable(self, sender):
+        """update the plotted variable
+        """
+        # only update variable if a new final
+        if isinstance(sender['new'], str):
+            self._variable = sender['new']
+        else:
+            return
+        # reduce to variable and lag
+        self.set_dataset()
         # check if dynamic normalization is enabled
         if self._dynamic:
             self.get_norm_bounds()
@@ -1263,7 +1260,7 @@ class LeafletMap(HasTraits):
         else:
             self._ds.rio.set_crs(crs)
         # get the clicked point in dataset coordinate reference system
-        x, y = rasterio.warp.transform('EPSG:4326', crs, [lon], [lat])
+        x, y = riowarp.transform('EPSG:4326', crs, [lon], [lat])
         # find nearest point in dataset
         self._data = self._ds_selected.sel(x=x, y=y, method='nearest').values[0]
         self._units = self._ds[self._variable].attrs['units']
@@ -1361,6 +1358,209 @@ class LeafletMap(HasTraits):
         ax.set_xlim(self.extent[0], self.extent[1])
         ax.set_ylim(self.extent[2], self.extent[3])
         ax.set_aspect('equal', adjustable='box')
+
+@datatree.register_datatree_accessor('leaflet')
+class TreeLeafletMap(LeafletMap):
+    """A datatree.DataTree extension for interactive map plotting, based on ipyleaflet
+
+    Parameters
+    ----------
+    dt : obj
+        ``datatree.DataTree``
+
+    Attributes
+    ----------
+    _ds : obj
+        ``xarray.Dataset`` for selected group
+    _ds_selected : obj
+        ``xarray.Dataset`` for selected variable
+    _variable : str
+        Selected variable
+    map : obj
+        ``ipyleaflet.Map``
+    crs : str
+        Coordinate Reference System of map
+    left, top, right, bottom : float
+        Map bounds in image coordinates
+    sw : dict
+        Location of lower-left corner in projected coordinates
+    ne : dict
+        Location of upper-right corner in projected coordinates
+    bounds : tuple
+        Location of map bounds in geographical coordinates
+    image : obj
+        ``ipyleaflet.ImageService`` layer for variable
+    cmap : obj
+        Matplotlib colormap object
+    norm : obj
+        Matplotlib normalization object
+    opacity : float
+        Transparency of image service layer
+    colorbar : obj
+        ``ipyleaflet.WidgetControl`` with Matplotlib colorbar
+    popup : obj
+        ``ipyleaflet.Popup`` with value at clicked location
+    _data : float
+        Variable value at clicked location
+    _units : str
+        Units of selected variable
+    """
+    np.seterr(invalid='ignore')
+    def __init__(self, dt):
+        super().__init__(dt)
+        # initialize datatree and dataset
+        self._dt = dt
+        self._ds = None
+
+    # add imagery data to leaflet map
+    def plot(self, m, **kwargs):
+        """Creates image plots on leaflet maps
+
+        Parameters
+        ----------
+        m : obj
+            leaflet map to add the layer
+        group : str or NoneType, default None
+            DataTree group to plot
+        variable : str, default 'delta_h'
+            xarray variable to plot
+        lag : int, default 0
+            Time lag to plot if 3-dimensional
+        cmap : str, default 'viridis'
+            matplotlib colormap
+        vmin : float or NoneType
+            Minimum value for normalization
+        vmax : float or NoneType
+            Maximum value for normalization
+        norm : obj or NoneType
+            Matplotlib color normalization object
+        opacity : float, default 1.0
+            Opacity of image plot
+        enable_popups : bool, default False
+            Enable contextual popups
+        colorbar : bool, decault True
+            Show colorbar for rendered variable
+        position : str, default 'topright'
+            Position of colorbar on leaflet map
+        """
+        kwargs.setdefault('group', 'delta_h')
+        kwargs.setdefault('variable', 'delta_h')
+        kwargs.setdefault('lag', 0)
+        kwargs.setdefault('cmap', 'viridis')
+        kwargs.setdefault('vmin', None)
+        kwargs.setdefault('vmax', None)
+        kwargs.setdefault('norm', None)
+        kwargs.setdefault('opacity', 1.0)
+        kwargs.setdefault('enable_popups', False)
+        kwargs.setdefault('colorbar', True)
+        kwargs.setdefault('position', 'topright')
+        # set map and map coordinate reference system
+        self.map = m
+        crs = m.crs['name']
+        self.crs = projections[crs]
+        (self.left, self.top), (self.right, self.bottom) = self.map.pixel_bounds
+        # enable contextual popups
+        self.enable_popups = bool(kwargs['enable_popups'])
+        # reduce to variable and lag
+        self._group = copy.copy(kwargs['group'])
+        self._variable = copy.copy(kwargs['variable'])
+        self.lag = int(kwargs['lag'])
+        # select data variable
+        self.set_dataset()
+        # get the normalization bounds
+        self.get_norm_bounds(**kwargs)
+        # create matplotlib normalization
+        if kwargs['norm'] is None:
+            self.norm = colors.Normalize(vmin=self.vmin, vmax=self.vmax, clip=True)
+        else:
+            self.norm = copy.copy(kwargs['norm'])
+        # get colormap
+        self.cmap = copy.copy(cm.get_cmap(kwargs['cmap']))
+        # get opacity
+        self.opacity = float(kwargs['opacity'])
+        # wait for changes
+        asyncio.ensure_future(self.async_wait_for_bounds())
+        self._image = ipyleaflet.ImageService(
+            name=self._variable,
+            crs=self.crs,
+            interactive=True,
+            update_interval=100,
+            endpoint='local')
+        # add click handler for popups
+        if self.enable_popups:
+            self._image.on_click(self.handle_click)
+        # set the image url
+        self.set_image_url()
+        # add image object to map
+        self.add(self._image)
+        # add colorbar
+        self.colorbar = kwargs['colorbar']
+        self.colorbar_position = kwargs['position']
+        if self.colorbar:
+            self.add_colorbar(
+                label=self._variable,
+                cmap=self.cmap,
+                opacity=self.opacity,
+                norm=self.norm,
+                position=self.colorbar_position
+            )
+
+    # observe changes in widget parameters
+    def set_observables(self, widget, **kwargs):
+        """observe changes in widget parameters
+        """
+        # set default keyword arguments
+        # to map widget changes to functions
+        kwargs.setdefault('group', [self.set_group])
+        kwargs.setdefault('variable', [self.set_variable])
+        kwargs.setdefault('timelag', [self.set_lag])
+        kwargs.setdefault('range', [self.set_norm])
+        kwargs.setdefault('dynamic', [self.set_dynamic])
+        kwargs.setdefault('cmap', [self.set_colormap])
+        kwargs.setdefault('reverse', [self.set_colormap])
+        # connect each widget with a set function
+        for key, val in kwargs.items():
+            # try to retrieve the functional
+            try:
+                observable = getattr(widget, key)
+            except AttributeError as exc:
+                continue
+            # assert that observable is an ipywidgets object
+            assert isinstance(observable, ipywidgets.widgets.widget.Widget)
+            assert hasattr(observable, 'observe')
+            # for each functional to map
+            for i, functional in enumerate(val):
+                # try to connect the widget to the functional
+                try:
+                    observable.observe(functional)
+                except (AttributeError, NameError, ValueError) as exc:
+                    pass
+
+    def set_dataset(self):
+        """Select the dataset for the selected variable and time lag
+        """
+        # reduce to group if applicable and convert to dataset
+        self._ds = self._dt[self._group].to_dataset()
+        # check if variable is in dataset
+        # if not, wait for change
+        if self._variable not in self._ds:
+            self.wait_for_change(self._variable, 'value')
+        # reduce to variable and lag
+        if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
+            self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
+        elif (self._ds[self._variable].ndim == 3) and ('band' in self._ds[self._variable].dims):
+            self._ds_selected = self._ds[self._variable].sel(band=1)
+        else:
+            self._ds_selected = self._ds[self._variable]
+
+    def set_group(self, sender):
+        """update the plotted variable for a group
+        """
+        # only update variable if a new final
+        if isinstance(sender['new'], str):
+            self._group = sender['new']
+        else:
+            return
 
 @xr.register_dataset_accessor('timeseries')
 class TimeSeries(HasTraits):
@@ -1575,7 +1775,7 @@ class TimeSeries(HasTraits):
         """
         # convert point to dataset coordinate reference system
         lon, lat = self.geometry['coordinates']
-        x, y = rasterio.warp.transform(self.crs, self._ds.rio.crs, [lon], [lat])
+        x, y = riowarp.transform(self.crs, self._ds.rio.crs, [lon], [lat])
         # output time series for point
         self._data = np.zeros_like(self._ds.time)
         # reduce dataset to geometry
@@ -1629,7 +1829,7 @@ class TimeSeries(HasTraits):
         """
         # convert linestring to dataset coordinate reference system
         lon, lat = np.transpose(self.geometry['coordinates'])
-        x, y = rasterio.warp.transform(self.crs, self._ds.rio.crs, lon, lat)
+        x, y = riowarp.transform(self.crs, self._ds.rio.crs, lon, lat)
         # get coordinates of each grid cell
         gridx, gridy = np.meshgrid(self._ds.x, self._ds.y)
         # clip ice area to geometry
@@ -1997,7 +2197,7 @@ class Transect(HasTraits):
         """
         # convert linestring to dataset coordinate reference system
         lon, lat = np.transpose(self.geometry['coordinates'])
-        x, y = rasterio.warp.transform(self.crs, self._ds.rio.crs, lon, lat)
+        x, y = riowarp.transform(self.crs, self._ds.rio.crs, lon, lat)
         # get coordinates of each grid cell
         gridx, gridy = np.meshgrid(self._ds.x, self._ds.y)
         # clip variable to geometry and create mask
