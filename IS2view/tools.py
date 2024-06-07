@@ -78,7 +78,7 @@ class widgets:
         self.directory.layout.display = 'none'
 
         # dropdown menu for setting ATL14/15 release
-        release_list = ['001', '002', '003']
+        release_list = ['001', '002', '003', '004']
         self.release = ipywidgets.Dropdown(
             options=release_list,
             value='003',
@@ -86,7 +86,8 @@ class widgets:
             description_tooltip=("Release: ATL14/15 data release\n\t"
                 "001: Release-01\n\t"
                 "002: Release-02\n\t"
-                "003: Release-03"),
+                "003: Release-03\n\t"
+                "004: Release-04"),
             disabled=False,
             style=self.style,
         )
