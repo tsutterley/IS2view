@@ -1259,7 +1259,7 @@ def query_resources(**kwargs):
 
         - ``ATL14`` : land ice height
         - ``ATL15`` : land ice height change
-    release: str, default '001'
+    release: str, default '003'
         ICESat-2 data release
     version: str, default '01'
         ICESat-2 data version
@@ -1335,7 +1335,7 @@ def query_resources(**kwargs):
     # verify inputs
     assert kwargs['asset'] in _assets
     assert kwargs['product'] in _products
-    assert kwargs['release'] in ('001', '002', '003')
+    assert kwargs['release'] in ('001', '002', '003', '004')
     if kwargs['cycles'] is not None:
         assert (len(kwargs['cycles']) == 2), 'cycles should be length 2'
     for r in kwargs['region']:
@@ -1433,6 +1433,7 @@ def query_resources(**kwargs):
             cycles['001'] = (3, 11)
             cycles['002'] = (3, 14)
             cycles['003'] = (3, 18)
+            cycles['004'] = (3, 21)
             kwargs['cycles'] = cycles[kwargs['release']]
         # for each requested region
         for region in kwargs['region']:

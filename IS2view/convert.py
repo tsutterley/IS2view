@@ -1,6 +1,6 @@
 """
 convert.py
-Written by Tyler Sutterley (08/2023)
+Written by Tyler Sutterley (06/2024)
 Utilities for converting gridded ICESat-2 files from native netCDF4
 
 PYTHON DEPENDENCIES:
@@ -13,6 +13,7 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 06/2024: use wrapper to importlib for optional dependencies
     Updated 08/2023: use h5netcdf as the netCDF4 driver for xarray
     Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: using pathlib to define and expand paths

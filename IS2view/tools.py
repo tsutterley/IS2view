@@ -15,6 +15,7 @@ PYTHON DEPENDENCIES:
         https://github.com/matplotlib/matplotlib
 
 UPDATE HISTORY:
+    Updated 06/2024: use wrapper to importlib for optional dependencies
     Updated 11/2023: set time steps using decimal years rather than lags
         setting dynamic colormap with float64 min and max
     Updated 08/2023: added options for ATL14/15 Release-03 data
@@ -31,7 +32,6 @@ import numpy as np
 from IS2view.utilities import import_dependency
 
 # attempt imports
-datatree = import_dependency('datatree')
 ipywidgets = import_dependency('ipywidgets')
 cm = import_dependency('matplotlib.cm')
 
@@ -196,9 +196,6 @@ class widgets:
         self.asset.observe(self.set_format_visibility)
         self.release.observe(self.set_groups)
         self.dynamic.observe(self.set_dynamic)
-        self.group.observe(self.set_variables)
-        self.group.observe(self.set_time_steps)
-        self.group.observe(self.set_atl15_defaults)
         self.variable.observe(self.set_time_visibility)
         self.timestep.observe(self.set_lag)
 
@@ -425,11 +422,7 @@ class widgets:
     def set_variables(self, *args):
         """sets the list of available variables
         """
-        if isinstance(self.data_vars, dict):
-            # set list of available variables in group
-            group = self.group.value
-            self.variable.options = sorted(self.data_vars[group])
-        elif isinstance(self.data_vars, list):
+        if isinstance(self.data_vars, list):
             # set list of available variables
             self.variable.options = sorted(self.data_vars)
         else:
@@ -458,18 +451,12 @@ class widgets:
         
         Parameters
         ----------
-        d : datatree.DataTree or xarray.Dataset
-            DataTree or xarray.Dataset object
+        d : xarray.Dataset
+            xarray.Dataset object
         """
-        # check if a DataTree object
-        if isinstance(d, datatree.DataTree):
-            self.data_vars = {g.strip('/'):sorted(d[g].data_vars)
-                for g in d.groups if d[g].data_vars}
-            self.time_vars = {g.strip('/'):d[g].time.values
-                for g in d.groups if 'time' in d[g]}
-        else:
-            self.data_vars = sorted(d.data_vars)
-            self.time_vars = d.time.values if 'time' in d else None
+        # data and time variables
+        self.data_vars = sorted(d.data_vars)
+        self.time_vars = d.time.values if 'time' in d else None
         # set the default groups
         self.set_groups()
         # set the default variables
@@ -480,16 +467,10 @@ class widgets:
     def set_time_steps(self, *args, epoch=2018.0):
         """sets available time range
         """
-        if isinstance(self.time_vars, dict):
-            # check if a DataTree object
-            group = self.group.value
-            self.time = list(epoch + self.time_vars[group]/365.25)
-        elif isinstance(self.time_vars, (list, np.ndarray)):
-            # set list of available variables
-            self.time = list(epoch + self.time_vars/365.25)
         # try setting the min and max time step
         try:
             # convert time to units
+            self.time = list(epoch + self.time_vars/365.25)
             self.timestep.max = self.time[-1]
             self.timestep.min = self.time[0]
             self.timestep.value = self.time[0]
