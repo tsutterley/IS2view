@@ -195,3 +195,10 @@ Requires optional ``geopandas`` and ``owslib`` dependencies.
 .. figure:: ../_assets/map.png
    :width: 600
    :align: center
+
+Remove Image Service Layer from Map
+###################################
+
+.. code-block:: python
+
+   ds.leaflet.reset()

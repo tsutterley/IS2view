@@ -1,6 +1,6 @@
 """
 io.py
-Written by Tyler Sutterley (10/2023)
+Written by Tyler Sutterley (06/2024)
 Utilities for reading gridded ICESat-2 files using rasterio and xarray
 
 PYTHON DEPENDENCIES:
@@ -18,6 +18,7 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 06/2024: use wrapper to importlib for optional dependencies
     Updated 10/2023: use dask.delayed to read multiple files in parallel
     Updated 08/2023: use xarray h5netcdf to read files streaming from s3
         add open_dataset function for opening multiple granules
@@ -27,22 +28,13 @@ UPDATE HISTORY:
 """
 from __future__ import annotations
 import os
-import logging
+from IS2view.utilities import import_dependency
 
 # attempt imports
-try:
-    import rioxarray
-    import rioxarray.merge
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("rioxarray not available")
-try:
-    import dask
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("dask not available")
-try:
-    import xarray as xr
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("xarray not available")
+rioxarray = import_dependency('rioxarray')
+rioxarray.merge = import_dependency('rioxarray.merge')
+dask = import_dependency('dask')
+xr = import_dependency('xarray')
 
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'

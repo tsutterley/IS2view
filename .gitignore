@@ -35,6 +35,7 @@ _*.c
 *.shp
 *.shx
 *.tif
+*.vrt
 *.zarr
 # Logs and databases #
 ######################
