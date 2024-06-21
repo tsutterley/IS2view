@@ -901,7 +901,7 @@ class LeafletMap(HasTraits):
         """get the bounds of the leaflet map in geographical coordinates
         """
         self.get_bbox()
-        lon, lat = riowarp.transform(
+        lon, lat = rio.warp.transform(
             self.crs['name'], 'EPSG:4326',
             [self.sw['x'], self.ne['x']],
             [self.sw['y'], self.ne['y']])
@@ -990,7 +990,7 @@ class LeafletMap(HasTraits):
         # attempt to get the coordinate reference system of the dataset
         self.get_crs()
         # convert map bounds to coordinate reference system of image
-        minx, miny, maxx, maxy = riowarp.transform_bounds(
+        minx, miny, maxx, maxy = rio.warp.transform_bounds(
             self.crs['name'], self._ds.rio.crs,
             self.sw['x'], self.sw['y'],
             self.ne['x'], self.ne['y'])
@@ -1013,14 +1013,14 @@ class LeafletMap(HasTraits):
             # warp image to map bounds and resolution
             # input and output affine transformations
             src_transform = ds.rio.transform()
-            dst_transform = riotransform.from_origin(minx, maxy,
+            dst_transform = rio.transform.from_origin(minx, maxy,
                 self.resolution, self.resolution)
             # allocate for output warped image
             dst_width = int((maxx - minx)//self.resolution)
             dst_height = int((maxy - miny)//self.resolution)
             dst_data = np.zeros((dst_height, dst_width), dtype=ds.dtype.type)
             # warp image to output resolution
-            riowarp.reproject(source=ds.values, destination=dst_data,
+            rio.warp.reproject(source=ds.values, destination=dst_data,
                 src_transform=src_transform,
                 src_crs=self._ds.rio.crs,
                 src_nodata=np.nan,
@@ -1260,7 +1260,7 @@ class LeafletMap(HasTraits):
         else:
             self._ds.rio.set_crs(crs)
         # get the clicked point in dataset coordinate reference system
-        x, y = riowarp.transform('EPSG:4326', crs, [lon], [lat])
+        x, y = rio.warp.transform('EPSG:4326', crs, [lon], [lat])
         # find nearest point in dataset
         self._data = self._ds_selected.sel(x=x, y=y, method='nearest').values[0]
         self._units = self._ds[self._variable].attrs['units']
@@ -1572,7 +1572,7 @@ class TimeSeries(HasTraits):
         """
         # convert point to dataset coordinate reference system
         lon, lat = self.geometry['coordinates']
-        x, y = riowarp.transform(self.crs, self._ds.rio.crs, [lon], [lat])
+        x, y = rio.warp.transform(self.crs, self._ds.rio.crs, [lon], [lat])
         # output time series for point
         self._data = np.zeros_like(self._ds.time)
         # reduce dataset to geometry
@@ -1626,7 +1626,7 @@ class TimeSeries(HasTraits):
         """
         # convert linestring to dataset coordinate reference system
         lon, lat = np.transpose(self.geometry['coordinates'])
-        x, y = riowarp.transform(self.crs, self._ds.rio.crs, lon, lat)
+        x, y = rio.warp.transform(self.crs, self._ds.rio.crs, lon, lat)
         # get coordinates of each grid cell
         gridx, gridy = np.meshgrid(self._ds.x, self._ds.y)
         # clip ice area to geometry
@@ -1994,7 +1994,7 @@ class Transect(HasTraits):
         """
         # convert linestring to dataset coordinate reference system
         lon, lat = np.transpose(self.geometry['coordinates'])
-        x, y = riowarp.transform(self.crs, self._ds.rio.crs, lon, lat)
+        x, y = rio.warp.transform(self.crs, self._ds.rio.crs, lon, lat)
         # get coordinates of each grid cell
         gridx, gridy = np.meshgrid(self._ds.x, self._ds.y)
         # clip variable to geometry and create mask
