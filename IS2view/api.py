@@ -63,9 +63,11 @@ from IS2view.utilities import import_dependency
 gpd = import_dependency('geopandas')
 ipywidgets = import_dependency('ipywidgets')
 ipyleaflet = import_dependency('ipyleaflet')
-wms = import_dependency('owslib.wms')
-riotransform = import_dependency('rasterio.transform')
-riowarp = import_dependency('rasterio.warp')
+owslib = import_dependency('owslib')
+owslib.wms = import_dependency('owslib.wms')
+rio = import_dependency('rasterio')
+rio.transform = import_dependency('rasterio.transform')
+rio.warp = import_dependency('rasterio.warp')
 xr = import_dependency('xarray')
 xyzservices = import_dependency('xyzservices')
 
@@ -500,7 +502,7 @@ class Leaflet:
         ax: obj, default None
             Figure axis
         kwargs: dict, default {}
-            Additional keyword arguments for ``wms.getmap``
+            Additional keyword arguments for ``owslib.wms.getmap``
         """
         # set default keyword arguments
         kwargs.setdefault('layers', ['BlueMarble_NextGeneration'])
@@ -527,8 +529,8 @@ class Leaflet:
         # https://wiki.earthdata.nasa.gov/display/GIBS
         # https://worldview.earthdata.nasa.gov/
         url = f'https://gibs.earthdata.nasa.gov/wms/{srs}/best/wms.cgi?'
-        mappingservice = wms.WebMapService(url=url, version='1.1.1')
-        basemap = mappingservice.getmap(**kwargs)
+        wms = owslib.wms.WebMapService(url=url, version='1.1.1')
+        basemap = wms.getmap(**kwargs)
         # read WMS layer and plot
         img = plt.imread(io.BytesIO(basemap.read()))
         ax.imshow(img, extent=[bbox[0],bbox[2],bbox[1],bbox[3]])

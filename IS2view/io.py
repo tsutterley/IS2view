@@ -32,7 +32,7 @@ from IS2view.utilities import import_dependency
 
 # attempt imports
 rioxarray = import_dependency('rioxarray')
-riomerge = import_dependency('rioxarray.merge')
+rioxarray.merge = import_dependency('rioxarray.merge')
 dask = import_dependency('dask')
 xr = import_dependency('xarray')
 
@@ -92,7 +92,7 @@ def open_dataset(granule,
         if parallel:
             datasets, closers = dask.compute(datasets, closers)
         # merge datasets
-        ds = riomerge.merge_datasets(datasets)
+        ds = rioxarray.merge.merge_datasets(datasets)
     else:
         # read a single granule
         ds = from_file(granule,
