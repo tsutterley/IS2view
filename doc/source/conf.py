@@ -14,19 +14,18 @@
 # import sys
 import datetime
 # sys.path.insert(0, os.path.abspath('.'))
-from pkg_resources import get_distribution
+import importlib.metadata
 
-
-# -- Project information -----------------------------------------------------
-
-project = 'IS2view'
+# package metadata
+metadata = importlib.metadata.metadata("IS2view")
+project = metadata["Name"]
 year = datetime.date.today().year
 copyright = f"2022\u2013{year}, Tyler C. Sutterley"
-author = 'Tyler Sutterley'
+author = 'Tyler C. Sutterley'
 
 # The full version, including alpha/beta/rc tags
 # get semantic version from setuptools-scm
-version = get_distribution("IS2view").version
+version = metadata["version"]
 # append "v" before the version
 release = f"v{version}"
 
