@@ -81,7 +81,7 @@ class widgets:
         release_list = ['001', '002', '003', '004']
         self.release = ipywidgets.Dropdown(
             options=release_list,
-            value='003',
+            value='004',
             description='Release:',
             description_tooltip=("Release: ATL14/15 data release\n\t"
                 "001: Release-01\n\t"

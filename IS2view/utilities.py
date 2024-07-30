@@ -1260,7 +1260,7 @@ def query_resources(**kwargs):
 
         - ``ATL14`` : land ice height
         - ``ATL15`` : land ice height change
-    release: str, default '003'
+    release: str, default '004'
         ICESat-2 data release
     version: str, default '01'
         ICESat-2 data version
@@ -1298,7 +1298,7 @@ def query_resources(**kwargs):
     kwargs.setdefault('bucket', 'is2view')
     kwargs.setdefault('directory', None)
     kwargs.setdefault('product', 'ATL15')
-    kwargs.setdefault('release', '003')
+    kwargs.setdefault('release', '004')
     kwargs.setdefault('version', '01')
     kwargs.setdefault('cycles', None)
     kwargs.setdefault('region', 'AA')
