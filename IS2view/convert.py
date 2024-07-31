@@ -1,6 +1,6 @@
 """
 convert.py
-Written by Tyler Sutterley (08/2023)
+Written by Tyler Sutterley (06/2024)
 Utilities for converting gridded ICESat-2 files from native netCDF4
 
 PYTHON DEPENDENCIES:
@@ -13,6 +13,7 @@ PYTHON DEPENDENCIES:
         https://docs.xarray.dev/en/stable/
 
 UPDATE HISTORY:
+    Updated 06/2024: use wrapper to importlib for optional dependencies
     Updated 08/2023: use h5netcdf as the netCDF4 driver for xarray
     Updated 07/2023: use logging instead of warnings for import attempts
     Updated 06/2023: using pathlib to define and expand paths
@@ -23,16 +24,11 @@ UPDATE HISTORY:
 import logging
 import pathlib
 import numpy as np
+from IS2view.utilities import import_dependency
 
 # attempt imports
-try:
-    import h5netcdf
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("h5netcdf not available")
-try:
-    import xarray as xr
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("xarray not available")
+h5netcdf = import_dependency('h5netcdf')
+xr = import_dependency('xarray')
 
 # default groups to skip
 _default_skip_groups = ('METADATA', 'orbit_info', 'quality_assessment',)

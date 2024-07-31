@@ -15,6 +15,7 @@ PYTHON DEPENDENCIES:
         https://github.com/matplotlib/matplotlib
 
 UPDATE HISTORY:
+    Updated 06/2024: use wrapper to importlib for optional dependencies
     Updated 11/2023: set time steps using decimal years rather than lags
         setting dynamic colormap with float64 min and max
     Updated 08/2023: added options for ATL14/15 Release-03 data
@@ -28,16 +29,11 @@ import os
 import copy
 import logging
 import numpy as np
+from IS2view.utilities import import_dependency
 
 # attempt imports
-try:
-    import ipywidgets
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("ipywidgets not available")
-try:
-    import matplotlib.cm as cm
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("matplotlib not available")
+ipywidgets = import_dependency('ipywidgets')
+cm = import_dependency('matplotlib.cm')
 
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
@@ -82,15 +78,16 @@ class widgets:
         self.directory.layout.display = 'none'
 
         # dropdown menu for setting ATL14/15 release
-        release_list = ['001', '002', '003']
+        release_list = ['001', '002', '003', '004']
         self.release = ipywidgets.Dropdown(
             options=release_list,
-            value='003',
+            value='004',
             description='Release:',
             description_tooltip=("Release: ATL14/15 data release\n\t"
                 "001: Release-01\n\t"
                 "002: Release-02\n\t"
-                "003: Release-03"),
+                "003: Release-03\n\t"
+                "004: Release-04"),
             disabled=False,
             style=self.style,
         )
@@ -166,7 +163,7 @@ class widgets:
             style=self.style,
         )
 
-        # dropdown menu for selecting time lag to draw on map
+        # slider for selecting time lag to draw on map
         self.timelag = ipywidgets.IntSlider(
             description='Lag:',
             description_tooltip="Lag: time lag to draw on leaflet map",
@@ -174,7 +171,7 @@ class widgets:
             style=self.style,
         )
 
-        # dropdown menu for selecting time step to draw on map
+        # slider for selecting time step to draw on map
         self.timestep = ipywidgets.FloatSlider(
             description='Time:',
             description_tooltip="Time: time step to draw on leaflet map",
@@ -182,6 +179,7 @@ class widgets:
             readout=True,
             readout_format='.2f',
             disabled=False,
+            continuous_update=False,
             style=self.style,
         )
 
@@ -381,7 +379,7 @@ class widgets:
         # set default variable for group
         self.variable.value = variables[group]
 
-    def set_groups(self, sender):
+    def set_groups(self, *args):
         """sets the list of available groups for a release
         """
         group_list = ['delta_h', 'dhdt_lag1', 'dhdt_lag4', 'dhdt_lag8']
@@ -423,11 +421,11 @@ class widgets:
         self.region.description_tooltip = description_tooltip
 
     def set_variables(self, *args):
-        """sets the list of available variables in a group
+        """sets the list of available variables
         """
-        if any(args):
+        if isinstance(self.data_vars, list):
             # set list of available variables
-            self.variable.options = sorted(args[0].keys())
+            self.variable.options = sorted(self.data_vars)
         else:
             # return to temporary defaults
             self.variable.options = ['delta_h', 'dhdt']
@@ -448,13 +446,32 @@ class widgets:
             self.range.value = [-5, 5]
             self.range.layout.display = 'inline-flex'
 
-    def set_time_steps(self, ds, epoch=2018.0):
+    def get_variables(self, d):
+        """
+        Gets the available variables and time steps
+        
+        Parameters
+        ----------
+        d : xarray.Dataset
+            xarray.Dataset object
+        """
+        # data and time variables
+        self.data_vars = sorted(d.data_vars)
+        self.time_vars = d.time.values if 'time' in d else None
+        # set the default groups
+        self.set_groups()
+        # set the default variables
+        self.set_variables()
+        # set the default time steps
+        self.set_time_steps()
+        
+    def set_time_steps(self, *args, epoch=2018.0):
         """sets available time range
         """
         # try setting the min and max time step
         try:
             # convert time to units
-            self.time = list(epoch + ds.time.values/365.25)
+            self.time = list(epoch + self.time_vars/365.25)
             self.timestep.max = self.time[-1]
             self.timestep.min = self.time[0]
             self.timestep.value = self.time[0]

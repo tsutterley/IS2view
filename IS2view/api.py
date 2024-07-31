@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 api.py
-Written by Tyler Sutterley (04/2024)
+Written by Tyler Sutterley (06/2024)
 Plotting tools for visualizing rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
@@ -28,6 +28,7 @@ PYTHON DEPENDENCIES:
         https://xyzservices.readthedocs.io/en/stable/
 
 UPDATE HISTORY:
+    Updated 06/2024: use wrapper to importlib for optional dependencies
     Updated 04/2024: add connections and functions for changing variables
         and other attributes of the leaflet map visualization
         simplify and generalize mapping between observables and functionals
@@ -56,20 +57,21 @@ import numpy as np
 import collections.abc
 from traitlets import HasTraits, Float, Tuple, observe
 from traitlets.utils.bunch import Bunch
+from IS2view.utilities import import_dependency
 
 # attempt imports
-try:
-    import geopandas as gpd
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("geopandas not available")
-try:
-    import ipywidgets
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("ipywidgets not available")
-try:
-    import ipyleaflet
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("ipyleaflet not available")
+gpd = import_dependency('geopandas')
+ipywidgets = import_dependency('ipywidgets')
+ipyleaflet = import_dependency('ipyleaflet')
+owslib = import_dependency('owslib')
+owslib.wms = import_dependency('owslib.wms')
+rio = import_dependency('rasterio')
+rio.transform = import_dependency('rasterio.transform')
+rio.warp = import_dependency('rasterio.warp')
+xr = import_dependency('xarray')
+xyzservices = import_dependency('xyzservices')
+
+# attempt matplotlib imports
 try:
     import matplotlib
     import matplotlib.cm as cm
@@ -81,23 +83,6 @@ try:
     matplotlib.rcParams['mathtext.default'] = 'regular'
 except (AttributeError, ImportError, ModuleNotFoundError) as exc:
     logging.critical("matplotlib not available")
-try:
-    import owslib.wms
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("owslib not available")
-try:
-    import rasterio.transform
-    import rasterio.warp
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("rasterio not available")
-try:
-    import xarray as xr
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.critical("xarray not available")
-try:
-    import xyzservices
-except (AttributeError, ImportError, ModuleNotFoundError) as exc:
-    logging.debug("xyzservices not available")
 
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
@@ -230,6 +215,8 @@ def _tile_provider(provider):
 
 # create traitlets of basemap providers
 basemaps = _load_dict(providers)
+# set default map dimensions
+_default_layout = ipywidgets.Layout(width='70%', height='600px')
 
 # draw ipyleaflet map
 class Leaflet:
@@ -241,6 +228,8 @@ class Leaflet:
         ``ipyleaflet.Map``
     basemap : obj or NoneType
         Basemap for the ``ipyleaflet.Map``
+    layout : obj, default ``ipywidgets.Layout(width='70%', height='600px')``
+        Layout for the ``ipyleaflet.Map``
     attribution : bool, default False
         Include layer attributes on leaflet map
     scale_control : bool, default False
@@ -280,6 +269,7 @@ class Leaflet:
     def __init__(self, projection, **kwargs):
         # set default keyword arguments
         kwargs.setdefault('map', None)
+        kwargs.setdefault('layout', _default_layout)
         kwargs.setdefault('attribution', False)
         kwargs.setdefault('full_screen_control', False)
         kwargs.setdefault('scale_control', False)
@@ -300,7 +290,9 @@ class Leaflet:
                 zoom=kwargs['zoom'], max_zoom=5,
                 attribution_control=kwargs['attribution'],
                 basemap=kwargs['basemap'],
-                crs=projections['EPSG:3413'])
+                crs=projections['EPSG:3413'],
+                layout=kwargs['layout']
+            )
             self.crs = 'EPSG:3413'
         elif (projection == 'South'):
             kwargs.setdefault('basemap',
@@ -310,7 +302,9 @@ class Leaflet:
                 zoom=kwargs['zoom'], max_zoom=5,
                 attribution_control=kwargs['attribution'],
                 basemap=kwargs['basemap'],
-                crs=projections['EPSG:3031'])
+                crs=projections['EPSG:3031'],
+                layout=kwargs['layout']
+            )
             self.crs = 'EPSG:3031'
         else:
             # use a predefined ipyleaflet map
@@ -508,7 +502,7 @@ class Leaflet:
         ax: obj, default None
             Figure axis
         kwargs: dict, default {}
-            Additional keyword arguments for ``wms.getmap``
+            Additional keyword arguments for ``owslib.wms.getmap``
         """
         # set default keyword arguments
         kwargs.setdefault('layers', ['BlueMarble_NextGeneration'])
@@ -777,12 +771,8 @@ class LeafletMap(HasTraits):
         # reduce to variable and lag
         self._variable = copy.copy(kwargs['variable'])
         self.lag = int(kwargs['lag'])
-        if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
-            self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
-        elif (self._ds[self._variable].ndim == 3) and ('band' in self._ds[self._variable].dims):
-            self._ds_selected = self._ds[self._variable].sel(band=1)
-        else:
-            self._ds_selected = self._ds[self._variable]
+        # select data variable
+        self.set_dataset()
         # get the normalization bounds
         self.get_norm_bounds(**kwargs)
         # create matplotlib normalization
@@ -911,7 +901,7 @@ class LeafletMap(HasTraits):
         """get the bounds of the leaflet map in geographical coordinates
         """
         self.get_bbox()
-        lon, lat = rasterio.warp.transform(
+        lon, lat = rio.warp.transform(
             self.crs['name'], 'EPSG:4326',
             [self.sw['x'], self.ne['x']],
             [self.sw['y'], self.ne['y']])
@@ -1000,7 +990,7 @@ class LeafletMap(HasTraits):
         # attempt to get the coordinate reference system of the dataset
         self.get_crs()
         # convert map bounds to coordinate reference system of image
-        minx, miny, maxx, maxy = rasterio.warp.transform_bounds(
+        minx, miny, maxx, maxy = rio.warp.transform_bounds(
             self.crs['name'], self._ds.rio.crs,
             self.sw['x'], self.sw['y'],
             self.ne['x'], self.ne['y'])
@@ -1023,14 +1013,14 @@ class LeafletMap(HasTraits):
             # warp image to map bounds and resolution
             # input and output affine transformations
             src_transform = ds.rio.transform()
-            dst_transform = rasterio.transform.from_origin(minx, maxy,
+            dst_transform = rio.transform.from_origin(minx, maxy,
                 self.resolution, self.resolution)
             # allocate for output warped image
             dst_width = int((maxx - minx)//self.resolution)
             dst_height = int((maxy - miny)//self.resolution)
             dst_data = np.zeros((dst_height, dst_width), dtype=ds.dtype.type)
             # warp image to output resolution
-            rasterio.warp.reproject(source=ds.values, destination=dst_data,
+            rio.warp.reproject(source=ds.values, destination=dst_data,
                 src_transform=src_transform,
                 src_crs=self._ds.rio.crs,
                 src_nodata=np.nan,
@@ -1148,14 +1138,10 @@ class LeafletMap(HasTraits):
                 except (AttributeError, NameError, ValueError) as exc:
                     pass
 
-    def set_variable(self, sender):
-        """update the dataframe variable for a new selected variable
+    def set_dataset(self):
+        """Select the dataset for the selected variable
+        and time lag
         """
-        # only update variable if a new final
-        if isinstance(sender['new'], str):
-            self._variable = sender['new']
-        else:
-            return
         # reduce to variable and lag
         if (self._ds[self._variable].ndim == 3) and ('time' in self._ds[self._variable].dims):
             self._ds_selected = self._ds[self._variable].sel(time=self._ds.time[self.lag])
@@ -1163,6 +1149,17 @@ class LeafletMap(HasTraits):
             self._ds_selected = self._ds[self._variable].sel(band=1)
         else:
             self._ds_selected = self._ds[self._variable]
+
+    def set_variable(self, sender):
+        """update the plotted variable
+        """
+        # only update variable if a new final
+        if isinstance(sender['new'], str):
+            self._variable = sender['new']
+        else:
+            return
+        # reduce to variable and lag
+        self.set_dataset()
         # check if dynamic normalization is enabled
         if self._dynamic:
             self.get_norm_bounds()
@@ -1263,7 +1260,7 @@ class LeafletMap(HasTraits):
         else:
             self._ds.rio.set_crs(crs)
         # get the clicked point in dataset coordinate reference system
-        x, y = rasterio.warp.transform('EPSG:4326', crs, [lon], [lat])
+        x, y = rio.warp.transform('EPSG:4326', crs, [lon], [lat])
         # find nearest point in dataset
         self._data = self._ds_selected.sel(x=x, y=y, method='nearest').values[0]
         self._units = self._ds[self._variable].attrs['units']
@@ -1575,7 +1572,7 @@ class TimeSeries(HasTraits):
         """
         # convert point to dataset coordinate reference system
         lon, lat = self.geometry['coordinates']
-        x, y = rasterio.warp.transform(self.crs, self._ds.rio.crs, [lon], [lat])
+        x, y = rio.warp.transform(self.crs, self._ds.rio.crs, [lon], [lat])
         # output time series for point
         self._data = np.zeros_like(self._ds.time)
         # reduce dataset to geometry
@@ -1629,7 +1626,7 @@ class TimeSeries(HasTraits):
         """
         # convert linestring to dataset coordinate reference system
         lon, lat = np.transpose(self.geometry['coordinates'])
-        x, y = rasterio.warp.transform(self.crs, self._ds.rio.crs, lon, lat)
+        x, y = rio.warp.transform(self.crs, self._ds.rio.crs, lon, lat)
         # get coordinates of each grid cell
         gridx, gridy = np.meshgrid(self._ds.x, self._ds.y)
         # clip ice area to geometry
@@ -1997,7 +1994,7 @@ class Transect(HasTraits):
         """
         # convert linestring to dataset coordinate reference system
         lon, lat = np.transpose(self.geometry['coordinates'])
-        x, y = rasterio.warp.transform(self.crs, self._ds.rio.crs, lon, lat)
+        x, y = rio.warp.transform(self.crs, self._ds.rio.crs, lon, lat)
         # get coordinates of each grid cell
         gridx, gridy = np.meshgrid(self._ds.x, self._ds.y)
         # clip variable to geometry and create mask
