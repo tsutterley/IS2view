@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "IS2view"
+description = "Interactive visualization and data extraction tool for the ICESat-2 ATL14/15 Gridded Land Ice Height Products"
+keywords = [
+    "ICESat-2",
+    "elevation",
+    "digital elevation models",
+    "ipython",
+    "jupyter",
+    "graphics",
+]
+
+authors = [
+    {name = "Tyler Sutterley"},
+    {name = "Ben Smith"},
+    {email = "tsutterl@uw.edu"}
+]
+maintainers = [{ name = "IS2view contributors" }]
+license = {file = "LICENSE"}
+readme = "README.rst"
+
+requires-python = "~=3.6"
+dependencies = [
+    "h5netcdf",
+    "ipyleaflet",
+    "matplotlib",
+    "numpy",
+    "rioxarray",
+    "setuptools_scm",
+    "xarray",
+]
+
+dynamic = ["version"]
+
+classifiers=[
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.urls]
+Homepage = "https://is2view.readthedocs.io"
+Documentation = "https://is2view.readthedocs.io"
+Repository = "https://github.com/tsutterley/IS2view"
+Issues = "https://github.com/tsutterley/IS2view/issues"
+
+[project.optional-dependencies]
+doc = ["docutils", "graphviz", "ipywidgets", "notebook", "numpydoc", "sphinx", "sphinx-argparse>=0.4", "sphinx_rtd_theme"]
+all = ["ipywidgets", "notebook"]
+dev = ["flake8", "pytest>=4.6", "pytest-cov"]
+
+[tool.setuptools.packages.find]
+exclude = ["test*", "run*"]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+norecursedirs = ".git"
+python_files = [
+    "test*.py"
+]
+testpaths = [
+    "test"
+]
+
+[tool.coverage.run]
+branch = true
+source = [
+    "IS2view",
+    "test",
+]
+omit = [
+    "setup.py",
+    "conf.py",
+    "scripts/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+precision = 2
+

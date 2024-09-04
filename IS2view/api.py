@@ -48,6 +48,7 @@ UPDATE HISTORY:
 """
 import io
 import os
+import re
 import copy
 import json
 import base64
@@ -1338,12 +1339,13 @@ class LeafletMap(HasTraits):
         if (ax is None):
             _, ax = plt.subplots()
         # extract units
-        longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+        longname = re.sub(r'\s+', ' ', self._ds[self._variable].attrs['long_name'])
         units = self._ds[self._variable].attrs['units'][0]
         # clip image to map bounds
         visible = self.clip_image(self._ds_selected)
         # color bar keywords
-        cbar_kwargs = dict(label=f'{longname} [{units}]', orientation='horizontal')
+        cbar_kwargs = dict(label=f'{longname} [{units}]',
+            extend='both', orientation='horizontal')
         visible.plot.imshow(ax=ax,
             norm=self.norm,
             interpolation="nearest",
@@ -1468,7 +1470,7 @@ class TimeSeries(HasTraits):
         # convert time to units
         self._time = epoch + (self._ds.time)/365.25
         # extract units
-        self._longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+        self._longname = re.sub(r'\s+', ' ', self._ds[self._variable].attrs['long_name'])
         self._units = self._ds[self._variable].attrs['units'][0]
         # create plot for a given geometry type
         geometry_type = self.geometry.get('type')
@@ -1520,7 +1522,7 @@ class TimeSeries(HasTraits):
         # convert time to units
         self._time = epoch + (self._ds.time)/365.25
         # extract units
-        self._longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+        self._longname = re.sub(r'\s+', ' ', self._ds[self._variable].attrs['long_name'])
         self._units = self._ds[self._variable].attrs['units'][0]
         # create plot for a given geometry type
         geometry_type = self.geometry.get('type')
@@ -1694,7 +1696,7 @@ class TimeSeries(HasTraits):
             self._line[i], = ax.plot(self._dist, self._data[:,i],
                 label=labels[i], **kwargs)
         # set labels and title
-        ax.set_xlabel('{0} [{1}]'.format('Distance', 'meters'))
+        ax.set_xlabel('{0} [{1}]'.format('Distance', 'm'))
         ax.set_ylabel('{0} [{1}]'.format(self._longname, self._units))
         ax.set_title(self._variable)
         # create legend
@@ -1896,7 +1898,7 @@ class Transect(HasTraits):
         else:
             self._ds_selected = self._ds[self._variable]
         # extract units
-        self._longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+        self._longname = re.sub(r'\s+', ' ', self._ds[self._variable].attrs['long_name'])
         self._units = self._ds[self._variable].attrs['units'][0]
         # create plot for a given geometry type
         geometry_type = self.geometry.get('type')
@@ -1946,7 +1948,7 @@ class Transect(HasTraits):
         else:
             self._ds_selected = self._ds[self._variable]
         # extract units
-        self._longname = self._ds[self._variable].attrs['long_name'].replace('  ', ' ')
+        self._longname = re.sub(r'\s+', ' ', self._ds[self._variable].attrs['long_name'])
         self._units = self._ds[self._variable].attrs['units'][0]
         # create time series for a given geometry type
         geometry_type = self.geometry.get('type')
