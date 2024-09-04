@@ -1,4 +1,0 @@
-# Install geopandas
-conda install -y geopandas
-# Install python package
-cd; pip install -e .
