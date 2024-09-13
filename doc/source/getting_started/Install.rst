@@ -24,17 +24,17 @@ To use the development repository, please fork ``IS2view`` into your own account
 
     git clone https://github.com/tsutterley/IS2view.git
 
-``IS2view`` can then be installed within the package directory using ``setuptools``:
-
-.. code-block:: bash
-
-    python3 setup.py install
-
-or ``pip``
+``IS2view`` can then be installed within the package directory using ``pip``:
 
 .. code-block:: bash
 
     python3 -m pip install --user .
+
+To include all optional dependencies:
+
+.. code-block:: bash
+
+   python3 -m pip install --user .[all]
 
 The development version of ``IS2view`` can also be installed directly from GitHub using ``pip``:
 

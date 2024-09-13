@@ -121,7 +121,7 @@ def import_dependency(
 # PURPOSE: get the hash value of a file
 def get_hash(
         local: str | io.IOBase | pathlib.Path,
-        algorithm: str = 'MD5'
+        algorithm: str = 'md5'
     ):
     """
     Get the hash value from a local file or ``BytesIO`` object
@@ -130,7 +130,7 @@ def get_hash(
     ----------
     local: obj, str or pathlib.Path
         BytesIO object or path to file
-    algorithm: str, default 'MD5'
+    algorithm: str, default 'md5'
         hashing algorithm for checksum validation
     """
     # check if open file object or if local file exists
