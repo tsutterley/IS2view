@@ -33,6 +33,39 @@ Interactive visualization and data extraction tool for ICESat-2 ATL14/15 Gridded
 - https://icesat-2-scf.gsfc.nasa.gov
 - https://nsidc.org/data/icesat-2/
 
+For more information: see the documentation at `is2view.readthedocs.io <https://is2view.readthedocs.io/>`_
+
+Installation
+############
+
+From PyPI:
+
+.. code-block:: bash
+
+   python3 -m pip install IS2view
+
+To include all optional dependencies:
+
+.. code-block:: bash
+
+   python3 -m pip install IS2view[all]
+
+Using `conda` or `mamba` from conda-forge:
+
+.. code-block:: bash
+
+   conda install -c conda-forge is2view
+
+.. code-block:: bash
+
+   mamba install -c conda-forge is2view
+
+Development version from GitHub:
+
+.. code-block:: bash
+
+   python3 -m pip install git+https://github.com/tsutterley/IS2view.git
+
 Dependencies
 ############
 
@@ -53,10 +86,15 @@ Download
 | A zip archive of the latest version is available directly at:
 | https://github.com/tsutterley/IS2view/archive/main.zip
 
+Contributing
+############
+
+This project contains work and contributions from the `scientific community <./CONTRIBUTORS.rst>`_.
+If you would like to contribute to the project, please have a look at the `open issues <https://github.com/tsutterley/IS2view/issues>`_ and the project `code of conduct <./CODE_OF_CONDUCT.rst>`_.
+
 Disclaimer
 ##########
 
-This project contains work and contributions from the `scientific community <./CONTRIBUTORS.rst>`_.
 This program is not sponsored or maintained by the Universities Space Research Association (USRA) or NASA.
 It is provided here for your convenience but *with no guarantees whatsoever*.
 
