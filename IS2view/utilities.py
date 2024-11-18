@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 utilities.py
-Written by Tyler Sutterley (10/2024)
+Written by Tyler Sutterley (11/2024)
 Download and management utilities
 
 PYTHON DEPENDENCIES:
@@ -11,6 +11,7 @@ PYTHON DEPENDENCIES:
         https://s3fs.readthedocs.io/en/latest/
 
 UPDATE HISTORY:
+    Updated 11/2024: change default request type to application/netcdf
     Updated 10/2024: update CMR search utility to replace deprecated scrolling
         https://cmr.earthdata.nasa.gov/search/site/docs/search/api.html
     Updated 08/2024: generalize hash function to use any available algorithm
@@ -1118,7 +1119,7 @@ def cmr(
         resolutions: str | list | None = None,
         provider: str = 'NSIDC_ECS',
         endpoint: str = 'data',
-        request_type: str = r"application/x-hdfeos",
+        request_type: str = r'application/(x-)?netcdf',
         opener = None,
         context: ssl.SSLContext = _default_ssl_context,
         verbose: bool = False,
@@ -1145,7 +1146,7 @@ def cmr(
             - ``'data'``: NASA Earthdata https archive
             - ``'opendap'``: NASA Earthdata OPeNDAP archive
             - ``'s3'``: NASA Earthdata Cumulus AWS S3 bucket
-    request_type: str, default 'application/x-hdfeos'
+    request_type: str, default 'application/(x-)?netcdf'
         data type for reducing CMR query
     opener: obj or NoneType, default None
         ``OpenerDirector`` instance
