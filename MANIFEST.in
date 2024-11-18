@@ -3,4 +3,3 @@ prune doc*
 prune notebooks*
 exclude *.cfg
 exclude *.yml
-include version.txt

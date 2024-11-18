@@ -92,3 +92,7 @@ omit = [
 show_missing = true
 precision = 2
 
+[tool.setuptools_scm]
+local_scheme = "node-and-date"
+version_scheme = "python-simplified-semver"
+version_file = "IS2view/_version.py"

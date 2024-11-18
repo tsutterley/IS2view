@@ -61,6 +61,7 @@ wheels/
 pythonenv*/
 setup-miniconda-patched-environment.yml
 .vscode
+_version.py
 # OS generated files #
 ######################
 .DS_Store

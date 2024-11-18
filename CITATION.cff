@@ -1,0 +1,33 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: IS2view
+message: Interactive visualization and data extraction tool for the ICESat-2 ATL14/15 Gridded Land Ice Height Products
+type: software
+authors:
+  - given-names: Tyler
+    family-names: Sutterley
+    affiliation: University of Washington, Applied Physics Laboratory
+  - given-names: Ben
+    family-names: Smith
+    affiliation: University of Washington, Applied Physics Laboratory
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.8015463
+    description: Zenodo Archive
+repository-code: 'https://github.com/tsutterley/IS2view'
+url: 'https://is2view.readthedocs.io'
+repository: 'https://pypi.org/project/IS2view'
+repository-artifact: 'https://anaconda.org/conda-forge/is2view'
+doi: "10.5281/zenodo.8015463"
+version: "0.1.0"
+date-released: "2024-11-18"
+keywords:
+  - ICESat-2
+  - elevation
+  - digital elevation models
+  - ipython
+  - jupyter
+  - graphics
+license: MIT
