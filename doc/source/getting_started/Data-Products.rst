@@ -70,10 +70,3 @@ Elevation Change Rate
 +--------------------------------+-------------------+-----------------------------------------------------------+
 | ``y``                          | meters            | y-coordinate (northing) of the grid cell centers          |
 +--------------------------------+-------------------+-----------------------------------------------------------+
-
-References
-##########
-
-.. [Smith2022a] B. Smith, T. Sutterley, S. Dickinson, B. P. Jelley, D. Felikson, T. A. Neumann, H. A. Fricker, A. Gardner, L. Padman, T. Markus, N. Kurtz, S. Bhardwaj, D. Hancock, and J. Lee. *ATLAS/ICESat-2 L3B Gridded Antarctic and Arctic Land Ice Height*, Version 2, (2022). Boulder, Colorado USA. NASA National Snow and Ice Data Center Distributed Active Archive Center. `doi: 10.5067/ATLAS/ATL14.002 <https://doi.org/10.5067/ATLAS/ATL14.002>`_
-
-.. [Smith2022b] B. Smith, T. Sutterley, S. Dickinson, B. P. Jelley, D. Felikson, T. A. Neumann, H. A. Fricker, A. Gardner, L. Padman, T. Markus, N. Kurtz, S. Bhardwaj, D. Hancock, and J. Lee. *ATLAS/ICESat-2 L3B Gridded Antarctic and Arctic Land Ice Height Change*, Version 2, (2022). Boulder, Colorado USA. NASA National Snow and Ice Data Center Distributed Active Archive Center. `doi: 10.5067/ATLAS/ATL15.002 <https://doi.org/10.5067/ATLAS/ATL15.002>`_
