@@ -4,21 +4,27 @@
 Examples
 ========
 
-Jupyter Notebooks for visualizing ICESat-2 Gridded Land Ice products:
+Jupyter notebooks for visualizing the ICESat-2 ATL14/15 Gridded Land Ice Products:
 
-- Read and Plot ATL14 data |github atl14| |nbviewer atl14|
-    Visualizing the ICESat-2 Gridded Antarctic and Arctic Land Ice Height product
-- Read and Plot ATL15 data |github atl15| |nbviewer atl15|
-    Visualizing the ICESat-2 Gridded Antarctic and Arctic Land Ice Height Change product
+.. toctree::
+   :hidden:
+   :maxdepth: 1
 
-.. |github atl14| image:: https://img.shields.io/badge/GitHub-view-6f42c1?style=flat&logo=Github
-   :target: https://github.com/tsutterley/IS2view/blob/main/notebooks/IS2-ATL14-Viewer.ipynb
+   ../notebooks/IS2-ATL14-Viewer
+   ../notebooks/IS2-ATL15-Viewer
 
-.. |nbviewer atl14| image:: https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg
-   :target: https://nbviewer.jupyter.org/github/tsutterley/IS2view/blob/main/notebooks/IS2-ATL14-Viewer.ipynb
+.. grid:: 1 2 2 2
 
-.. |github atl15| image:: https://img.shields.io/badge/GitHub-view-6f42c1?style=flat&logo=Github
-   :target: https://github.com/tsutterley/IS2view/blob/main/notebooks/IS2-ATL15-Viewer.ipynb
+    .. grid-item-card::  ATL14 Visualizer
+      :text-align: center
+      :img-top: ../_assets/ATL14.png
+      :link: ../notebooks/IS2-ATL14-Viewer.html
+      :link-alt: Visualizing the ICESat-2 Gridded Antarctic and Arctic Land Ice Height product
 
-.. |nbviewer atl15| image:: https://raw.githubusercontent.com/jupyter/design/master/logos/Badges/nbviewer_badge.svg
-   :target: https://nbviewer.jupyter.org/github/tsutterley/IS2view/blob/main/notebooks/IS2-ATL15-Viewer.ipynb
+    .. grid-item-card::  ATL15 Visualizer
+      :text-align: center
+      :img-top: ../_assets/ATL15.png
+      :link: ../notebooks/IS2-ATL15-Viewer.html
+      :link-alt: Visualizing the ICESat-2 Gridded Antarctic and Arctic Land Ice Height Change product
+
+Check out the `recipes <./Recipes.html>`_ for some more specific examples and code snippets.

@@ -5,14 +5,17 @@ dependencies:
   - docutils
   - graphviz
   - ipywidgets
+  - myst-nb
   - notebook
   - numpy>=1.21
   - numpydoc
   - pip
   - python>=3.6
   - sphinx
+  - sphinx-argparse>=0.4
+  - sphinxcontrib-bibtex
+  - sphinx-design
   - sphinx_rtd_theme
   - xarray
   - pip:
-    - sphinx-argparse>=0.4
     - ..

@@ -16,6 +16,9 @@ import datetime
 # sys.path.insert(0, os.path.abspath('.'))
 import importlib.metadata
 
+
+# -- Project information -----------------------------------------------------
+
 # package metadata
 metadata = importlib.metadata.metadata("IS2view")
 project = metadata["Name"]
@@ -35,12 +38,22 @@ release = f"v{version}"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "sphinx.ext.autodoc",
+    "myst_nb",
     "numpydoc",
+    'sphinxcontrib.bibtex',
+    "sphinx.ext.autodoc",
     "sphinx.ext.graphviz",
     "sphinx.ext.viewcode",
+    "sphinx_design",
     "sphinxarg.ext"
 ]
+
+# use myst for notebooks
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".ipynb": "myst-nb",
+}
+nb_execution_mode = "off"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -59,6 +72,8 @@ numfig = True
 autodoc_member_order = 'bysource'
 numpydoc_show_class_members = False
 pygments_style = 'native'
+bibtex_bibfiles = ['_assets/is2view-refs.bib']
+bibtex_default_style = 'plain'
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -81,7 +96,14 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_logo = "_assets/IS2view_logo.png"
 html_static_path = ['_static']
-repository_url = f"https://github.com/tsutterley/IS2view"
+# fetch the project urls
+project_urls = {}
+for project_url in metadata.get_all('Project-URL'):
+    name, _, url = project_url.partition(', ')
+    project_urls[name.lower()] = url
+# fetch the repository url
+repository_url = project_urls.get('repository')
+# add html context
 html_context = {
     "menu_links": [
         (
@@ -91,6 +113,10 @@ html_context = {
         (
             '<i class="fa fa-book fa-fw"></i> License',
             f"{repository_url}/blob/main/LICENSE",
+        ),
+        (
+            '<i class="fa fa-comment fa-fw"></i> Discussions',
+            f"{repository_url}/discussions",
         ),
     ],
 }

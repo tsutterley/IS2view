@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 api.py
-Written by Tyler Sutterley (06/2024)
+Written by Tyler Sutterley (01/2025)
 Plotting tools for visualizing rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
@@ -28,6 +28,8 @@ PYTHON DEPENDENCIES:
         https://xyzservices.readthedocs.io/en/stable/
 
 UPDATE HISTORY:
+    Updated 01/2025: added more zoom levels and update max_zoom
+        deprecation update for writing the crs to the dataset object
     Updated 06/2024: use wrapper to importlib for optional dependencies
     Updated 04/2024: add connections and functions for changing variables
         and other attributes of the leaflet map visualization
@@ -104,7 +106,15 @@ projections['EPSG:3413'] = dict(
         2048.0,
         1024.0,
         512.0,
-        256.0
+        256.0,
+        128.0,
+        64.0,
+        32.0,
+        16.0,
+        8.0,
+        4.0,
+        2.0,
+        1.0
     ],
     bounds=[
         [-4194304, -4194304],
@@ -124,7 +134,15 @@ projections['EPSG:3031'] = dict(
         2048.0,
         1024.0,
         512.0,
-        256.0
+        256.0,
+        128.0,
+        64.0,
+        32.0,
+        16.0,
+        8.0,
+        4.0,
+        2.0,
+        1.0
     ],
     bounds=[
         [-4194304, -4194304],
@@ -288,7 +306,7 @@ class Leaflet:
                 ipyleaflet.basemaps.NASAGIBS.BlueMarble3413
             )
             self.map = ipyleaflet.Map(center=kwargs['center'],
-                zoom=kwargs['zoom'], max_zoom=5,
+                zoom=kwargs['zoom'], max_zoom=15,
                 attribution_control=kwargs['attribution'],
                 basemap=kwargs['basemap'],
                 crs=projections['EPSG:3413'],
@@ -300,7 +318,7 @@ class Leaflet:
                 ipyleaflet.basemaps.NASAGIBS.BlueMarble3031
             )
             self.map = ipyleaflet.Map(center=kwargs['center'],
-                zoom=kwargs['zoom'], max_zoom=5,
+                zoom=kwargs['zoom'], max_zoom=15,
                 attribution_control=kwargs['attribution'],
                 basemap=kwargs['basemap'],
                 crs=projections['EPSG:3031'],
@@ -924,7 +942,7 @@ class LeafletMap(HasTraits):
         except Exception as exc:
             pass
         else:
-            self._ds.rio.set_crs(ds_crs)
+            self._ds.rio.write_crs(ds_crs)
             return
         # get coordinate reference system from crs attribute
         try:
@@ -932,7 +950,7 @@ class LeafletMap(HasTraits):
         except Exception as exc:
             pass
         else:
-            self._ds.rio.set_crs(ds_crs)
+            self._ds.rio.write_crs(ds_crs)
             return
         # raise exception
         raise Exception('Unknown coordinate reference system')
@@ -1259,7 +1277,7 @@ class LeafletMap(HasTraits):
         except Exception as exc:
             crs = self._ds.rio.crs.to_wkt()
         else:
-            self._ds.rio.set_crs(crs)
+            self._ds.rio.write_crs(crs)
         # get the clicked point in dataset coordinate reference system
         x, y = rio.warp.transform('EPSG:4326', crs, [lon], [lat])
         # find nearest point in dataset
@@ -1547,7 +1565,7 @@ class TimeSeries(HasTraits):
         except Exception as exc:
             pass
         else:
-            self._ds.rio.set_crs(ds_crs)
+            self._ds.rio.write_crs(ds_crs)
             return
         # get coordinate reference system from crs attribute
         try:
@@ -1555,7 +1573,7 @@ class TimeSeries(HasTraits):
         except Exception as exc:
             pass
         else:
-            self._ds.rio.set_crs(ds_crs)
+            self._ds.rio.write_crs(ds_crs)
             return
         # raise exception
         raise Exception('Unknown coordinate reference system')
@@ -1969,7 +1987,7 @@ class Transect(HasTraits):
         except Exception as exc:
             pass
         else:
-            self._ds.rio.set_crs(ds_crs)
+            self._ds.rio.write_crs(ds_crs)
             return
         # get coordinate reference system from crs attribute
         try:
@@ -1977,7 +1995,7 @@ class Transect(HasTraits):
         except Exception as exc:
             pass
         else:
-            self._ds.rio.set_crs(ds_crs)
+            self._ds.rio.write_crs(ds_crs)
             return
         # raise exception
         raise Exception('Unknown coordinate reference system')

@@ -2,12 +2,12 @@
 Getting Started
 ===============
 
-This documentation is intended to explain how to visualize and operate on the ICESat-2 ATL14/15 Gridded Land Ice Height Products.
-These products are derived from measurements from the Advanced Topographic Laser Altimeter System (ATLAS),
-the primary instrumentation onboard the ICESat-2 observatory.
+The ICESat-2 ATL14/15 Gridded Land Ice Height Products are derived from measurements from the
+Advanced Topographic Laser Altimeter System (ATLAS), the primary instrumentation onboard the ICESat-2 observatory.
 The data are made available from the NASA DAAC at the `National Snow and Ice Data Center (NSIDC) <https://nsidc.org>`_.
-The gridded land ice products are generated using a constrained least-squares technique which fits elevation data
-from the `ICESat-2 Slope-Corrected Land Ice Height Time Series (ATL11) <https://nsidc.org/data/atl11/>`_ product.
+The gridded land ice products are generated using a constrained least-squares technique :cite:p:`Smith:2024ut` which fits elevation data
+from the `ICESat-2 Slope-Corrected Land Ice Height Time Series (ATL11) <https://nsidc.org/data/atl11/>`_
+product :cite:p:`Smith:2023fd`.
 These products are available for `regions around the Arctic and for the Antarctic ice sheet <./Getting-Started.html#regions>`_.
 
 .. graphviz::
@@ -45,10 +45,11 @@ These products are available for `regions around the Arctic and for the Antarcti
     }
 
 The products derived from this technique include a static Digital Elevation Model (DEM)
-at a reference time `(ATL14) <https://nsidc.org/data/atl14>`_ and
-estimates of the elevation change relative to this DEM `(ATL15) <https://nsidc.org/data/atl15>`_.
+at a reference time `(ATL14) <https://nsidc.org/data/atl14>`_ :cite:p:`Smith:2024fd` and
+estimates of the elevation change relative to this DEM `(ATL15) <https://nsidc.org/data/atl15>`_
+:cite:p:`Smith:2024cv`.
 These products are generated as part of the `same algorithm <https://github.com/smithb/ATL1415>`_
-in order to provide a DEM and set of height-change maps that are self-consistent.
+:cite:p:`Smith:2024vr` in order to provide a self-consistent DEM and set of height-change maps.
 The resolution of the ATL14 and ATL15 products is limited by the spatial resolution
 of the ICESat-2 tracks, and the temporal sampling of the tracks.
 The maximum spatiotemporal resolution of the product is also limited by the smoothness
@@ -59,16 +60,17 @@ pointing of the ATLAS instrument during the earliest part of the ICESat-2 missio
 ATL14
 #####
 
-The `ICESat-2 ATL14 Gridded Land Ice Height <https://nsidc.org/data/atl15>`_ product contains
-the estimated surface height at the reference epoch (midnight at the start of 2020-01-01)
-with respect to the WGS84 ellipsoid.
+The `ICESat-2 ATL14 Gridded Land Ice Height <https://nsidc.org/data/atl15>`_ product 
+:cite:p:`Smith:2024fd` contains the estimated surface height at the reference epoch
+(midnight at the start of 2020-01-01) with respect to the WGS84 ellipsoid.
 The ATL14 product is available at a high spatial resolution (100 m) and are provided in netCDF4 format.
 
 ATL15
 #####
 
-The `ICESat-2 ATL15 Gridded Land Ice Height Change <https://nsidc.org/data/atl15>`_ product contains
-quarterly, annual and multi-annual estimates of the land ice height change time series.
+The `ICESat-2 ATL15 Gridded Land Ice Height Change <https://nsidc.org/data/atl15>`_ product
+:cite:p:`Smith:2024cv` contains quarterly, annual and multi-annual estimates of the land ice height
+change time series.
 The ATL15 product is available at four different spatial resolutions (1 km, 10 km, 20 km and 40 km)
 and are provided in netCDF4 format.
 

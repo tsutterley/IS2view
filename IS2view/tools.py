@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 u"""
 tools.py
-Written by Tyler Sutterley (11/2023)
+Written by Tyler Sutterley (01/2025)
 User interface tools for Jupyter Notebooks
 
 PYTHON DEPENDENCIES:
@@ -13,8 +13,12 @@ PYTHON DEPENDENCIES:
     matplotlib: Python 2D plotting library
         http://matplotlib.org/
         https://github.com/matplotlib/matplotlib
+    cmocean: Beautiful colormaps for oceanography
+        https://matplotlib.org/cmocean/
 
 UPDATE HISTORY:
+    Updated 01/2025: added optional cmocean colormaps to dropdown menu
+        updated the default group list to include lags for release 004
     Updated 06/2024: use wrapper to importlib for optional dependencies
     Updated 11/2023: set time steps using decimal years rather than lags
         setting dynamic colormap with float64 min and max
@@ -34,6 +38,7 @@ from IS2view.utilities import import_dependency
 # attempt imports
 ipywidgets = import_dependency('ipywidgets')
 cm = import_dependency('matplotlib.cm')
+cmocean = import_dependency('cmocean')
 
 # set environmental variable for anonymous s3 access
 os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
@@ -131,7 +136,8 @@ class widgets:
 
         # dropdown menu for selecting group to read from file
         # use Release-01 groups as the initial default
-        group_list = ['delta_h', 'dhdt_lag1', 'dhdt_lag4', 'dhdt_lag8']
+        group_list = ['delta_h', 'dhdt_lag1', 'dhdt_lag4', 'dhdt_lag8',
+            'dhdt_lag12', 'dhdt_lag16', 'dhdt_lag20']
         self.group = ipywidgets.Dropdown(
             options=group_list,
             description='Group:',
@@ -240,9 +246,17 @@ class widgets:
             cmap_list.extend(val)
         # reduce colormaps to available in program and matplotlib
         cmap_set &= set(cmap_list)
+        cmap_options = sorted(cmap_set)
+        # attempt to add additional colormaps
+        ext_cmaps = []
+        try:
+            ext_cmaps.extend([f'cmo.{c}' for c in sorted(cmocean.cm.cmapnames)])
+        except Exception as exc:
+            pass
+        cmap_options.extend(ext_cmaps)
         # dropdown menu for setting colormap
         self.cmap = ipywidgets.Dropdown(
-            options=sorted(cmap_set),
+            options=cmap_options,
             value='viridis',
             description='Colormap:',
             description_tooltip=("Colormap: matplotlib colormaps "
@@ -383,11 +397,13 @@ class widgets:
         """sets the list of available groups for a release
         """
         group_list = ['delta_h', 'dhdt_lag1', 'dhdt_lag4', 'dhdt_lag8']
-        # append lag12 group
+        # append additional dhdt groups
         if (int(self.release.value) > 1):
             group_list.append('dhdt_lag12')
         if (int(self.release.value) > 2):
             group_list.append('dhdt_lag16')
+        if (int(self.release.value) > 3):
+            group_list.append('dhdt_lag20')
         # set group list
         self.group.options = group_list
         # change regions for Antarctica for Release-03+
@@ -457,13 +473,17 @@ class widgets:
         """
         # data and time variables
         self.data_vars = sorted(d.data_vars)
-        self.time_vars = d.time.values if 'time' in d else None
-        # set the default groups
-        self.set_groups()
-        # set the default variables
-        self.set_variables()
-        # set the default time steps
-        self.set_time_steps()
+        if 'time' in d:
+            self.time_vars = d.time.values
+            # set the default groups
+            self.set_groups()
+            # set the default variables
+            self.set_variables()
+            # set the default time steps
+            self.set_time_steps()
+        else:
+            # set the default variables
+            self.set_variables()
         
     def set_time_steps(self, *args, epoch=2018.0):
         """sets available time range
