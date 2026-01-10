@@ -171,11 +171,10 @@ with `different normalizations <https://matplotlib.org/stable/tutorials/colors/c
 Different variables and plot parameters can be selected using `Jupyter Widgets interactive browser controls <https://ipywidgets.readthedocs.io/>`_.
 More detailed usage can be found in the `Examples <../user_guide/Examples.html>`_ and `Recipes <../user_guide/Recipes.html>`_.
 
-References
-##########
+.. admonition:: References
 
-- `NSIDC User Guide for ATL14 <https://nsidc.org/sites/default/files/documents/user-guide/atl14-v002-userguide.pdf>`_
-- `NSIDC User Guide for ATL15 <https://nsidc.org/sites/default/files/documents/user-guide/atl15-v002-userguide.pdf>`_
-- `Algorithm Theoretical Basis Document for ATL14 and ATL15 <https://nsidc.org/sites/default/files/documents/technical-reference/icesat2_atl14_atl15_atbd_r002.pdf>`_
+    - `NSIDC User Guide for ATL14 <https://nsidc.org/sites/default/files/documents/user-guide/atl14-v002-userguide.pdf>`_
+    - `NSIDC User Guide for ATL15 <https://nsidc.org/sites/default/files/documents/user-guide/atl15-v002-userguide.pdf>`_
+    - `Algorithm Theoretical Basis Document for ATL14 and ATL15 <https://nsidc.org/sites/default/files/documents/technical-reference/icesat2_atl14_atl15_atbd_r002.pdf>`_
 
 .. |degree|    unicode:: U+00B0 .. DEGREE SIGN

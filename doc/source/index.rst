@@ -79,7 +79,6 @@ Contribute
     getting_started/Contributing.rst
     getting_started/Code-of-Conduct.rst
     getting_started/Resources.rst
-    getting_started/Citations.rst
 
 .. toctree::
     :maxdepth: 1
@@ -101,6 +100,16 @@ Contribute
     api_reference/utilities.rst
 
 .. toctree::
+    :maxdepth: 2
+    :hidden:
+    :caption: Project Details
+
+    project/Contributors.rst
+    project/Licenses.rst
+    project/Testing.rst
+    project/Citations.rst
+
+.. toctree::
     :maxdepth: 1
     :hidden:
     :caption: Release Notes
@@ -112,4 +121,4 @@ Contribute
     :hidden:
     :caption: Bibliography
 
-    getting_started/Bibliography.rst
+    project/Bibliography.rst

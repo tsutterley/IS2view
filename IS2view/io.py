@@ -26,28 +26,31 @@ UPDATE HISTORY:
     Updated 07/2023: use logging instead of warnings for import attempts
     Written 11/2022
 """
+
 from __future__ import annotations
 import os
 from IS2view.utilities import import_dependency
 
 # attempt imports
-rioxarray = import_dependency('rioxarray')
-rioxarray.merge = import_dependency('rioxarray.merge')
-dask = import_dependency('dask')
-xr = import_dependency('xarray')
+rioxarray = import_dependency("rioxarray")
+rioxarray.merge = import_dependency("rioxarray.merge")
+dask = import_dependency("dask")
+xr = import_dependency("xarray")
 
 # set environmental variable for anonymous s3 access
-os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
+os.environ["AWS_NO_SIGN_REQUEST"] = "YES"
 
 # default engine for xarray
-_default_engine = dict(nc='h5netcdf', zarr='zarr')
+_default_engine = dict(nc="h5netcdf", zarr="zarr")
 
-def open_dataset(granule,
-        group: str | None = None,
-        format: str = 'nc',
-        parallel: bool = True,
-        **kwargs
-    ):
+
+def open_dataset(
+    granule,
+    group: str | None = None,
+    format: str = "nc",
+    parallel: bool = True,
+    **kwargs,
+):
     """
     Reads and optionally merges gridded ICESat-2 files
 
@@ -82,11 +85,7 @@ def open_dataset(granule,
             getattrs = getattr
         # read each granule and append to list
         for g in granule:
-            datasets.append(opener(g,
-                group=group,
-                format=format,
-                **kwargs)
-            )
+            datasets.append(opener(g, group=group, format=format, **kwargs))
         closers = [getattrs(ds, "_close") for ds in datasets]
         # read datasets as dask arrays
         if parallel:
@@ -95,19 +94,12 @@ def open_dataset(granule,
         ds = rioxarray.merge.merge_datasets(datasets)
     else:
         # read a single granule
-        ds = from_file(granule,
-            group=group,
-            format=format,
-            **kwargs
-        )
+        ds = from_file(granule, group=group, format=format, **kwargs)
     # return the dataset
     return ds
 
-def from_file(granule,
-        group: str | None = None,
-        format: str = 'nc',
-        **kwargs
-    ):
+
+def from_file(granule, group: str | None = None, format: str = "nc", **kwargs):
     """
     Reads a gridded ICESat-2 file using ``rioxarray`` or ``xarray``
 
@@ -128,25 +120,17 @@ def from_file(granule,
         ``xarray`` dataset
     """
     # set default engine
-    kwargs.setdefault('engine', _default_engine[format])
-    if isinstance(granule, str) and format in ('nc',):
-        ds = from_rasterio(granule,
-            group=group,
-            **kwargs
-        )
+    kwargs.setdefault("engine", _default_engine[format])
+    if isinstance(granule, str) and format in ("nc",):
+        ds = from_rasterio(granule, group=group, **kwargs)
     else:
         # read a single granule
-        ds = from_xarray(granule,
-            group=group,
-            **kwargs
-        )
+        ds = from_xarray(granule, group=group, **kwargs)
     # return the dataset
     return ds
 
-def from_rasterio(granule,
-        group: str | None = None,
-        **kwargs
-    ):
+
+def from_rasterio(granule, group: str | None = None, **kwargs):
     """
     Reads a gridded ICESat-2 file using ``rioxarray``
 
@@ -164,18 +148,13 @@ def from_rasterio(granule,
     ds: object
         ``xarray`` dataset
     """
-    ds = rioxarray.open_rasterio(granule,
-        group=group,
-        masked=True,
-        **kwargs
-    )
+    ds = rioxarray.open_rasterio(granule, group=group, masked=True, **kwargs)
     return ds
 
-def from_xarray(granule,
-        group: str | None = None,
-        engine: str = 'h5netcdf',
-        **kwargs
-    ):
+
+def from_xarray(
+    granule, group: str | None = None, engine: str = "h5netcdf", **kwargs
+):
     """
     Reads a gridded ICESat-2 file using ``xarray``
 
@@ -195,23 +174,24 @@ def from_xarray(granule,
     ds: object
         ``xarray`` dataset
     """
-    kwargs.setdefault('variable', [])
-    variable = kwargs.pop('variable')
+    kwargs.setdefault("variable", [])
+    variable = kwargs.pop("variable")
     # read xarray dataset
-    ds = xr.open_dataset(granule,
+    ds = xr.open_dataset(
+        granule,
         group=group,
         engine=engine,
-        chunks='auto',
+        chunks="auto",
         decode_cf=True,
         mask_and_scale=True,
         decode_times=False,
         concat_characters=True,
         decode_coords=True,
         overwrite_encoded_chunks=False,
-        **kwargs
+        **kwargs,
     )
     # set the coordinate reference system
-    ds.rio.write_crs(ds.Polar_Stereographic.attrs['crs_wkt'], inplace=True)
+    ds.rio.write_crs(ds.Polar_Stereographic.attrs["crs_wkt"], inplace=True)
     # reduce xarray dataset to specific variables
     if any(variable):
         ds = ds[variable]

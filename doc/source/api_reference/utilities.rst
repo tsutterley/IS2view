@@ -14,6 +14,10 @@ General Methods
 
 .. autofunction:: IS2view.utilities.get_data_path
 
+.. autofunction:: IS2view.utilities.import_dependency
+
+.. autofunction:: IS2view.utilities.dependency_available
+
 .. autofunction:: IS2view.utilities.get_hash
 
 .. autofunction:: IS2view.utilities.url_split

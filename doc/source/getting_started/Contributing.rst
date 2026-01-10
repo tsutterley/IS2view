@@ -2,10 +2,16 @@
 Contribution Guidelines
 =======================
 
-We welcome and invite contributions from anyone at any career stage and with any amount of coding experience towards the development of ``IS2view``.
-We appreciate any and all contributions made to the project.
+``IS2view`` is an open source project.
+We welcome any help in maintaining and developing the software and documentation.
+Anyone at *any career stage and with any level of coding experience* can contribute towards the development of ``IS2view``.
 Please read our `code of conduct <./Code-of-Conduct.html>`_ before contributing to ``IS2view`` development.
-You will be recognized for your work by being listed as one of the `project contributors <./Citations.html#contributors>`_.
+You will be recognized for your work by being listed as one of the `project contributors <../project/Contributors.html>`_.
+
+.. note::
+
+    If you have found a problem in ``IS2view``, or you would like to suggest an improvement or modification,
+    please submit a `GitHub issue <https://github.com/tsutterley/IS2view/issues>`_ and we will get back to you.
 
 Ways to Contribute
 ------------------
@@ -30,10 +36,9 @@ If not, *please* submit a new issue so that we are made aware of the problem.
 Please provide as much detail as possible when writing the description of your bug report.
 Providing information and examples will help us resolve issues faster.
 
-Contributing Code or Examples
------------------------------
+Contributing Code
+-----------------
 We follow a standard Forking Workflow for code changes and additions.
-Submitted code goes through the pull request process for `continuous integration (CI) testing <https://github.com/tsutterley/IS2view/actions>`_ and comments.
 
 General Guidelines
 ^^^^^^^^^^^^^^^^^^
@@ -52,7 +57,7 @@ Steps to Contribute
 2) Either by cloning to your local system or working in `GitHub Codespaces <https://github.com/features/codespaces>`_, create a work environment to make your changes.
 3) Add your fork as the ``origin`` remote and the original project repository as the ``upstream`` remote.  While this step isn't a necessary, it allows you to keep your fork up to date in the future.
 4) Create a new branch to do your work.
-5) Make your changes on the new branch and add yourself to the list of project `contributors <https://github.com/tsutterley/IS2view/blob/main/CONTRIBUTORS.rst>`_.
+5) Make your changes on the new branch and add yourself to the list of project `contributors <https://github.com/tsutterley/IS2view/blob/main/CONTRIBUTORS.md>`_.
 6) Push your work to GitHub under your fork of the project.
 7) Submit a `Pull Request <https://github.com/tsutterley/IS2view/pulls>`_ from your forked branch to the project repository.
 
@@ -60,17 +65,7 @@ Adding Examples
 ^^^^^^^^^^^^^^^
 Examples may be in the form of executable scripts or interactive `Jupyter Notebooks <../user_guide/Examples.html>`_.
 Fully working (but unrendered) examples should be submitted with the same steps as above.
-
-Continuous Integration
-^^^^^^^^^^^^^^^^^^^^^^
-We use `GitHub Actions <https://github.com/tsutterley/IS2view/actions>`_ continuous integration (CI) services to build and test the project on Linux (Ubuntu) and Mac Operating Systems.
-The configuration files for this service are in `.github/workflows <https://github.com/tsutterley/IS2view/blob/main/.github/workflows>`_.
-The workflows rely on the `environment.yml <https://github.com/tsutterley/IS2view/blob/main/environment.yml>`_ file to install the required dependencies.
-
-The GitHub Actions jobs include:
-
-* Running `flake8 <https://flake8.pycqa.org/en/latest/>`_ to check the code for style and compilation errors
-* Running the test suite on multiple combinations of OS and Python version
+Many examples can be rendered when the project documentation is built on `Read the Docs <https://about.readthedocs.com/>`_.
 
 Semantic Commit Messages
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -90,5 +85,3 @@ where ``<type>`` is one of the following:
 - ``docs``: changing the documentation
 - ``style``: changing the line order or adding comments
 - ``refactor``: changing the names of variables or programs
-- ``ci``: changing the `continuous integration <./Contributing.html#continuous-integration>`_ configuration files or scripts
-- ``test``: adding or updating `continuous integration tests <./Contributing.html#continuous-integration>`_

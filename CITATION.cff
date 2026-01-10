@@ -1,33 +1,50 @@
 # This CITATION.cff file was generated with cffinit.
 # Visit https://bit.ly/cffinit to generate yours today!
 
-cff-version: 1.2.0
+cff-version: 1.3.0
 title: IS2view
-message: Interactive visualization and data extraction tool for the ICESat-2 ATL14/15 Gridded Land Ice Height Products
+abstract: Interactive visualization and data extraction tool for the ICESat-2 ATL14/15 Gridded Land Ice Height Products
 type: software
+keywords:
+  - ICESat-2
+  - elevation
+  - Digital Elevation Model
+  - Jupyter
+  - xarray
+license: MIT
+version: "0.1.1"
+date-released: "2025-01-06"
+message: If you use this software, please consider citing our library
+
 authors:
   - given-names: Tyler
     family-names: Sutterley
     affiliation: University of Washington, Applied Physics Laboratory
-  - given-names: Ben
+
+contributors:
+  - given-names: Benjamin
     family-names: Smith
     affiliation: University of Washington, Applied Physics Laboratory
+
+contact:
+- family-names: Sutterley
+  given-names: Tyler C.
+  orcid: "https://orcid.org/0000-0002-6964-1194"
+
 identifiers:
   - type: doi
     value: 10.5281/zenodo.8015463
-    description: Zenodo Archive
-repository-code: 'https://github.com/tsutterley/IS2view'
-url: 'https://is2view.readthedocs.io'
-repository: 'https://pypi.org/project/IS2view'
-repository-artifact: 'https://anaconda.org/conda-forge/is2view'
+    description: Persistent identifier for IS2view
+  - type: url
+    value: https://github.com/tsutterley/IS2view
+    description: GitHub repository for IS2view
+  - type: url
+    value: https://pypi.org/project/IS2view
+    description: IS2view on PyPI
+  - type: url
+    value: https://anaconda.org/conda-forge/is2view
+    description: IS2view on conda-forge
+repository-code: "https://github.com/tsutterley/IS2view"
+url: "https://is2view.readthedocs.io"
 doi: "10.5281/zenodo.8015463"
-version: "0.1.1"
-date-released: "2025-01-06"
-keywords:
-  - ICESat-2
-  - elevation
-  - digital elevation models
-  - ipython
-  - jupyter
-  - graphics
-license: MIT
+
