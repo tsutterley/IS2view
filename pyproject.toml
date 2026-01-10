@@ -1,40 +1,41 @@
 [build-system]
-requires = ["setuptools>=64", "setuptools_scm>=8"]
+requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "IS2view"
+version = "0.1.1"
 description = "Interactive visualization and data extraction tool for the ICESat-2 ATL14/15 Gridded Land Ice Height Products"
 keywords = [
     "ICESat-2",
     "elevation",
-    "digital elevation models",
-    "ipython",
-    "jupyter",
-    "graphics",
+    "Digital Elevation Model",
+    "Jupyter",
+    "xarray",
 ]
-
 authors = [
     {name = "Tyler Sutterley"},
-    {name = "Ben Smith"},
     {email = "tsutterl@uw.edu"}
 ]
-maintainers = [{ name = "IS2view contributors" }]
+maintainers = [
+    {name = "IS2view contributors"}
+]
 license = {file = "LICENSE"}
-readme = "README.rst"
+readme = {file = "README.rst", content-type = "text/x-rst"}
 
-requires-python = "~=3.6"
+requires-python = "~=3.9"
 dependencies = [
+    "dask",
+    "geopandas",
     "h5netcdf",
     "ipyleaflet",
+    "jupyterlab",
     "matplotlib",
     "numpy",
     "rioxarray",
-    "setuptools_scm",
     "xarray",
+    "xyzservices",
 ]
-
-dynamic = ["version"]
 
 classifiers=[
     "Development Status :: 3 - Alpha",
@@ -42,33 +43,33 @@ classifiers=[
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.6",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Physics",
 ]
 
 [project.urls]
-Homepage = "https://is2view.readthedocs.io"
-Documentation = "https://is2view.readthedocs.io"
+Homepage = "https://IS2view.readthedocs.io"
+Documentation = "https://IS2view.readthedocs.io"
 Repository = "https://github.com/tsutterley/IS2view"
 Issues = "https://github.com/tsutterley/IS2view/issues"
 
 [project.optional-dependencies]
-doc = ["docutils", "graphviz", "ipywidgets", "notebook", "numpydoc", "sphinx", "sphinx-argparse>=0.4", "sphinx_rtd_theme"]
-all = ["boto3", "bottleneck", "dask", "geopandas", "ipywidgets", "notebook", "owslib", "s3fs", "xyzservices", "zarr"]
-dev = ["flake8", "pytest>=4.6", "pytest-cov"]
+doc = ["docutils", "graphviz", "myst-nb", "numpydoc", "sphinx", "sphinxcontrib-bibtex", "sphinx-design", "sphinx_rtd_theme"]
+all = ["boto3", "bottleneck", "cmocean", "obstore", "owslib", "s3fs", "zarr"]
+dev = ["flake8", "gh", "pytest>=4.6", "pytest-cov", "pytest-xdist"]
 
 [tool.setuptools.packages.find]
-exclude = ["test*", "run*"]
+exclude = ["providers*", "run*", "test*"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
 norecursedirs = ".git"
+addopts = "-n auto --verbose --capture=no -W ignore::UserWarning"
 python_files = [
     "test*.py"
 ]
@@ -80,19 +81,127 @@ testpaths = [
 branch = true
 source = [
     "IS2view",
-    "test",
 ]
 omit = [
-    "setup.py",
-    "conf.py",
-    "scripts/*",
+    "doc/*",
+    "test/*",
 ]
 
 [tool.coverage.report]
 show_missing = true
 precision = 2
 
-[tool.setuptools_scm]
-local_scheme = "node-and-date"
-version_scheme = "python-simplified-semver"
-version_file = "IS2view/_version.py"
+[tool.ruff]
+line-length = 80
+indent-width = 4
+exclude = [
+    ".git",
+    ".pixi",
+    "build",
+    "doc",
+    "run",
+    "test",
+]
+
+[tool.ruff.lint]
+select = [
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # ruff-specific
+    "RUF",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.format]
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = false
+
+[tool.pixi.workspace]
+name = "IS2view"
+authors = ["IS2view contributors"]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "linux-64", "win-64"]
+
+[tool.pixi.pypi-dependencies]
+IS2view = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { solve-group = "default" }
+all = { features = ["all"], solve-group = "default" }
+dev = { features = ["dev"], solve-group = "default" }
+doc = { features = ["doc"], solve-group = "default" }
+
+[tool.pixi.tasks.start]
+cmd = "jupyter lab"
+cwd = "doc/source/notebooks"
+description = "Start JupyterLab in the notebooks directory"
+
+[tool.pixi.tasks.export-env]
+args = [ { "arg" = "flags", "default" = "" } ]
+cmd = "pixi workspace export conda-environment {{ flags }} > environment.yml"
+description = "Export workspace to a conda environment file" 
+
+[tool.pixi.feature.doc.tasks.docs]
+args = [ { "arg" = "flags", "default" = "" } ]
+cmd = "make html {{ flags }}"
+cwd = "doc"
+description = "Create HTML documentation with sphinx"
+
+[tool.pixi.feature.dev.tasks.lint]
+args = [ { "arg" = "flags", "default" = "--select=E9,F63,F7,F82 --show-source" }, { "arg" = "test", "default" = "." } ]
+cmd = "flake8 {{ test }} --count {{ flags }} --statistics --extend-exclude 'build/,run/,*.ipynb_checkpoints/,.pixi/'"
+description = "Run flake8 to check for compilation errors"
+
+[tool.pixi.feature.dev.tasks.coverage]
+cmd = "pytest -n=0 --cov=IS2view --junitxml=pytest.xml --cov-report=xml test"
+description = "Run the pytest suite and create coverage reports"
+
+[tool.pixi.dependencies]
+dask = "*"
+geopandas = "*"
+h5netcdf = "*"
+ipyleaflet = "*"
+jupyterlab = "*"
+matplotlib-base = "*"
+numpy = "*"
+rioxarray = "*"
+xarray = "*"
+xyzservices = "*"
+
+[tool.pixi.feature.all.dependencies]
+boto3 = "*"
+bottleneck = "*"
+cmocean = "*"
+obstore = "*"
+owslib = "*"
+s3fs = "*"
+zarr = "*"
+
+[tool.pixi.feature.dev.dependencies]
+flake8 = "*"
+gh = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+
+[tool.pixi.feature.doc.dependencies]
+docutils = "*"
+graphviz = "*"
+myst-nb = "*"
+numpydoc = "*"
+sphinx = "*"
+sphinxcontrib-bibtex = "*"
+sphinx-design = "*"
+sphinx_rtd_theme = "*"
+

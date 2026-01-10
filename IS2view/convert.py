@@ -21,20 +21,27 @@ UPDATE HISTORY:
         use netCDF4 directly due to changes in xarray backends
     Written 07/2022
 """
+
 import logging
 import pathlib
 import numpy as np
 from IS2view.utilities import import_dependency
 
 # attempt imports
-h5netcdf = import_dependency('h5netcdf')
-xr = import_dependency('xarray')
+h5netcdf = import_dependency("h5netcdf")
+xr = import_dependency("xarray")
 
 # default groups to skip
-_default_skip_groups = ('METADATA', 'orbit_info', 'quality_assessment',)
+_default_skip_groups = (
+    "METADATA",
+    "orbit_info",
+    "quality_assessment",
+)
 
-class convert():
-    np.seterr(invalid='ignore')
+
+class convert:
+    np.seterr(invalid="ignore")
+
     def __init__(self, filename=None, output=None):
         """Utilities for converting gridded ICESat-2 files from native netCDF4
 
@@ -56,12 +63,12 @@ class convert():
         **kwds: dict
             keyword arguments for output
         """
-        kwds.setdefault('filename', self.filename)
-        kwds.setdefault('output', self.output)
-        kwds.setdefault('skip_groups', _default_skip_groups)
+        kwds.setdefault("filename", self.filename)
+        kwds.setdefault("output", self.output)
+        kwds.setdefault("skip_groups", _default_skip_groups)
         # update filenames
-        self.filename = kwds['filename']
-        self.output = kwds['output']
+        self.filename = kwds["filename"]
+        self.output = kwds["output"]
         # split extension from netCDF4 file
         if isinstance(self.filename, (str, pathlib.Path)):
             filename = pathlib.Path(self.filename)
@@ -69,7 +76,7 @@ class convert():
             filename = pathlib.Path(self.filename.filename)
         # output zarr file
         if self.output is None:
-            self.output = filename.with_suffix('.zarr')
+            self.output = filename.with_suffix(".zarr")
         # log input and output files
         logging.info(self.filename)
         logging.info(self.output)
@@ -78,15 +85,15 @@ class convert():
             # copy variables and attributes from the top-level group
             # copy everything from the netCDF4 file to the zarr file
             ds = xr.open_dataset(xr.backends.h5netcdf_.H5NetCDFStore(source))
-            ds.to_zarr(store=self.output, mode='a')
+            ds.to_zarr(store=self.output, mode="a")
             # for each group
             for group in source.groups.keys():
                 # skip over specific groups
-                if group in kwds['skip_groups']:
+                if group in kwds["skip_groups"]:
                     continue
                 # get netCDF4 group
                 logging.info(group)
                 nc = source.groups.get(group)
                 # copy everything from the netCDF4 group to the zarr file
                 ds = xr.open_dataset(xr.backends.h5netcdf_.H5NetCDFStore(nc))
-                ds.to_zarr(store=self.output, mode='a', group=group)
+                ds.to_zarr(store=self.output, mode="a", group=group)

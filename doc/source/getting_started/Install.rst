@@ -2,11 +2,14 @@
 Setup and Installation
 ======================
 
+Installation
+############
+
 ``IS2view`` is available for download from the `GitHub repository <https://github.com/tsutterley/IS2view>`_,
 the `Python Package Index (pypi) <https://pypi.org/project/IS2view/>`_,
 and from `conda-forge <https://anaconda.org/conda-forge/is2view>`_.
 
-The simplest installation for most users will likely be using ``conda``:
+The simplest installation for most users will likely be using ``conda`` or ``mamba``:
 
 .. code-block:: bash
 
@@ -17,6 +20,9 @@ The simplest installation for most users will likely be using ``conda``:
 .. code-block:: bash
 
     conda update is2view
+
+Development Install
+###################
 
 To use the development repository, please fork ``IS2view`` into your own account and then clone onto your system:
 
@@ -41,3 +47,32 @@ The development version of ``IS2view`` can also be installed directly from GitHu
 .. code-block:: bash
 
     python3 -m pip install --user git+https://github.com/tsutterley/IS2view.git
+
+Package Management with ``pixi``
+################################
+
+Alternatively ``pixi`` can be used to create a `streamlined environment <https://pixi.sh/>`_ after cloning the repository:
+
+.. code-block:: bash
+
+    pixi install
+
+``pixi`` maintains isolated environments for each project, allowing for different versions of
+``IS2view`` and its dependencies to be used without conflict. The ``pixi.lock`` file within the
+repository defines the required packages and versions for the environment.
+
+``pixi`` can also create shells for running programs within the environment:
+
+.. code-block:: bash
+
+    pixi shell
+
+To see the available tasks within the ``IS2view`` workspace:
+
+.. code-block:: bash
+
+    pixi task list
+
+.. note::
+
+    ``pixi`` is under active development and may change in future releases

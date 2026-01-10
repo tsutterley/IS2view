@@ -9,24 +9,22 @@ Add Contextual Layers
 
 - `ArcticDEM <https://www.pgc.umn.edu/data/arcticdem>`_ (NSIDC Sea Ice Polar Stereographic North, `EPSG:3413 <https://epsg.io/3413>`_)
 
-   Provided by `Esri Polar/ArcticDEM ImageServer <https://elevation2.arcgis.com/arcgis/rest/services/Polar/ArcticDEM/ImageServer>`_
+   Imagery data provided by `Esri Polar/ArcticDEM ImageServer <https://elevation2.arcgis.com/arcgis/rest/services/Polar/ArcticDEM/ImageServer>`_
 
 .. code-block:: python
 
-   m.add(IS2view.image_service_layer('ArcticDEM'))
+   m.add(IS2view.image_service_layer('ArcticDEM'))   
 
 - `Reference Elevation Model of Antarctica <https://www.pgc.umn.edu/data/rema>`_ (Antarctic Polar Stereographic, `EPSG:3031 <https://epsg.io/3031>`_)
 
-   Provided by `Esri Polar/AntarcticDEM ImageServer <https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer>`_
+   Imagery data provided by `Esri Polar/AntarcticDEM ImageServer <https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer>`_
 
 .. code-block:: python
 
    m.add(IS2view.image_service_layer('REMA'))
-
+   
 Plot a Transect
 ###############
-
-Requires optional ``geopandas`` dependency.
 
 .. code-block:: python
 
@@ -50,12 +48,8 @@ Requires optional ``geopandas`` dependency.
 Plot Multiple Time Series
 #########################
 
-Requires optional ``geopandas`` and ``fiona`` dependencies.
-
 .. code-block:: python
 
-   import fiona
-   fiona.drvsupport.supported_drivers['LIBKML'] = 'rw'
    import geopandas
    import numpy as np
    import matplotlib.pyplot as plt
@@ -88,8 +82,6 @@ Requires optional ``geopandas`` and ``fiona`` dependencies.
 Plot an Area Average
 ####################
 
-Requires optional ``geopandas`` dependency.
-
 .. code-block:: python
 
    import geopandas
@@ -119,8 +111,6 @@ Requires optional ``geopandas`` dependency.
 
 Calculate Area Averages
 #######################
-
-Requires optional ``geopandas`` dependency.
 
 .. code-block:: python
 
@@ -176,7 +166,8 @@ Requires optional ``geopandas`` dependency.
 Save a Map to a File
 ####################
 
-Requires optional ``geopandas`` and ``owslib`` dependencies.
+.. warning::
+   Requires optional ``owslib`` dependencies.
 
 .. code-block:: python
 

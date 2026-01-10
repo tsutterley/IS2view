@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-u"""
+"""
 utilities.py
 Written by Tyler Sutterley (11/2024)
 Download and management utilities
@@ -29,6 +29,7 @@ UPDATE HISTORY:
     Updated 10/2022: public release of NSIDC s3 access
     Written 07/2022
 """
+
 from __future__ import print_function, division, annotations
 
 import sys
@@ -52,6 +53,7 @@ import posixpath
 import traceback
 import subprocess
 import calendar, time
+
 if sys.version_info[0] == 2:
     from cookielib import CookieJar
     from urllib import urlencode
@@ -60,6 +62,7 @@ else:
     from http.cookiejar import CookieJar
     from urllib.parse import urlencode
     import urllib.request as urllib2
+
 
 # PURPOSE: get absolute path within a package from a relative path
 def get_data_path(relpath: list | str | pathlib.Path):
@@ -80,11 +83,10 @@ def get_data_path(relpath: list | str | pathlib.Path):
     elif isinstance(relpath, (str, pathlib.Path)):
         return filepath.joinpath(relpath)
 
+
 def import_dependency(
-        name: str,
-        extra: str = "",
-        raise_exception: bool = False
-    ):
+    name: str, extra: str = "", raise_exception: bool = False
+):
     """
     Import an optional dependency
 
@@ -109,7 +111,7 @@ def import_dependency(
     assert isinstance(name, str), msg
     # default error if module cannot be imported
     err = f"Missing optional dependency '{name}'. {extra}"
-    module = type('module', (), {})
+    module = type("module", (), {})
     # try to import the module
     try:
         module = importlib.import_module(name)
@@ -121,11 +123,38 @@ def import_dependency(
     # return the module
     return module
 
+
+def dependency_available(name: str, minversion: str | None = None):
+    """
+    Checks whether a module is installed without importing it
+
+    Adapted from ``xarray.namedarray.utils.module_available``
+
+    Parameters
+    ----------
+    name: str
+        Module name
+    minversion : str, optional
+        Minimum version of the module
+
+    Returns
+    -------
+    available : bool
+        Whether the module is installed
+    """
+    # check if module is available
+    if importlib.util.find_spec(name) is None:
+        return False
+    # check if the version is greater than the minimum required
+    if minversion is not None:
+        version = importlib.metadata.version(name)
+        return version >= minversion
+    # return if both checks are passed
+    return True
+
+
 # PURPOSE: get the hash value of a file
-def get_hash(
-        local: str | io.IOBase | pathlib.Path,
-        algorithm: str = 'md5'
-    ):
+def get_hash(local: str | io.IOBase | pathlib.Path, algorithm: str = "md5"):
     """
     Get the hash value from a local file or ``BytesIO`` object
 
@@ -142,28 +171,26 @@ def get_hash(
         if algorithm in hashlib.algorithms_available:
             return hashlib.new(algorithm, local.getvalue()).hexdigest()
         else:
-            raise ValueError(f'Invalid hashing algorithm: {algorithm}')
+            raise ValueError(f"Invalid hashing algorithm: {algorithm}")
     elif isinstance(local, (str, pathlib.Path)):
         # generate checksum hash for local file
         local = pathlib.Path(local).expanduser()
         # if file currently doesn't exist, return empty string
         if not local.exists():
-            return ''
+            return ""
         # open the local_file in binary read mode
-        with local.open(mode='rb') as local_buffer:
+        with local.open(mode="rb") as local_buffer:
             # generate checksum hash for a given type
             if algorithm in hashlib.algorithms_available:
                 return hashlib.new(algorithm, local_buffer.read()).hexdigest()
             else:
-                raise ValueError(f'Invalid hashing algorithm: {algorithm}')
+                raise ValueError(f"Invalid hashing algorithm: {algorithm}")
     else:
-        return ''
+        return ""
+
 
 # PURPOSE: get the git hash value
-def get_git_revision_hash(
-        refname: str = 'HEAD',
-        short: bool = False
-    ):
+def get_git_revision_hash(refname: str = "HEAD", short: bool = False):
     """
     Get the ``git`` hash value for a particular reference
 
@@ -177,27 +204,28 @@ def get_git_revision_hash(
     # get path to .git directory from current file path
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     basepath = pathlib.Path(filename).absolute().parent.parent
-    gitpath = basepath.joinpath('.git')
+    gitpath = basepath.joinpath(".git")
     # build command
-    cmd = ['git', f'--git-dir={gitpath}', 'rev-parse']
-    cmd.append('--short') if short else None
+    cmd = ["git", f"--git-dir={gitpath}", "rev-parse"]
+    cmd.append("--short") if short else None
     cmd.append(refname)
     # get output
     with warnings.catch_warnings():
-        return str(subprocess.check_output(cmd), encoding='utf8').strip()
+        return str(subprocess.check_output(cmd), encoding="utf8").strip()
+
 
 # PURPOSE: get the current git status
 def get_git_status():
-    """Get the status of a ``git`` repository as a boolean value
-    """
+    """Get the status of a ``git`` repository as a boolean value"""
     # get path to .git directory from current file path
     filename = inspect.getframeinfo(inspect.currentframe()).filename
     basepath = pathlib.Path(filename).absolute().parent.parent
-    gitpath = basepath.joinpath('.git')
+    gitpath = basepath.joinpath(".git")
     # build command
-    cmd = ['git', f'--git-dir={gitpath}', 'status', '--porcelain']
+    cmd = ["git", f"--git-dir={gitpath}", "status", "--porcelain"]
     with warnings.catch_warnings():
         return bool(subprocess.check_output(cmd))
+
 
 # PURPOSE: recursively split a url path
 def url_split(s: str):
@@ -210,17 +238,15 @@ def url_split(s: str):
         url string
     """
     head, tail = posixpath.split(s)
-    if head in ('http:','https:','ftp:','s3:'):
-        return s,
-    elif head in ('', posixpath.sep):
-        return tail,
+    if head in ("http:", "https:", "ftp:", "s3:"):
+        return (s,)
+    elif head in ("", posixpath.sep):
+        return (tail,)
     return url_split(head) + (tail,)
 
+
 # PURPOSE: returns the Unix timestamp value for a formatted date string
-def get_unix_time(
-        time_string: str,
-        format: str = '%Y-%m-%d %H:%M:%S'
-    ):
+def get_unix_time(time_string: str, format: str = "%Y-%m-%d %H:%M:%S"):
     """
     Get the Unix timestamp value for a formatted date string
 
@@ -238,52 +264,54 @@ def get_unix_time(
     else:
         return calendar.timegm(parsed_time)
 
+
 # NASA on-prem DAAC providers
 _daac_providers = {
-    'gesdisc': 'GES_DISC',
-    'ghrcdaac': 'GHRC_DAAC',
-    'lpdaac': 'LPDAAC_ECS',
-    'nsidc': 'NSIDC_ECS',
-    'ornldaac': 'ORNL_DAAC',
-    'podaac': 'PODAAC',
+    "gesdisc": "GES_DISC",
+    "ghrcdaac": "GHRC_DAAC",
+    "lpdaac": "LPDAAC_ECS",
+    "nsidc": "NSIDC_ECS",
+    "ornldaac": "ORNL_DAAC",
+    "podaac": "PODAAC",
 }
 
 # NASA Cumulus AWS providers
 _s3_providers = {
-    'gesdisc': 'GES_DISC',
-    'ghrcdaac': 'GHRC_DAAC',
-    'lpdaac': 'LPCLOUD',
-    'nsidc': 'NSIDC_CPRD',
-    'ornldaac': 'ORNL_CLOUD',
-    'podaac': 'POCLOUD',
+    "gesdisc": "GES_DISC",
+    "ghrcdaac": "GHRC_DAAC",
+    "lpdaac": "LPCLOUD",
+    "nsidc": "NSIDC_CPRD",
+    "ornldaac": "ORNL_CLOUD",
+    "podaac": "POCLOUD",
 }
 
 # NASA Cumulus AWS S3 credential endpoints
 _s3_endpoints = {
-    'gesdisc': 'https://data.gesdisc.earthdata.nasa.gov/s3credentials',
-    'ghrcdaac': 'https://data.ghrc.earthdata.nasa.gov/s3credentials',
-    'lpdaac': 'https://data.lpdaac.earthdatacloud.nasa.gov/s3credentials',
-    'nsidc': 'https://data.nsidc.earthdatacloud.nasa.gov/s3credentials',
-    'ornldaac': 'https://data.ornldaac.earthdata.nasa.gov/s3credentials',
-    'podaac': 'https://archive.podaac.earthdata.nasa.gov/s3credentials'
+    "gesdisc": "https://data.gesdisc.earthdata.nasa.gov/s3credentials",
+    "ghrcdaac": "https://data.ghrc.earthdata.nasa.gov/s3credentials",
+    "lpdaac": "https://data.lpdaac.earthdatacloud.nasa.gov/s3credentials",
+    "nsidc": "https://data.nsidc.earthdatacloud.nasa.gov/s3credentials",
+    "ornldaac": "https://data.ornldaac.earthdata.nasa.gov/s3credentials",
+    "podaac": "https://archive.podaac.earthdata.nasa.gov/s3credentials",
 }
 
 # NASA Cumulus AWS S3 buckets
 _s3_buckets = {
-    'gesdisc': 'gesdisc-cumulus-prod-protected',
-    'ghrcdaac': 'ghrc-cumulus-dev',
-    'lpdaac': 'lp-prod-protected',
-    'nsidc': 'nsidc-cumulus-prod-protected',
-    'ornldaac': 'ornl-cumulus-prod-protected',
-    'podaac': 'podaac-ops-cumulus-protected'
+    "gesdisc": "gesdisc-cumulus-prod-protected",
+    "ghrcdaac": "ghrc-cumulus-dev",
+    "lpdaac": "lp-prod-protected",
+    "nsidc": "nsidc-cumulus-prod-protected",
+    "ornldaac": "ornl-cumulus-prod-protected",
+    "podaac": "podaac-ops-cumulus-protected",
 }
+
 
 # PURPOSE: get AWS s3 client for NSIDC Cumulus
 def s3_client(
-        HOST: str = _s3_endpoints['nsidc'],
-        timeout: int | None = None,
-        region_name: str = 'us-west-2'
-    ):
+    HOST: str = _s3_endpoints["nsidc"],
+    timeout: int | None = None,
+    region_name: str = "us-west-2",
+):
     """
     Get AWS s3 client for NSIDC data in the cloud
     https://data.nsidc.earthdatacloud.nasa.gov/s3credentials
@@ -306,21 +334,24 @@ def s3_client(
     response = urllib2.urlopen(request, timeout=timeout)
     cumulus = json.loads(response.read())
     # get AWS client object
-    boto3 = import_dependency('boto3')
-    client = boto3.client('s3',
-        aws_access_key_id=cumulus['accessKeyId'],
-        aws_secret_access_key=cumulus['secretAccessKey'],
-        aws_session_token=cumulus['sessionToken'],
-        region_name=region_name)
+    boto3 = import_dependency("boto3")
+    client = boto3.client(
+        "s3",
+        aws_access_key_id=cumulus["accessKeyId"],
+        aws_secret_access_key=cumulus["secretAccessKey"],
+        aws_session_token=cumulus["sessionToken"],
+        region_name=region_name,
+    )
     # return the AWS client for region
     return client
 
+
 # PURPOSE: get AWS s3 file system for NSIDC Cumulus
 def s3_filesystem(
-        HOST: str = _s3_endpoints['nsidc'],
-        timeout: int | None = None,
-        region_name: str = 'us-west-2'
-    ):
+    HOST: str = _s3_endpoints["nsidc"],
+    timeout: int | None = None,
+    region_name: str = "us-west-2",
+):
     """
     Get AWS s3 file system object for NSIDC data in the cloud
     https://data.nsidc.earthdatacloud.nasa.gov/s3credentials
@@ -343,17 +374,17 @@ def s3_filesystem(
     response = urllib2.urlopen(request, timeout=timeout)
     cumulus = json.loads(response.read())
     # get AWS file system session object
-    s3fs = import_dependency('s3fs')
-    session = s3fs.S3FileSystem(anon=False,
-        key=cumulus['accessKeyId'],
-        secret=cumulus['secretAccessKey'],
-        token=cumulus['sessionToken'],
-        client_kwargs=dict(
-            region_name=region_name
-        )
+    s3fs = import_dependency("s3fs")
+    session = s3fs.S3FileSystem(
+        anon=False,
+        key=cumulus["accessKeyId"],
+        secret=cumulus["secretAccessKey"],
+        token=cumulus["sessionToken"],
+        client_kwargs=dict(region_name=region_name),
     )
     # return the AWS session for region
     return session
+
 
 # PURPOSE: get a s3 bucket name from a presigned url
 def s3_bucket(presigned_url: str):
@@ -371,8 +402,9 @@ def s3_bucket(presigned_url: str):
         s3 bucket name
     """
     host = url_split(presigned_url)
-    bucket = re.sub(r's3:\/\/', r'', host[0], re.IGNORECASE)
+    bucket = re.sub(r"s3:\/\/", r"", host[0], re.IGNORECASE)
     return bucket
+
 
 # PURPOSE: get a s3 bucket key from a presigned url
 def s3_key(presigned_url: str):
@@ -391,9 +423,9 @@ def s3_key(presigned_url: str):
     """
     host = url_split(presigned_url)
     # check if url is https url or s3 presigned url
-    if presigned_url.startswith('http'):
+    if presigned_url.startswith("http"):
         # use NSIDC format for s3 keys from https
-        parsed = [p for part in host[-4:-1] for p in part.split('.')]
+        parsed = [p for part in host[-4:-1] for p in part.split(".")]
         # join parsed url parts to form bucket key
         key = posixpath.join(*parsed, host[-1])
     else:
@@ -402,11 +434,9 @@ def s3_key(presigned_url: str):
     # return the s3 bucket key for object
     return key
 
+
 # PURPOSE: get a s3 presigned url from a bucket and key
-def s3_presigned_url(
-        bucket: str,
-        key: str
-    ):
+def s3_presigned_url(bucket: str, key: str):
     """
     Get a s3 presigned url from a bucket and object key
 
@@ -422,14 +452,11 @@ def s3_presigned_url(
     presigned_url: str
         s3 presigned url
     """
-    return posixpath.join('s3://', bucket, key)
+    return posixpath.join("s3://", bucket, key)
+
 
 # PURPOSE: generate a s3 presigned https url from a bucket and key
-def generate_presigned_url(
-        bucket: str,
-        key: str,
-        expiration: int = 3600
-    ):
+def generate_presigned_url(bucket: str, key: str, expiration: int = 3600):
     """
     Generate a presigned https URL to share an S3 object
 
@@ -448,37 +475,39 @@ def generate_presigned_url(
         s3 presigned https url
     """
     # generate a presigned URL for S3 object
-    boto3 = import_dependency('boto3')
-    s3 = boto3.client('s3')
+    boto3 = import_dependency("boto3")
+    s3 = boto3.client("s3")
     try:
-        response = s3.generate_presigned_url('get_object',
-            Params={'Bucket': bucket, 'Key': key},
-            ExpiresIn=expiration)
+        response = s3.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": bucket, "Key": key},
+            ExpiresIn=expiration,
+        )
     except Exception as exc:
         logging.error(exc)
         return None
     # The response contains the presigned URL
     return response
 
+
 def _create_default_ssl_context() -> ssl.SSLContext:
-    """Creates the default SSL context
-    """
+    """Creates the default SSL context"""
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     _set_ssl_context_options(context)
     context.options |= ssl.OP_NO_COMPRESSION
     return context
 
+
 def _create_ssl_context_no_verify() -> ssl.SSLContext:
-    """Creates an SSL context for unverified connections
-    """
+    """Creates an SSL context for unverified connections"""
     context = _create_default_ssl_context()
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
     return context
 
+
 def _set_ssl_context_options(context: ssl.SSLContext) -> None:
-    """Sets the default options for the SSL context
-    """
+    """Sets the default options for the SSL context"""
     if sys.version_info >= (3, 10) or ssl.OPENSSL_VERSION_INFO >= (1, 1, 0, 7):
         context.minimum_version = ssl.TLSVersion.TLSv1_2
     else:
@@ -487,19 +516,21 @@ def _set_ssl_context_options(context: ssl.SSLContext) -> None:
         context.options |= ssl.OP_NO_TLSv1
         context.options |= ssl.OP_NO_TLSv1_1
 
+
 # default ssl context
 _default_ssl_context = _create_ssl_context_no_verify()
 
+
 # PURPOSE: attempt to build an opener with netrc
 def attempt_login(
-        urs: str = 'urs.earthdata.nasa.gov',
-        context=_default_ssl_context,
-        password_manager: bool = True,
-        get_ca_certs: bool = False,
-        redirect: bool = False,
-        authorization_header: bool = False,
-        **kwargs
-    ):
+    urs: str = "urs.earthdata.nasa.gov",
+    context=_default_ssl_context,
+    password_manager: bool = False,
+    get_ca_certs: bool = False,
+    redirect: bool = False,
+    authorization_header: bool = True,
+    **kwargs,
+):
     """
     attempt to build a ``urllib`` opener for NASA Earthdata
 
@@ -532,35 +563,38 @@ def attempt_login(
         OpenerDirector instance
     """
     # set default keyword arguments
-    kwargs.setdefault('username', os.environ.get('EARTHDATA_USERNAME'))
-    kwargs.setdefault('password', os.environ.get('EARTHDATA_PASSWORD'))
-    kwargs.setdefault('retries', 5)
-    kwargs.setdefault('netrc', pathlib.Path.home().joinpath('.netrc'))
+    kwargs.setdefault("username", os.environ.get("EARTHDATA_USERNAME"))
+    kwargs.setdefault("password", os.environ.get("EARTHDATA_PASSWORD"))
+    kwargs.setdefault("retries", 5)
+    kwargs.setdefault("netrc", pathlib.Path.home().joinpath(".netrc"))
     try:
         # only necessary on jupyterhub
-        kwargs['netrc'].chmod(mode=0o600)
+        kwargs["netrc"].chmod(mode=0o600)
         # try retrieving credentials from netrc
-        username, _, password = netrc.netrc(kwargs['netrc']).authenticators(urs)
+        username, _, password = netrc.netrc(kwargs["netrc"]).authenticators(urs)
     except Exception as exc:
         logging.error(exc)
         # try retrieving credentials from environmental variables
-        username, password = (kwargs['username'], kwargs['password'])
+        username, password = (kwargs["username"], kwargs["password"])
         pass
     # if username or password are not available
     if not username:
-        username = builtins.input(f'Username for {urs}: ')
+        username = builtins.input(f"Username for {urs}: ")
     if not password:
-        password = getpass.getpass(prompt=f'Password for {username}@{urs}: ')
+        password = getpass.getpass(prompt=f"Password for {username}@{urs}: ")
     # for each retry
-    for retry in range(kwargs['retries']):
+    for retry in range(kwargs["retries"]):
         # build an opener for urs with credentials
-        opener = build_opener(username, password,
+        opener = build_opener(
+            username,
+            password,
             context=context,
             password_manager=password_manager,
             get_ca_certs=get_ca_certs,
             redirect=redirect,
             authorization_header=authorization_header,
-            urs=urs)
+            urs=urs,
+        )
         # try logging in by check credentials
         try:
             check_credentials()
@@ -570,22 +604,23 @@ def attempt_login(
         else:
             return opener
         # reattempt login
-        username = builtins.input(f'Username for {urs}: ')
-        password = getpass.getpass(prompt=f'Password for {username}@{urs}: ')
+        username = builtins.input(f"Username for {urs}: ")
+        password = getpass.getpass(prompt=f"Password for {username}@{urs}: ")
     # reached end of available retries
-    raise RuntimeError('End of Retries: Check NASA Earthdata credentials')
+    raise RuntimeError("End of Retries: Check NASA Earthdata credentials")
+
 
 # PURPOSE: "login" to NASA Earthdata with supplied credentials
 def build_opener(
-        username: str,
-        password: str,
-        context=_default_ssl_context,
-        password_manager: bool = True,
-        get_ca_certs: bool = False,
-        redirect: bool = False,
-        authorization_header: bool = False,
-        urs: str = 'https://urs.earthdata.nasa.gov'
-    ):
+    username: str,
+    password: str,
+    context=_default_ssl_context,
+    password_manager: bool = True,
+    get_ca_certs: bool = False,
+    redirect: bool = False,
+    authorization_header: bool = False,
+    urs: str = "https://urs.earthdata.nasa.gov",
+):
     """
     Build ``urllib`` opener for NASA Earthdata with supplied credentials
 
@@ -638,7 +673,7 @@ def build_opener(
     # Encode username/password for request authorization headers
     # add Authorization header to opener
     if authorization_header:
-        b64 = base64.b64encode(f'{username}:{password}'.encode())
+        b64 = base64.b64encode(f"{username}:{password}".encode())
         opener.addheaders = [("Authorization", f"Basic {b64.decode()}")]
     # Now all calls to urllib2.urlopen use our opener.
     urllib2.install_opener(opener)
@@ -647,14 +682,15 @@ def build_opener(
     # HTTPPasswordMgrWithDefaultRealm will be confused.
     return opener
 
+
 # PURPOSE: generate a NASA Earthdata user token
 def get_token(
-        HOST: str = 'https://urs.earthdata.nasa.gov/api/users/token',
-        username: str | None = None,
-        password: str | None = None,
-        build: bool = True,
-        urs: str = 'urs.earthdata.nasa.gov',
-    ):
+    HOST: str = "https://urs.earthdata.nasa.gov/api/users/token",
+    username: str | None = None,
+    password: str | None = None,
+    build: bool = True,
+    urs: str = "urs.earthdata.nasa.gov",
+):
     """
     Generate a NASA Earthdata User Token
 
@@ -680,32 +716,35 @@ def get_token(
     """
     # attempt to build urllib2 opener and check credentials
     if build:
-        attempt_login(urs,
+        attempt_login(
+            urs,
             username=username,
             password=password,
             password_manager=False,
-            authorization_header=True)
+            authorization_header=True,
+        )
     # create post response with Earthdata token API
     try:
-        request = urllib2.Request(HOST, method='POST')
+        request = urllib2.Request(HOST, method="POST")
         response = urllib2.urlopen(request)
     except urllib2.HTTPError as exc:
         logging.debug(exc.code)
         raise RuntimeError(exc.reason) from exc
     except urllib2.URLError as exc:
         logging.debug(exc.reason)
-        raise RuntimeError('Check internet connection') from exc
+        raise RuntimeError("Check internet connection") from exc
     # read and return JSON response
     return json.loads(response.read())
 
+
 # PURPOSE: generate a NASA Earthdata user token
 def list_tokens(
-        HOST: str = 'https://urs.earthdata.nasa.gov/api/users/tokens',
-        username: str | None = None,
-        password: str | None = None,
-        build: bool = True,
-        urs: str = 'urs.earthdata.nasa.gov',
-    ):
+    HOST: str = "https://urs.earthdata.nasa.gov/api/users/tokens",
+    username: str | None = None,
+    password: str | None = None,
+    build: bool = True,
+    urs: str = "urs.earthdata.nasa.gov",
+):
     """
     List the current associated NASA Earthdata User Tokens
 
@@ -731,11 +770,13 @@ def list_tokens(
     """
     # attempt to build urllib2 opener and check credentials
     if build:
-        attempt_login(urs,
+        attempt_login(
+            urs,
             username=username,
             password=password,
             password_manager=False,
-            authorization_header=True)
+            authorization_header=True,
+        )
     # create get response with Earthdata list tokens API
     try:
         request = urllib2.Request(HOST)
@@ -745,19 +786,20 @@ def list_tokens(
         raise RuntimeError(exc.reason) from exc
     except urllib2.URLError as exc:
         logging.debug(exc.reason)
-        raise RuntimeError('Check internet connection') from exc
+        raise RuntimeError("Check internet connection") from exc
     # read and return JSON response
     return json.loads(response.read())
 
+
 # PURPOSE: revoke a NASA Earthdata user token
 def revoke_token(
-        token: str,
-        HOST: str = f'https://urs.earthdata.nasa.gov/api/users/revoke_token',
-        username: str | None = None,
-        password: str | None = None,
-        build: bool = True,
-        urs: str = 'urs.earthdata.nasa.gov',
-    ):
+    token: str,
+    HOST: str = f"https://urs.earthdata.nasa.gov/api/users/revoke_token",
+    username: str | None = None,
+    password: str | None = None,
+    build: bool = True,
+    urs: str = "urs.earthdata.nasa.gov",
+):
     """
     Generate a NASA Earthdata User Token
 
@@ -780,25 +822,28 @@ def revoke_token(
     """
     # attempt to build urllib2 opener and check credentials
     if build:
-        attempt_login(urs,
+        attempt_login(
+            urs,
             username=username,
             password=password,
             password_manager=False,
-            authorization_header=True)
+            authorization_header=True,
+        )
     # full path for NASA Earthdata revoke token API
-    url = f'{HOST}?token={token}'
+    url = f"{HOST}?token={token}"
     # create post response with Earthdata revoke tokens API
     try:
-        request = urllib2.Request(url, method='POST')
+        request = urllib2.Request(url, method="POST")
         response = urllib2.urlopen(request)
     except urllib2.HTTPError as exc:
         logging.debug(exc.code)
         raise RuntimeError(exc.reason) from exc
     except urllib2.URLError as exc:
         logging.debug(exc.reason)
-        raise RuntimeError('Check internet connection') from exc
+        raise RuntimeError("Check internet connection") from exc
     # verbose response
-    logging.debug(f'Token Revoked: {token}')
+    logging.debug(f"Token Revoked: {token}")
+
 
 # PURPOSE: check that entered NASA Earthdata credentials are valid
 def check_credentials():
@@ -806,31 +851,32 @@ def check_credentials():
     Check that entered NASA Earthdata credentials are valid
     """
     try:
-        remote_path = posixpath.join('https://n5eil01u.ecs.nsidc.org', 'ATLAS')
+        remote_path = "https://urs.earthdata.nasa.gov/api/users/tokens"
         request = urllib2.Request(url=remote_path)
         response = urllib2.urlopen(request, timeout=20)
-    except urllib2.HTTPError:
-        raise RuntimeError('Check your NASA Earthdata credentials')
-    except urllib2.URLError:
-        raise RuntimeError('Check internet connection')
+    except urllib2.HTTPError as exc:
+        raise RuntimeError("Check your NASA Earthdata credentials") from exc
+    except urllib2.URLError as exc:
+        raise RuntimeError("Check internet connection") from exc
     else:
         return True
 
+
 # PURPOSE: download a file from a NSIDC https server
 def from_nsidc(
-        HOST: str | list,
-        username: str | None = None,
-        password: str | None = None,
-        build: bool = True,
-        timeout: int | None = None,
-        urs: str = 'urs.earthdata.nasa.gov',
-        local: str | pathlib.Path | None = None,
-        hash: str = '',
-        chunk: int = 16384,
-        verbose: bool = False,
-        fid=sys.stdout,
-        mode: oct = 0o775
-    ):
+    HOST: str | list,
+    username: str | None = None,
+    password: str | None = None,
+    build: bool = True,
+    timeout: int | None = None,
+    urs: str = "urs.earthdata.nasa.gov",
+    local: str | pathlib.Path | None = None,
+    hash: str = "",
+    chunk: int = 16384,
+    verbose: bool = False,
+    fid=sys.stdout,
+    mode: oct = 0o775,
+):
     """
     Download a file from a NSIDC https server
 
@@ -884,7 +930,7 @@ def from_nsidc(
         response = urllib2.urlopen(request, timeout=timeout)
     except (urllib2.HTTPError, urllib2.URLError) as exc:
         logging.error(exc)
-        response_error = 'Download error from {0}'.format(posixpath.join(*HOST))
+        response_error = "Download error from {0}".format(posixpath.join(*HOST))
         return (False, response_error)
     else:
         # copy remote file contents to bytesIO object
@@ -903,10 +949,10 @@ def from_nsidc(
             local.parent.mkdir(mode=mode, parents=True, exist_ok=True)
             # print file information
             args = (posixpath.join(*HOST), str(local))
-            logging.info('{0} -->\n\t{1}'.format(*args))
+            logging.info("{0} -->\n\t{1}".format(*args))
             # store bytes to file using chunked transfer encoding
             remote_buffer.seek(0)
-            with local.open(mode='wb') as f:
+            with local.open(mode="wb") as f:
                 shutil.copyfileobj(remote_buffer, f, chunk)
             # change the permissions mode
             local.chmod(mode=mode)
@@ -914,12 +960,14 @@ def from_nsidc(
         remote_buffer.seek(0)
         return (remote_buffer, None)
 
+
 # available regions and resolutions
-_products = ('ATL14', 'ATL15')
-_regions = ('AA', 'A1', 'A2', 'A3', 'A4', 'CN', 'CS', 'GL', 'IS', 'RA', 'SV')
-_atl14_resolutions = ('100m',)
-_atl15_resolutions = ('01km', '10km', '20km', '40km')
+_products = ("ATL14", "ATL15")
+_regions = ("AA", "A1", "A2", "A3", "A4", "CN", "CS", "GL", "IS", "RA", "SV")
+_atl14_resolutions = ("100m",)
+_atl15_resolutions = ("01km", "10km", "20km", "40km")
 _resolutions = _atl14_resolutions + _atl15_resolutions
+
 
 # PURPOSE: build formatted query string for ICESat-2 release
 def cmr_query_release(release: str | int | None):
@@ -937,19 +985,20 @@ def cmr_query_release(release: str | int | None):
         formatted string for CMR queries
     """
     if release is None:
-        return ''
+        return ""
     # maximum length of version in CMR queries
     desired_pad_length = 3
     if len(str(release)) > desired_pad_length:
         raise RuntimeError(f'Release string too long: "{release}"')
     # Strip off any leading zeros
-    release = str(release).lstrip('0')
-    query_params = ''
+    release = str(release).lstrip("0")
+    query_params = ""
     while len(release) <= desired_pad_length:
         padded_release = release.zfill(desired_pad_length)
-        query_params += f'&version={padded_release}'
+        query_params += f"&version={padded_release}"
         desired_pad_length -= 1
     return query_params
+
 
 # PURPOSE: check if the submitted ATL14/15 regions are valid
 def cmr_regions(region: str | list | None):
@@ -984,6 +1033,7 @@ def cmr_regions(region: str | list | None):
             warnings.filterwarnings("module")
             warnings.warn("Listed region is not presently available")
         return region_list
+
 
 # PURPOSE: check if the submitted ATL14/15 regions are valid
 def cmr_resolutions(resolution: str | list | None):
@@ -1020,6 +1070,7 @@ def cmr_resolutions(resolution: str | list | None):
             warnings.warn("Listed resolution is not presently available")
         return resolution_list
 
+
 def cmr_readable_granules(product: str, **kwargs):
     """
     Create list of readable granule names for CMR queries
@@ -1055,12 +1106,13 @@ def cmr_readable_granules(product: str, **kwargs):
     # return readable granules list
     return readable_granule_list
 
+
 # PURPOSE: filter the CMR json response for desired data files
 def cmr_filter_json(
-        search_results: dict,
-        endpoint: str = "data",
-        request_type: str = r"application/x-hdfeos"
-    ):
+    search_results: dict,
+    endpoint: str = "data",
+    request_type: str = r"application/x-hdfeos",
+):
     """
     Filter the CMR json response for desired data files
 
@@ -1088,43 +1140,48 @@ def cmr_filter_json(
     producer_granule_ids = []
     granule_urls = []
     # check that there are urls for request
-    if ('feed' not in search_results) or ('entry' not in search_results['feed']):
+    if ("feed" not in search_results) or (
+        "entry" not in search_results["feed"]
+    ):
         return (producer_granule_ids, granule_urls)
     # descriptor links for each endpoint
     rel = {}
-    rel['data'] = "http://esipfed.org/ns/fedsearch/1.1/data#"
-    rel['opendap'] = "http://esipfed.org/ns/fedsearch/1.1/service#"
-    rel['s3'] = "http://esipfed.org/ns/fedsearch/1.1/s3#"
+    rel["data"] = "http://esipfed.org/ns/fedsearch/1.1/data#"
+    rel["opendap"] = "http://esipfed.org/ns/fedsearch/1.1/service#"
+    rel["s3"] = "http://esipfed.org/ns/fedsearch/1.1/s3#"
     # iterate over references and get cmr location
-    for entry in search_results['feed']['entry']:
-        producer_granule_ids.append(entry['producer_granule_id'])
-        for link in entry['links']:
+    for entry in search_results["feed"]["entry"]:
+        producer_granule_ids.append(entry["producer_granule_id"])
+        for link in entry["links"]:
             # skip links without descriptors
-            if ('rel' not in link.keys()):
+            if "rel" not in link.keys():
                 continue
-            if ('type' not in link.keys()):
+            if "type" not in link.keys():
                 continue
             # append if selected endpoint and request type
-            if (link['rel'] == rel[endpoint]) and re.match(request_type, link['type']):
-                granule_urls.append(link['href'])
+            if (link["rel"] == rel[endpoint]) and re.match(
+                request_type, link["type"]
+            ):
+                granule_urls.append(link["href"])
                 break
     # return the list of urls and granule ids
     return (producer_granule_ids, granule_urls)
 
+
 # PURPOSE: cmr queries for gridded land ice products
 def cmr(
-        product: str = None,
-        release: str = None,
-        regions: str | list | None = None,
-        resolutions: str | list | None = None,
-        provider: str = 'NSIDC_ECS',
-        endpoint: str = 'data',
-        request_type: str = r'application/(x-)?netcdf',
-        opener = None,
-        context: ssl.SSLContext = _default_ssl_context,
-        verbose: bool = False,
-        fid = sys.stdout
-    ):
+    product: str = None,
+    release: str = None,
+    regions: str | list | None = None,
+    resolutions: str | list | None = None,
+    provider: str = "NSIDC_CPRD",
+    endpoint: str = "data",
+    request_type: str = r"application/(x-)?netcdf",
+    opener=None,
+    context: ssl.SSLContext = _default_ssl_context,
+    verbose: bool = False,
+    fid=sys.stdout,
+):
     """
     Query the NASA Common Metadata Repository (CMR) for ICESat-2 data
 
@@ -1138,7 +1195,7 @@ def cmr(
         ICESat-2 ATL14/15 region name
     resolutions: str, list or NoneType, default None
         ICESat-2 ATL14/15 spatial resolution
-    provider: str, default 'NSIDC_ECS'
+    provider: str, default 'NSIDC_CPRD'
         CMR data provider
     endpoint: str, default 'data'
         url endpoint type
@@ -1179,35 +1236,39 @@ def cmr(
         # create "opener" (OpenerDirector instance)
         opener = urllib2.build_opener(*handler)
     # build CMR query
-    cmr_query_type = 'granules'
-    cmr_format = 'json'
+    cmr_query_type = "granules"
+    cmr_format = "json"
     cmr_page_size = 2000
-    CMR_HOST = ['https://cmr.earthdata.nasa.gov', 'search',
-        f'{cmr_query_type}.{cmr_format}']
+    CMR_HOST = [
+        "https://cmr.earthdata.nasa.gov",
+        "search",
+        f"{cmr_query_type}.{cmr_format}",
+    ]
     # build list of CMR query parameters
     CMR_KEYS = []
-    CMR_KEYS.append(f'?provider={provider}')
-    CMR_KEYS.append('&sort_key[]=start_date')
-    CMR_KEYS.append('&sort_key[]=producer_granule_id')
-    CMR_KEYS.append(f'&page_size={cmr_page_size}')
+    CMR_KEYS.append(f"?provider={provider}")
+    CMR_KEYS.append("&sort_key[]=start_date")
+    CMR_KEYS.append("&sort_key[]=producer_granule_id")
+    CMR_KEYS.append(f"&page_size={cmr_page_size}")
     # append product string
-    CMR_KEYS.append(f'&short_name={product}')
+    CMR_KEYS.append(f"&short_name={product}")
     # append release strings
     CMR_KEYS.append(cmr_query_release(release))
     # append keys for querying specific granules
     CMR_KEYS.append("&options[readable_granule_name][pattern]=true")
     CMR_KEYS.append("&options[spatial][or]=true")
     # set as subregions for Release-3+ for merging into single dataset
-    if (int(release) > 2) and (regions == 'AA'):
-        regions = ['A1', 'A2', 'A3', 'A4']
+    if (int(release) > 2) and (regions == "AA"):
+        regions = ["A1", "A2", "A3", "A4"]
     # get the list of readable granules
-    readable_granule_list = cmr_readable_granules(product,
-        regions=regions, resolutions=resolutions)
+    readable_granule_list = cmr_readable_granules(
+        product, regions=regions, resolutions=resolutions
+    )
     for gran in readable_granule_list:
         CMR_KEYS.append(f"&readable_granule_name[]={gran}")
     # full CMR query url
     cmr_query_url = "".join([posixpath.join(*CMR_HOST), *CMR_KEYS])
-    logging.info(f'CMR request={cmr_query_url}')
+    logging.info(f"CMR request={cmr_query_url}")
     # output list of granule names and urls
     producer_granule_ids = []
     granule_urls = []
@@ -1216,16 +1277,17 @@ def cmr(
         req = urllib2.Request(cmr_query_url)
         # add CMR search after header
         if cmr_search_after:
-            req.add_header('CMR-Search-After', cmr_search_after)
-            logging.debug(f'CMR-Search-After: {cmr_search_after}')
+            req.add_header("CMR-Search-After", cmr_search_after)
+            logging.debug(f"CMR-Search-After: {cmr_search_after}")
         response = opener.open(req)
         # get search after index for next iteration
-        headers = {k.lower():v for k,v in dict(response.info()).items()}
-        cmr_search_after = headers.get('cmr-search-after')
+        headers = {k.lower(): v for k, v in dict(response.info()).items()}
+        cmr_search_after = headers.get("cmr-search-after")
         # read the CMR search as JSON
-        search_page = json.loads(response.read().decode('utf-8'))
-        ids, urls = cmr_filter_json(search_page,
-            endpoint=endpoint, request_type=request_type)
+        search_page = json.loads(response.read().decode("utf-8"))
+        ids, urls = cmr_filter_json(
+            search_page, endpoint=endpoint, request_type=request_type
+        )
         if not urls or cmr_search_after is None:
             break
         # extend lists
@@ -1234,10 +1296,12 @@ def cmr(
     # return the list of granule ids and urls
     return (producer_granule_ids, granule_urls)
 
+
 # available assets for finding data
-_assets = ('nsidc-s3', 'atlas-s3', 'nsidc-https', 'atlas-local')
+_assets = ("nsidc-s3", "atlas-s3", "nsidc-https", "atlas-local")
 # available formats for accessing data
-_formats = ('nc', 'zarr')
+_formats = ("nc", "zarr")
+
 
 # PURPOSE: queries CMR or s3 for available granules
 def query_resources(**kwargs):
@@ -1296,111 +1360,112 @@ def query_resources(**kwargs):
     granule: str
         presigned url or path for granule
     """
-    kwargs.setdefault('asset', 'nsidc-https')
-    kwargs.setdefault('bucket', 'is2view')
-    kwargs.setdefault('directory', None)
-    kwargs.setdefault('product', 'ATL15')
-    kwargs.setdefault('release', '004')
-    kwargs.setdefault('version', '01')
-    kwargs.setdefault('cycles', None)
-    kwargs.setdefault('region', 'AA')
-    kwargs.setdefault('resolution', '01km')
-    kwargs.setdefault('format', 'nc')
+    kwargs.setdefault("asset", "nsidc-https")
+    kwargs.setdefault("bucket", "is2view")
+    kwargs.setdefault("directory", None)
+    kwargs.setdefault("product", "ATL15")
+    kwargs.setdefault("release", "004")
+    kwargs.setdefault("version", "01")
+    kwargs.setdefault("cycles", None)
+    kwargs.setdefault("region", "AA")
+    kwargs.setdefault("resolution", "01km")
+    kwargs.setdefault("format", "nc")
 
     # CMR providers
     provider = {}
-    provider['nsidc-s3'] = _s3_providers['nsidc']
-    provider['atlas-s3'] = _s3_providers['nsidc']
-    provider['nsidc-https'] = _daac_providers['nsidc']
-    provider['atlas-local'] = _daac_providers['nsidc']
+    provider["nsidc-s3"] = _s3_providers["nsidc"]
+    provider["atlas-s3"] = _s3_providers["nsidc"]
+    provider["nsidc-https"] = _s3_providers["nsidc"]
+    provider["atlas-local"] = _s3_providers["nsidc"]
     # CMR endpoints
     endpoint = {}
-    endpoint['nsidc-s3'] = 's3'
-    endpoint['atlas-s3'] = 's3'
-    endpoint['nsidc-https'] = 'data'
-    endpoint['atlas-local'] = 'data'
+    endpoint["nsidc-s3"] = "s3"
+    endpoint["atlas-s3"] = "s3"
+    endpoint["nsidc-https"] = "data"
+    endpoint["atlas-local"] = "data"
     # CMR request types
     request_type = {}
-    request_type['nsidc-s3'] = r'application/(x-)?netcdf'
-    request_type['atlas-s3'] = r'application/(x-)?netcdf'
-    request_type['nsidc-https'] = r'application/(x-)?netcdf'
-    request_type['atlas-local'] = r'application/(x-)?netcdf'
+    request_type["nsidc-s3"] = r"application/(x-)?netcdf"
+    request_type["atlas-s3"] = r"application/(x-)?netcdf"
+    request_type["nsidc-https"] = r"application/(x-)?netcdf"
+    request_type["atlas-local"] = r"application/(x-)?netcdf"
     # convert region variable to list
-    if (int(kwargs['release']) > 2) and (kwargs['region'].upper() == 'AA'):
+    if (int(kwargs["release"]) > 2) and (kwargs["region"].upper() == "AA"):
         # set Antarctic sub-regions for Release-3+
-        kwargs['region'] = ['A1', 'A2', 'A3', 'A4']
-    elif (kwargs['region'].lower() == 'north'):
+        kwargs["region"] = ["A1", "A2", "A3", "A4"]
+    elif kwargs["region"].lower() == "north":
         # set for merging Arctic regions into a single dataset
-        kwargs['region'] = ['CS', 'CN', 'GL', 'IS', 'RA', 'SV']
-    elif isinstance(kwargs['region'], str):
-        kwargs['region'] = [kwargs['region']]
+        kwargs["region"] = ["CS", "CN", "GL", "IS", "RA", "SV"]
+    elif isinstance(kwargs["region"], str):
+        kwargs["region"] = [kwargs["region"]]
 
     # verify inputs
-    assert kwargs['asset'] in _assets
-    assert kwargs['product'] in _products
-    assert kwargs['release'] in ('001', '002', '003', '004')
-    if kwargs['cycles'] is not None:
-        assert (len(kwargs['cycles']) == 2), 'cycles should be length 2'
-    for r in kwargs['region']:
+    assert kwargs["asset"] in _assets
+    assert kwargs["product"] in _products
+    assert int(kwargs["release"]) > 0
+    if kwargs["cycles"] is not None:
+        assert len(kwargs["cycles"]) == 2, "cycles should be length 2"
+    for r in kwargs["region"]:
         assert r in _regions
-    assert kwargs['resolution'] in _resolutions
-    assert kwargs['format'] in _formats
+    assert kwargs["resolution"] in _resolutions
+    assert kwargs["format"] in _formats
 
     # attempt to get resource
     granules = []
     try:
         # query CMR
-        ids, urls = cmr(product=kwargs['product'],
-            release=kwargs['release'],
-            regions=kwargs['region'],
-            resolutions=kwargs['resolution'],
-            provider=provider[kwargs['asset']],
-            endpoint=endpoint[kwargs['asset']],
-            request_type=request_type[kwargs['asset']])
+        ids, urls = cmr(
+            product=kwargs["product"],
+            release=kwargs["release"],
+            regions=kwargs["region"],
+            resolutions=kwargs["resolution"],
+            provider=provider[kwargs["asset"]],
+            endpoint=endpoint[kwargs["asset"]],
+            request_type=request_type[kwargs["asset"]],
+        )
         # check if granule is available
         if not (ids or urls):
-            raise Exception('Granule not found in asset')
+            raise Exception("Granule not found in asset")
         # check if available on s3 or locally
-        if (kwargs['asset'] == 'nsidc-s3'):
+        if kwargs["asset"] == "nsidc-s3":
             # submit request to create AWS session
-            attempt_login('urs.earthdata.nasa.gov',
-                authorization_header=True)
+            attempt_login("urs.earthdata.nasa.gov", authorization_header=True)
             # get AWS s3 file system object
-            session = s3_filesystem(_s3_endpoints['nsidc'])
+            session = s3_filesystem(_s3_endpoints["nsidc"])
             # append to granules
-            for i,url in enumerate(urls):
-                granules.append(session.open(url, mode='rb'))
-        elif (kwargs['asset'] == 'atlas-s3'):
+            for i, url in enumerate(urls):
+                granules.append(session.open(url, mode="rb"))
+        elif kwargs["asset"] == "atlas-s3":
             # for each url from CMR
-            for i,url in enumerate(urls):
+            for i, url in enumerate(urls):
                 # update url if using different format
-                if kwargs['format'] in ('zarr',):
-                    prefix,_ = posixpath.splitext(url)
-                    url = f'{prefix}.{kwargs["format"]}'
+                if kwargs["format"] in ("zarr",):
+                    prefix, _ = posixpath.splitext(url)
+                    url = f"{prefix}.{kwargs['format']}"
                 # get presigned url for granule
                 key = s3_key(url)
                 # append to granules
-                granules.append(s3_presigned_url(kwargs['bucket'], key))
-        elif (kwargs['asset'] == 'nsidc-https'):
+                granules.append(s3_presigned_url(kwargs["bucket"], key))
+        elif kwargs["asset"] == "nsidc-https":
             # for each url from CMR
-            for i,url in enumerate(urls):
+            for i, url in enumerate(urls):
                 # verify that granule exists locally
                 granule = pathlib.Path(ids[i])
                 if not granule.exists():
                     from_nsidc(url, local=granule)
                 # append to granules
                 granules.append(granule)
-        elif (kwargs['asset'] == 'atlas-local'):
+        elif kwargs["asset"] == "atlas-local":
             # for each url from CMR
-            for i,url in enumerate(urls):
+            for i, url in enumerate(urls):
                 # update url if using different format
-                if kwargs['format'] in ('zarr',):
-                    prefix,_ = posixpath.splitext(ids[i])
-                    ids[i] = f'{prefix}.{kwargs["format"]}'
+                if kwargs["format"] in ("zarr",):
+                    prefix, _ = posixpath.splitext(ids[i])
+                    ids[i] = f"{prefix}.{kwargs['format']}"
                 # verify that granule exists locally
-                directory = pathlib.Path(kwargs['directory'] or '.')
+                directory = pathlib.Path(kwargs["directory"] or ".")
                 granule = directory.joinpath(ids[i]).expanduser().absolute()
-                if not granule.exists() and (kwargs['format'] == 'nc'):
+                if not granule.exists() and (kwargs["format"] == "nc"):
                     from_nsidc(url, local=granule)
                 elif not granule.exists():
                     raise FileNotFoundError(str(granule))
@@ -1412,7 +1477,7 @@ def query_resources(**kwargs):
         pass
     else:
         # return the granules
-        if (len(granules) == 1):
+        if len(granules) == 1:
             # return as string for a single granule
             return granules[0]
         else:
@@ -1428,44 +1493,45 @@ def query_resources(**kwargs):
         # 5: horizontal spatial resolution
         # 6: data release
         # 7: data version
-        file_format = '{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.{7}'
+        file_format = "{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.{7}"
         # use default start and end cycle
-        if kwargs['cycles'] is None:
+        if kwargs["cycles"] is None:
             # start and end cycle for releases
             cycles = {}
-            cycles['001'] = (3, 11)
-            cycles['002'] = (3, 14)
-            cycles['003'] = (3, 18)
-            cycles['004'] = (3, 21)
-            kwargs['cycles'] = cycles[kwargs['release']]
+            cycles["001"] = (3, 11)
+            cycles["002"] = (3, 14)
+            cycles["003"] = (3, 18)
+            cycles["004"] = (3, 21)
+            kwargs["cycles"] = cycles[kwargs["release"]]
         # for each requested region
-        for region in kwargs['region']:
+        for region in kwargs["region"]:
             # format granule for unreleased data
             file = file_format.format(
-                kwargs['product'],
+                kwargs["product"],
                 region,
-                int(kwargs['cycles'][0]),
-                int(kwargs['cycles'][1]),
-                kwargs['resolution'],
-                int(kwargs['release']),
-                int(kwargs['version']),
-                kwargs['format']
+                int(kwargs["cycles"][0]),
+                int(kwargs["cycles"][1]),
+                kwargs["resolution"],
+                int(kwargs["release"]),
+                int(kwargs["version"]),
+                kwargs["format"],
             )
             # unreleased granule from local or project s3
-            if (kwargs['asset'] == 'atlas-local'):
+            if kwargs["asset"] == "atlas-local":
                 # local granule for unreleased data
-                directory = pathlib.Path(kwargs['directory'] or '.')
+                directory = pathlib.Path(kwargs["directory"] or ".")
                 granule = directory.joinpath(file).expanduser().absolute()
                 # verify that unreleased granule exists locally
                 if not granule.exists():
                     raise FileNotFoundError(str(granule))
-            elif (kwargs['asset'] == 'atlas-s3'):
+            elif kwargs["asset"] == "atlas-s3":
                 # s3 urls for unreleased data
                 # full s3 key path
-                key = posixpath.join('ATLAS', kwargs['product'],
-                    kwargs['release'], '2019', file)
+                key = posixpath.join(
+                    "ATLAS", kwargs["product"], kwargs["release"], "2019", file
+                )
                 # get presigned url for granule
-                granule = s3_presigned_url(kwargs['bucket'], key)
+                granule = s3_presigned_url(kwargs["bucket"], key)
             # append to granules
             granules.append(granule)
     except Exception:
@@ -1474,7 +1540,7 @@ def query_resources(**kwargs):
         pass
     else:
         # return the granules
-        if (len(granules) == 1):
+        if len(granules) == 1:
             # return as string for a single granule
             return granules[0]
         else:
@@ -1482,5 +1548,5 @@ def query_resources(**kwargs):
             return granules
 
     # raise exception if no granule available
-    if (len(granules) == 0):
-        raise ValueError('Unavailable granule')
+    if len(granules) == 0:
+        raise ValueError("Unavailable granule")

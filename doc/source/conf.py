@@ -45,7 +45,6 @@ extensions = [
     "sphinx.ext.graphviz",
     "sphinx.ext.viewcode",
     "sphinx_design",
-    "sphinxarg.ext"
 ]
 
 # use myst for notebooks

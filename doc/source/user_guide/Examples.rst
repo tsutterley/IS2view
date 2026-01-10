@@ -27,4 +27,6 @@ Jupyter notebooks for visualizing the ICESat-2 ATL14/15 Gridded Land Ice Product
       :link: ../notebooks/IS2-ATL15-Viewer.html
       :link-alt: Visualizing the ICESat-2 Gridded Antarctic and Arctic Land Ice Height Change product
 
-Check out the `recipes <./Recipes.html>`_ for some more specific examples and code snippets.
+.. tip::
+
+  Check out the `recipes <./Recipes.html>`_ for some more specific examples and code snippets!
