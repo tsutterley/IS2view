@@ -42,7 +42,7 @@ Interactive visualization and data extraction tool for ICESat-2 ATL14/15 Gridded
   </tr>
 </table>
 
-For more information: see the documentation at [is2view.readthedocs.io](https://is2view.readthedocs.io/) or the ICESat-2 websites at [Goddard Space Flight Center](https://icesat-2.gsfc.nasa.gov) or the [National Snow and Ice Data Center](https://nsidc.org/data/icesat-2/)
+For more information: see the documentation at [is2view.readthedocs.io](https://is2view.readthedocs.io/) or the ICESat-2 websites at [NASA Goddard Space Flight Center](https://icesat-2.gsfc.nasa.gov) or the [National Snow and Ice Data Center](https://nsidc.org/data/icesat-2/)
 
 
 ## Installation
