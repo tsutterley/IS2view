@@ -103,6 +103,7 @@ This will automatically create the environment, install all dependencies, and la
 ## Dependencies
 
 - [dask: Parallel computing with task scheduling](https://www.dask.org/)
+- [geopandas: Python tools for geographic data](http://geopandas.readthedocs.io/)
 - [h5netcdf: Pythonic interface to netCDF4 via h5py](https://h5netcdf.org/)
 - [ipyleaflet: Interactive maps in the Jupyter notebook](https://ipyleaflet.readthedocs.io/en/latest/)
 - [matplotlib: Python 2D plotting library](https://matplotlib.org/)
