@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 api.py
-Written by Tyler Sutterley (01/2025)
+Written by Tyler Sutterley (02/2026)
 Plotting tools for visualizing rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
@@ -28,6 +28,7 @@ PYTHON DEPENDENCIES:
         https://xyzservices.readthedocs.io/en/stable/
 
 UPDATE HISTORY:
+    Updated 02/2026: add conserve and all_touched options to extract function
     Updated 01/2025: added more zoom levels and update max_zoom
         deprecation update for writing the crs to the dataset object
     Updated 06/2024: use wrapper to importlib for optional dependencies
@@ -1478,6 +1479,8 @@ class TimeSeries(HasTraits):
         self._data = None
         self._area = None
         self._dist = None
+        self._fields = {}
+        self._mask = None
         self._time = None
         self._units = None
         self._longname = None
@@ -1492,6 +1495,8 @@ class TimeSeries(HasTraits):
         epoch=2018.0,
         ax=None,
         figsize=(6, 4),
+        all_touched=False,
+        conserve=False,
         **kwargs,
     ):
         """Plot a time series for an extracted geometry
@@ -1512,9 +1517,15 @@ class TimeSeries(HasTraits):
             Mutually exclusive with ``figsize``
         figsize : tuple, default (6,4)
             Dimensions of figure to create
+        all_touched : bool, default False
+            Include all pixels touched by geometry
+        conserve : bool, default False
+            Conserve total value when averaging over area
         kwargs : dict, default {}
             Keyword arguments for time series plot
         """
+        # set mask
+        self._mask = kwargs.get("mask", None)
         # set geometry
         self.geometry = feature.get("geometry") or {}
         # set properties with all keys lowercase
@@ -1548,9 +1559,9 @@ class TimeSeries(HasTraits):
         if geometry_type.lower() == "point":
             self.point(ax, **kwargs)
         elif geometry_type.lower() == "linestring":
-            self.transect(ax, **kwargs)
+            self.transect(ax, all_touched=all_touched, **kwargs)
         elif geometry_type.lower() in ("polygon", "multipolygon"):
-            self.average(ax, **kwargs)
+            self.average(ax, conserve=conserve, all_touched=all_touched, **kwargs)
         else:
             raise ValueError(f"Invalid geometry type {geometry_type}")
         # return the class object
@@ -1563,6 +1574,10 @@ class TimeSeries(HasTraits):
         variable="delta_h",
         crs="epsg:4326",
         epoch=2018.0,
+        fields=[],
+        all_touched=False,
+        conserve=False,
+        **kwargs,
     ):
         """Extract a time series for a geometry
 
@@ -1576,7 +1591,15 @@ class TimeSeries(HasTraits):
             coordinate reference system of geometry
         epoch : float, default 2018.0
             Reference epoch for delta times
+        fields : list, default []
+            Additional variables to extract from dataset
+        all_touched : bool, default False
+            Include all pixels touched by geometry
+        conserve : bool, default False
+            Conserve total value when averaging over area
         """
+        # set mask
+        self._mask = kwargs.get("mask", None)
         # set geometry
         self.geometry = feature.get("geometry") or {}
         # set properties with all keys lowercase
@@ -1604,11 +1627,11 @@ class TimeSeries(HasTraits):
         # create plot for a given geometry type
         geometry_type = self.geometry.get("type")
         if geometry_type.lower() == "point":
-            self.point(None)
+            self.point(None, fields=fields)
         elif geometry_type.lower() == "linestring":
-            self.transect(None)
+            self.transect(None, fields=fields, all_touched=all_touched)
         elif geometry_type.lower() in ("polygon", "multipolygon"):
-            self.average(None)
+            self.average(None, fields=fields, all_touched=all_touched, conserve=conserve)
         else:
             raise ValueError(f"Invalid geometry type {geometry_type}")
         # return the class object
@@ -1636,7 +1659,7 @@ class TimeSeries(HasTraits):
         # raise exception
         raise Exception("Unknown coordinate reference system")
 
-    def point(self, ax, **kwargs):
+    def point(self, ax, fields=[], **kwargs):
         """Extracts and plots a time series for a geolocation
 
         Parameters
@@ -1647,17 +1670,26 @@ class TimeSeries(HasTraits):
             Will only extract time series if ``None``
         legend : bool, default False
             Add legend
+        fields : list, default []
+            Additional variables to extract from dataset
         """
         # convert point to dataset coordinate reference system
         lon, lat = self.geometry["coordinates"]
         x, y = rio.warp.transform(self.crs, self._ds.rio.crs, [lon], [lat])
         # output time series for point
         self._data = np.zeros_like(self._ds.time)
+        # output additional fields
+        for field_name in fields:
+            self._fields[field_name] = np.zeros_like(self._ds.time)
         # reduce dataset to geometry
         for i, t in enumerate(self._ds.time):
             self._data[i] = self._ds_selected.sel(
                 x=x, y=y, time=t, method="nearest"
             )
+            for field_name in fields:
+                self._fields[field_name][i] = self._ds[field_name].sel(
+                    x=x, y=y, time=t, method="nearest"
+                )
         # only create plot if valid
         if np.all(np.isnan(self._data)):
             return
@@ -1690,7 +1722,7 @@ class TimeSeries(HasTraits):
         ax.xaxis.get_major_formatter().set_useOffset(False)
         return self
 
-    def transect(self, ax, **kwargs):
+    def transect(self, ax, fields=[], all_touched=False, **kwargs):
         """Extracts and plots a time series for a transect
 
         Parameters
@@ -1703,6 +1735,10 @@ class TimeSeries(HasTraits):
             matplotlib colormap
         legend : bool, default False
             Add legend with time values
+        fields : list, default []
+            Additional variables to extract from dataset
+        all_touched : bool, default False
+            Include all pixels touched by geometry
         """
         # convert linestring to dataset coordinate reference system
         lon, lat = np.transpose(self.geometry["coordinates"])
@@ -1712,11 +1748,11 @@ class TimeSeries(HasTraits):
         # clip ice area to geometry
         if "cell_area" in self._ds:
             ice_area = self._ds["cell_area"].rio.clip(
-                [self.geometry], self.crs, drop=False
+                [self.geometry], self.crs, drop=False, all_touched=all_touched
             )
         elif "ice_area" in self._ds:
             ice_area = self._ds["ice_area"].rio.clip(
-                [self.geometry], self.crs, drop=False
+                [self.geometry], self.crs, drop=False, all_touched=all_touched
             )
         else:
             raise NameError("No ice area variable in dataset")
@@ -1727,11 +1763,15 @@ class TimeSeries(HasTraits):
             mask = np.isfinite(ice_area).any(dim="time")
         elif ice_area.ndim == 2:
             mask = np.isfinite(ice_area)
+        # apply additional mask if provided
+        if self._mask is not None:
+            mask &= self._mask
         # only create plot if valid
         if np.all(np.logical_not(mask)):
             return
         # valid values in mask
         ii, jj = np.nonzero(mask)
+        n_valid = np.count_nonzero(mask)
         # calculate distances to first point in geometry
         distance = np.sqrt(
             (gridx[mask] - x[0]) ** 2 + (gridy[mask] - y[0]) ** 2
@@ -1740,8 +1780,11 @@ class TimeSeries(HasTraits):
         indices = np.argsort(distance)
         self._dist = distance[indices]
         # output reduced time series for each point
-        self._data = np.zeros((np.count_nonzero(mask), len(self._ds.time)))
+        self._data = np.zeros((n_valid, len(self._ds.time)))
         labels = [None] * len(self._ds.time)
+        # output additional fields
+        for field_name in fields:
+            self._fields[field_name] = np.zeros((n_valid, len(self._ds.time)))
         # for each step in the time series
         for i, t in enumerate(self._ds.time):
             clipped = self._ds_selected.sel(time=t).where(mask, drop=False)
@@ -1749,6 +1792,11 @@ class TimeSeries(HasTraits):
             # sort data based on distance to first point
             self._data[:, i] = reduced[indices]
             labels[i] = "{0:0.2f}".format(self._time[i].data)
+            # output additional fields
+            for field_name in fields:
+                clipped = self._ds[field_name].sel(time=t).where(mask, drop=False)
+                reduced = clipped.chunk(dict(y=-1, x=-1)).values[ii, jj]
+                self._fields[field_name][:, i] = reduced[indices]
         # only create plot if valid
         if np.all(np.isnan(self._data)):
             return
@@ -1798,7 +1846,7 @@ class TimeSeries(HasTraits):
         ax.xaxis.get_major_formatter().set_useOffset(False)
         return self
 
-    def average(self, ax, **kwargs):
+    def average(self, ax, fields=[], all_touched=False, conserve=False, **kwargs):
         """Extracts and plots a time series for a regional average
 
         Parameters
@@ -1809,15 +1857,21 @@ class TimeSeries(HasTraits):
             Will only extract time series if ``None``
         legend : bool, default False
             Add legend
+        fields : list, default []
+            Additional variables to extract from dataset
+        all_touched : bool, default False
+            Include all pixels touched by geometry
+        conserve : bool, default False
+            Update masks to conserve volume between calls
         """
         # clip ice area to geometry
         if "cell_area" in self._ds:
             ice_area = self._ds["cell_area"].rio.clip(
-                [self.geometry], self.crs, drop=False
+                [self.geometry], self.crs, drop=False, all_touched=all_touched
             )
         elif "ice_area" in self._ds:
             ice_area = self._ds["ice_area"].rio.clip(
-                [self.geometry], self.crs, drop=False
+                [self.geometry], self.crs, drop=False, all_touched=all_touched
             )
         else:
             raise NameError("No ice area variable in dataset")
@@ -1828,6 +1882,18 @@ class TimeSeries(HasTraits):
             mask = np.isfinite(ice_area).any(dim="time")
         elif ice_area.ndim == 2:
             mask = np.isfinite(ice_area)
+        # apply additional mask if provided
+        if self._mask is not None:
+            mask.values[:] &= self._mask
+        if self._mask is not None and conserve:
+            # update internal mask to conserve volume between calls
+            self._mask ^= mask.values
+        # output average time series
+        self._data = np.zeros_like(self._ds.time)
+        self._area = np.zeros_like(self._ds.time)
+        # output additional fields
+        for field_name in fields:
+            self._fields[field_name] = np.zeros_like(self._ds.time)
         # only create plot if valid
         if np.all(np.logical_not(mask)):
             return
@@ -1838,9 +1904,6 @@ class TimeSeries(HasTraits):
             "misfit_rms_scaled",
             "dhdt_sigma",
         )
-        # output average time series
-        self._data = np.zeros_like(self._ds.time)
-        self._area = np.zeros_like(self._ds.time)
         # reduce dataset to geometry
         for i, t in enumerate(self._ds.time):
             # reduce data to time and clip to geometry
@@ -1857,6 +1920,16 @@ class TimeSeries(HasTraits):
                 )
             else:
                 self._data[i] = np.sum(area * clipped) / np.sum(area)
+            # output additional fields
+            for field_name in fields:
+                # reduce data to time and clip to geometry
+                clipped = self._ds[field_name].sel(time=t).where(mask, drop=False)
+                if field_name in error_variables:
+                    self._fields[field_name][i] = np.sqrt(
+                        np.sum(area * clipped**2) / np.sum(area)
+                    )
+                else:
+                    self._fields[field_name][i] = np.sum(area * clipped) / np.sum(area)
             # calculate total area for region
             self._area[i] = np.sum(area)
         # only create plot if valid
@@ -1938,6 +2011,8 @@ class Transect(HasTraits):
         # initialize data for time series plot
         self._data = None
         self._dist = None
+        self._fields = {}
+        self._mask = None
         self._units = None
         self._longname = None
         self._line = None
@@ -1951,6 +2026,7 @@ class Transect(HasTraits):
         crs="epsg:4326",
         ax=None,
         figsize=(6, 4),
+        all_touched=False,
         **kwargs,
     ):
         """Creates a plot for a transect
@@ -1971,6 +2047,8 @@ class Transect(HasTraits):
             Mutually exclusive with ``figsize``
         figsize : tuple, default (6,4)
             Dimensions of figure to create
+        all_touched : bool, default False
+            Include all pixels touched by geometry
         kwargs : dict, default {}
             Keyword arguments for transect plot
         """
@@ -2009,7 +2087,7 @@ class Transect(HasTraits):
         # create plot for a given geometry type
         geometry_type = self.geometry.get("type")
         if geometry_type.lower() == "linestring":
-            self.transect(ax, **kwargs)
+            self.transect(ax, all_touched=all_touched, **kwargs)
         else:
             raise ValueError(f"Invalid geometry type {geometry_type}")
         # return the class object
@@ -2022,6 +2100,8 @@ class Transect(HasTraits):
         variable="h",
         lag=0,
         crs="epsg:4326",
+        all_touched=False,
+        **kwargs,
     ):
         """Extract a transect for a geometry
 
@@ -2037,6 +2117,8 @@ class Transect(HasTraits):
             coordinate reference system of geometry
         epoch : float, default 2018.0
             Reference epoch for delta times
+        all_touched : bool, default False
+            Include all pixels touched by geometry
         """
         # set geometry
         self.geometry = feature.get("geometry") or {}
@@ -2069,7 +2151,7 @@ class Transect(HasTraits):
         # create time series for a given geometry type
         geometry_type = self.geometry.get("type")
         if geometry_type.lower() == "linestring":
-            self.transect(None)
+            self.transect(None, all_touched=all_touched)
         else:
             raise ValueError(f"Invalid geometry type {geometry_type}")
         # return the class object
@@ -2097,7 +2179,7 @@ class Transect(HasTraits):
         # raise exception
         raise Exception("Unknown coordinate reference system")
 
-    def transect(self, ax, **kwargs):
+    def transect(self, ax, fields=[], all_touched=False, **kwargs):
         """Extracts and plots a transect
 
         Parameters
@@ -2108,6 +2190,10 @@ class Transect(HasTraits):
             Will only extract transect if ``None``
         legend : bool, default False
             Add legend
+        fields : list, default []
+            Additional variables to extract from dataset
+        all_touched : bool, default False
+            Include all pixels touched by geometry
         """
         # convert linestring to dataset coordinate reference system
         lon, lat = np.transpose(self.geometry["coordinates"])
@@ -2116,7 +2202,7 @@ class Transect(HasTraits):
         gridx, gridy = np.meshgrid(self._ds.x, self._ds.y)
         # clip variable to geometry and create mask
         clipped = self._ds_selected.rio.clip(
-            [self.geometry], self.crs, drop=False
+            [self.geometry], self.crs, drop=False, all_touched=all_touched
         )
         mask = np.isfinite(clipped)
         # only create plot if valid
@@ -2134,6 +2220,13 @@ class Transect(HasTraits):
         # sort data based on distance to first point
         reduced = clipped.chunk(dict(y=-1, x=-1)).values[ii, jj]
         self._data = reduced[indices]
+        # output additional fields
+        for field_name in fields:
+            clipped = self._ds[field_name].rio.clip(
+                [self.geometry], self.crs, drop=False, all_touched=all_touched
+            )
+            reduced = clipped.chunk(dict(y=-1, x=-1)).values[ii, jj]
+            self._fields[field_name] = reduced[indices]
         # only create plot if valid
         if np.all(np.isnan(self._data)):
             return
