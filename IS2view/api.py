@@ -1524,8 +1524,6 @@ class TimeSeries(HasTraits):
         kwargs : dict, default {}
             Keyword arguments for time series plot
         """
-        # set mask
-        self._mask = kwargs.get("mask", None)
         # set geometry
         self.geometry = feature.get("geometry") or {}
         # set properties with all keys lowercase
@@ -1547,6 +1545,12 @@ class TimeSeries(HasTraits):
             self._ds_selected = self._ds[self._variable]
         else:
             return
+        # set default mask if conserving volume
+        if conserve and (self._mask is None):
+            self._mask = xr.ones_like(
+                self._ds_selected.isel(time=0),
+                dtype=bool
+            )
         # convert time to units
         self._time = epoch + (self._ds.time) / 365.25
         # extract units
@@ -1600,8 +1604,6 @@ class TimeSeries(HasTraits):
         conserve : bool, default False
             Conserve total value when averaging over area
         """
-        # set mask
-        self._mask = kwargs.get("mask", None)
         # set geometry
         self.geometry = feature.get("geometry") or {}
         # set properties with all keys lowercase
@@ -1619,6 +1621,12 @@ class TimeSeries(HasTraits):
             self._ds_selected = self._ds[self._variable]
         else:
             return
+        # set default mask if conserving volume
+        if conserve and (self._mask is None):
+            self._mask = xr.ones_like(
+                self._ds_selected.isel(time=0),
+                dtype=bool
+            )
         # convert time to units
         self._time = epoch + (self._ds.time) / 365.25
         # extract units
@@ -1767,9 +1775,6 @@ class TimeSeries(HasTraits):
             mask = np.isfinite(ice_area).any(dim="time")
         elif ice_area.ndim == 2:
             mask = np.isfinite(ice_area)
-        # apply additional mask if provided
-        if self._mask is not None:
-            mask &= self._mask
         # only create plot if valid
         if np.all(np.logical_not(mask)):
             return
@@ -1890,12 +1895,10 @@ class TimeSeries(HasTraits):
             mask = np.isfinite(ice_area).any(dim="time")
         elif ice_area.ndim == 2:
             mask = np.isfinite(ice_area)
-        # apply additional mask if provided
-        if self._mask is not None:
-            mask.values[:] &= self._mask
-        if self._mask is not None and conserve:
-            # update internal mask to conserve volume between calls
-            self._mask ^= mask.values
+        # update internal mask to conserve volume between calls
+        if conserve:
+            mask &= self._mask
+            self._mask ^= mask
         # output average time series
         self._data = np.zeros_like(self._ds.time)
         self._area = np.zeros_like(self._ds.time)
