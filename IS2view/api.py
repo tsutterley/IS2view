@@ -1548,8 +1548,7 @@ class TimeSeries(HasTraits):
         # set default mask if conserving volume
         if conserve and (self._mask is None):
             self._mask = xr.ones_like(
-                self._ds_selected.isel(time=0),
-                dtype=bool
+                self._ds_selected.isel(time=0), dtype=bool
             )
         # convert time to units
         self._time = epoch + (self._ds.time) / 365.25
@@ -1624,8 +1623,7 @@ class TimeSeries(HasTraits):
         # set default mask if conserving volume
         if conserve and (self._mask is None):
             self._mask = xr.ones_like(
-                self._ds_selected.isel(time=0),
-                dtype=bool
+                self._ds_selected.isel(time=0), dtype=bool
             )
         # convert time to units
         self._time = epoch + (self._ds.time) / 365.25
