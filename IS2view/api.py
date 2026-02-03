@@ -1561,7 +1561,9 @@ class TimeSeries(HasTraits):
         elif geometry_type.lower() == "linestring":
             self.transect(ax, all_touched=all_touched, **kwargs)
         elif geometry_type.lower() in ("polygon", "multipolygon"):
-            self.average(ax, conserve=conserve, all_touched=all_touched, **kwargs)
+            self.average(
+                ax, conserve=conserve, all_touched=all_touched, **kwargs
+            )
         else:
             raise ValueError(f"Invalid geometry type {geometry_type}")
         # return the class object
@@ -1631,7 +1633,9 @@ class TimeSeries(HasTraits):
         elif geometry_type.lower() == "linestring":
             self.transect(None, fields=fields, all_touched=all_touched)
         elif geometry_type.lower() in ("polygon", "multipolygon"):
-            self.average(None, fields=fields, all_touched=all_touched, conserve=conserve)
+            self.average(
+                None, fields=fields, all_touched=all_touched, conserve=conserve
+            )
         else:
             raise ValueError(f"Invalid geometry type {geometry_type}")
         # return the class object
@@ -1794,7 +1798,9 @@ class TimeSeries(HasTraits):
             labels[i] = "{0:0.2f}".format(self._time[i].data)
             # output additional fields
             for field_name in fields:
-                clipped = self._ds[field_name].sel(time=t).where(mask, drop=False)
+                clipped = (
+                    self._ds[field_name].sel(time=t).where(mask, drop=False)
+                )
                 reduced = clipped.chunk(dict(y=-1, x=-1)).values[ii, jj]
                 self._fields[field_name][:, i] = reduced[indices]
         # only create plot if valid
@@ -1846,7 +1852,9 @@ class TimeSeries(HasTraits):
         ax.xaxis.get_major_formatter().set_useOffset(False)
         return self
 
-    def average(self, ax, fields=[], all_touched=False, conserve=False, **kwargs):
+    def average(
+        self, ax, fields=[], all_touched=False, conserve=False, **kwargs
+    ):
         """Extracts and plots a time series for a regional average
 
         Parameters
@@ -1923,13 +1931,17 @@ class TimeSeries(HasTraits):
             # output additional fields
             for field_name in fields:
                 # reduce data to time and clip to geometry
-                clipped = self._ds[field_name].sel(time=t).where(mask, drop=False)
+                clipped = (
+                    self._ds[field_name].sel(time=t).where(mask, drop=False)
+                )
                 if field_name in error_variables:
                     self._fields[field_name][i] = np.sqrt(
                         np.sum(area * clipped**2) / np.sum(area)
                     )
                 else:
-                    self._fields[field_name][i] = np.sum(area * clipped) / np.sum(area)
+                    self._fields[field_name][i] = np.sum(
+                        area * clipped
+                    ) / np.sum(area)
             # calculate total area for region
             self._area[i] = np.sum(area)
         # only create plot if valid
