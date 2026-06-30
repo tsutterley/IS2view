@@ -1,6 +1,6 @@
-===
-api
-===
+=======
+``api``
+=======
 
 Plotting tools for visualizing `rioxarray <https://corteva.github.io/rioxarray/stable/>`_ variables on `ipyleaflet <https://ipyleaflet.readthedocs.io/en/latest/>`_ maps
 

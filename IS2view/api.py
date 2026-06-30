@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 api.py
-Written by Tyler Sutterley (02/2026)
+Written by Tyler Sutterley (06/2026)
 Plotting tools for visualizing rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
@@ -28,6 +28,7 @@ PYTHON DEPENDENCIES:
         https://xyzservices.readthedocs.io/en/stable/
 
 UPDATE HISTORY:
+    Updated 06/2026: verify that area is conserved between calls if using option
     Updated 02/2026: add conserve and all_touched options to extract function
     Updated 01/2025: added more zoom levels and update max_zoom
         deprecation update for writing the crs to the dataset object
@@ -1919,16 +1920,18 @@ class TimeSeries(HasTraits):
             clipped = self._ds_selected.sel(time=t).where(mask, drop=False)
             # reduce cell area to time (for Release-02 and above)
             if (ice_area.ndim == 3) and ("time" in ice_area.dims):
-                area = ice_area.sel(time=t)
+                area = ice_area.sel(time=t).where(mask, drop=False)
             else:
-                area = ice_area.copy()
+                area = ice_area.where(mask, drop=False)
+            # multiply area by clipped mask
+            area *= np.isfinite(clipped).astype(float)
             # calculate regional average
             if self._variable in error_variables:
                 self._data[i] = np.sqrt(
-                    np.sum(area * clipped**2) / np.sum(area)
+                    np.nansum(area * clipped**2) / np.nansum(area)
                 )
             else:
-                self._data[i] = np.sum(area * clipped) / np.sum(area)
+                self._data[i] = np.nansum(area * clipped) / np.nansum(area)
             # output additional fields
             for field_name in fields:
                 # reduce data to time and clip to geometry
@@ -1937,14 +1940,14 @@ class TimeSeries(HasTraits):
                 )
                 if field_name in error_variables:
                     self._fields[field_name][i] = np.sqrt(
-                        np.sum(area * clipped**2) / np.sum(area)
+                        np.nansum(area * clipped**2) / np.nansum(area)
                     )
                 else:
-                    self._fields[field_name][i] = np.sum(
+                    self._fields[field_name][i] = np.nansum(
                         area * clipped
-                    ) / np.sum(area)
+                    ) / np.nansum(area)
             # calculate total area for region
-            self._area[i] = np.sum(area)
+            self._area[i] = np.nansum(area)
         # only create plot if valid
         if np.all(np.isnan(self._data)):
             return

@@ -1,6 +1,6 @@
-=====
-tools
-=====
+=========
+``tools``
+=========
 
 `User interface <https://ipywidgets.readthedocs.io/en/latest/>`_ tools for `Jupyter notebook <https://jupyter.org/>`_
 
