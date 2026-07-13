@@ -8,7 +8,7 @@ This documentation is intended to explain how to visualize and operate on the IC
 Introduction
 ------------
 
-.. grid:: 2 2 4 4
+.. grid:: 2 2 2 2
     :padding: 0
 
     .. grid-item-card::  Installation
@@ -23,18 +23,35 @@ Introduction
 
       :material-outlined:`hiking;5em`
 
+User Guide
+----------
+
+.. grid:: 2 2 4 4
+    :padding: 0
+
+    .. grid-item-card::  API Reference
+      :text-align: center
+      :link: ./api_reference/API-Reference.html
+
+      :material-outlined:`list_alt;5em`
+
     .. grid-item-card::  Data Products
       :text-align: center
-      :link: ./getting_started/Data-Products.html
+      :link: ./user_guide/Data-Products.html
 
       :material-outlined:`insert_chart;5em`
+
+    .. grid-item-card::  NASA Earthdata
+      :text-align: center
+      :link: ./user_guide/NASA-Earthdata.html
+
+      :material-outlined:`satellite_alt;5em`
 
     .. grid-item-card::  Examples
       :text-align: center
       :link: ./user_guide/Examples.html
 
       :material-outlined:`apps;5em`
-
 
 Contribute
 ----------
@@ -72,10 +89,8 @@ Contribute
     :hidden:
     :caption: Getting Started
 
-    getting_started/Install.rst
+    getting_started/Install.ipynb
     getting_started/Getting-Started.rst
-    getting_started/NASA-Earthdata.rst
-    getting_started/Data-Products.rst
     getting_started/Contributing.rst
     getting_started/Code-of-Conduct.rst
     getting_started/Resources.rst
@@ -85,19 +100,11 @@ Contribute
     :hidden:
     :caption: User Guide
 
+    api_reference/API-Reference.rst
+    user_guide/Data-Products.rst
     user_guide/Examples.rst
+    user_guide/NASA-Earthdata.ipynb
     user_guide/Recipes.rst
-
-.. toctree::
-    :maxdepth: 1
-    :hidden:
-    :caption: API Reference
-
-    api_reference/api.rst
-    api_reference/convert.rst
-    api_reference/io.rst
-    api_reference/tools.rst
-    api_reference/utilities.rst
 
 .. toctree::
     :maxdepth: 2

@@ -1,6 +1,6 @@
-=======
-convert
-=======
+===========
+``convert``
+===========
 
 Utilities for converting gridded ICESat-2 files from native netCDF4
 

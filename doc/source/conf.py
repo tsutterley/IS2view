@@ -10,14 +10,20 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
+
 # import sys
+import logging
 import datetime
+import warnings
+
 # sys.path.insert(0, os.path.abspath('.'))
 import importlib.metadata
 
 
 # -- Project information -----------------------------------------------------
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
+on_github = os.environ.get('GITHUB_ACTIONS') == 'true'
 
 # package metadata
 metadata = importlib.metadata.metadata("IS2view")
@@ -31,6 +37,10 @@ author = 'Tyler C. Sutterley'
 version = metadata["version"]
 # append "v" before the version
 release = f"v{version}"
+
+# suppress warnings in examples and documentation
+if on_rtd:
+    warnings.filterwarnings('ignore')
 
 # -- General configuration ---------------------------------------------------
 
@@ -52,7 +62,21 @@ source_suffix = {
     ".rst": "restructuredtext",
     ".ipynb": "myst-nb",
 }
-nb_execution_mode = "off"
+# execute notebooks on build
+if on_rtd:
+    nb_execution_mode = 'auto'
+    nb_execution_excludepatterns = [
+        'notebooks/*.ipynb',
+    ]
+    nb_output_stderr = 'remove-warn'
+elif on_github:
+    nb_execution_mode = 'off'
+else:
+    nb_execution_mode = 'auto'
+    nb_execution_excludepatterns = [
+        'notebooks/*.ipynb',
+    ]
+    nb_output_stderr = 'remove-warn'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -101,21 +125,27 @@ for project_url in metadata.get_all('Project-URL'):
     name, _, url = project_url.partition(', ')
     project_urls[name.lower()] = url
 # fetch the repository url
-repository_url = project_urls.get('repository')
+github_url = project_urls.get("repository")
+*_, github_user, github_repo = github_url.split("/")
 # add html context
 html_context = {
+    "display_github": True,
+    "github_user": github_user,
+    "github_repo": github_repo,
+    "github_version": "main",
+    "conf_py_path": "/doc/source/",
     "menu_links": [
         (
             '<i class="fa fa-github fa-fw"></i> Source Code',
-            repository_url,
+            github_url,
         ),
         (
             '<i class="fa fa-book fa-fw"></i> License',
-            f"{repository_url}/blob/main/LICENSE",
+            f"{github_url}/blob/main/LICENSE",
         ),
         (
             '<i class="fa fa-comment fa-fw"></i> Discussions',
-            f"{repository_url}/discussions",
+            f"{github_url}/discussions",
         ),
     ],
 }

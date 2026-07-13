@@ -1,6 +1,6 @@
-==
-io
-==
+======
+``io``
+======
 
 Utilities for reading gridded ICESat-2 files using rasterio and xarray
 
