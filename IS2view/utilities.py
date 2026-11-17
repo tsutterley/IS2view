@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 utilities.py
-Written by Tyler Sutterley (11/2024)
+Written by Tyler Sutterley (11/2026)
 Download and management utilities
 
 PYTHON DEPENDENCIES:
@@ -11,6 +11,7 @@ PYTHON DEPENDENCIES:
         https://s3fs.readthedocs.io/en/latest/
 
 UPDATE HISTORY:
+    Updated 11/2026: add ATL15 Release-06 naming scheme with temporal cadence
     Updated 11/2024: change default request type to application/netcdf
     Updated 10/2024: update CMR search utility to replace deprecated scrolling
         https://cmr.earthdata.nasa.gov/search/site/docs/search/api.html
@@ -569,14 +570,15 @@ def attempt_login(
     kwargs.setdefault("netrc", pathlib.Path.home().joinpath(".netrc"))
     try:
         # only necessary on jupyterhub
-        kwargs["netrc"].chmod(mode=0o600)
+        pathlib.Path(kwargs["netrc"]).chmod(mode=0o600)
         # try retrieving credentials from netrc
         username, _, password = netrc.netrc(kwargs["netrc"]).authenticators(urs)
     except Exception as exc:
-        logging.error(exc)
-        # try retrieving credentials from environmental variables
-        username, password = (kwargs["username"], kwargs["password"])
-        pass
+        logging.warning(f"Could not read credentials from netrc: {exc}")
+        username, password = (None, None)
+    # try retrieving credentials from environmental variables
+    username = username or kwargs["username"]
+    password = password or kwargs["password"]
     # if username or password are not available
     if not username:
         username = builtins.input(f"Username for {urs}: ")
@@ -965,8 +967,61 @@ def from_nsidc(
 _products = ("ATL14", "ATL15")
 _regions = ("AA", "A1", "A2", "A3", "A4", "CN", "CS", "GL", "IS", "RA", "SV")
 _atl14_resolutions = ("100m",)
-_atl15_resolutions = ("01km", "10km", "20km", "40km")
+_atl15_resolutions = ("01km", "1km", "2.5km", "10km", "20km", "40km")
 _resolutions = _atl14_resolutions + _atl15_resolutions
+# ATL15 temporal cadences (Release-06+)
+_atl15_cadences = ("1mo", "3mo")
+# ATL15 spatial resolutions available for each temporal cadence
+_atl15_cadence_resolutions = {
+    "1mo": ("2.5km", "10km", "20km", "40km"),
+    "3mo": ("1km", "10km", "20km", "40km"),
+}
+
+
+# PURPOSE: check if a release uses the Release-06+ naming convention
+def has_cadence(product: str, release: str | int | None):
+    """
+    Check if an ATL14/15 product and release uses the Release-06+
+    file naming convention with a temporal cadence field
+
+    Parameters
+    ----------
+    product: str
+        ICESat-2 data product
+    release: str, int or NoneType
+        ICESat-2 data release
+
+    Returns
+    -------
+    flag: bool
+        product and release include a temporal cadence
+    """
+    return (
+        (product == "ATL15") and (release is not None) and (int(release) >= 6)
+    )
+
+
+# PURPOSE: convert ATL15 resolution strings between naming conventions
+def atl15_resolution(resolution: str, release: str | int | None):
+    """
+    Convert ATL15 1-kilometer resolution strings between the
+    Release-01 to 05 (``01km``) and Release-06+ (``1km``) conventions
+
+    Parameters
+    ----------
+    resolution: str
+        ICESat-2 ATL14/15 spatial resolution
+    release: str, int or NoneType
+        ICESat-2 data release
+
+    Returns
+    -------
+    resolution: str
+        spatial resolution for the given release
+    """
+    if release is None or resolution not in ("01km", "1km"):
+        return resolution
+    return "1km" if (int(release) >= 6) else "01km"
 
 
 # PURPOSE: build formatted query string for ICESat-2 release
@@ -1071,6 +1126,35 @@ def cmr_resolutions(resolution: str | list | None):
         return resolution_list
 
 
+# PURPOSE: check if the submitted ATL15 temporal cadences are valid
+def cmr_cadences(cadence: str | list | None):
+    """
+    Check if the submitted ATL15 temporal cadences are valid
+
+    Parameters
+    ----------
+    cadence: str, list or NoneType, default None
+        ICESat-2 ATL15 temporal cadence (Release-06+)
+
+    Returns
+    -------
+    cadence_list: list
+        formatted available ATL15 temporal cadences
+    """
+    # all available ICESat-2 ATL15 cadences
+    if cadence is None:
+        return ["?mo"]
+    elif isinstance(cadence, str):
+        cadence_list = [cadence]
+    elif isinstance(cadence, list):
+        cadence_list = [str(c) for c in cadence]
+    else:
+        raise TypeError("Please enter the cadence as a list or string")
+    for c in cadence_list:
+        assert c in _atl15_cadences, f"Unknown cadence: {c}"
+    return cadence_list
+
+
 def cmr_readable_granules(product: str, **kwargs):
     """
     Create list of readable granule names for CMR queries
@@ -1083,6 +1167,10 @@ def cmr_readable_granules(product: str, **kwargs):
         ICESat-2 ATL14/15 region name
     resolutions: str, list or NoneType, default None
         ICESat-2 ATL14/15 spatial resolution
+    cadences: str, list or NoneType, default None
+        ICESat-2 ATL15 temporal cadence (Release-06+)
+    release: str or NoneType, default None
+        ICESat-2 data release
 
     Returns
     -------
@@ -1092,17 +1180,31 @@ def cmr_readable_granules(product: str, **kwargs):
     # default keyword arguments
     kwargs.setdefault("regions", None)
     kwargs.setdefault("resolutions", None)
+    kwargs.setdefault("cadences", None)
+    kwargs.setdefault("release", None)
     # list of readable granule names
     readable_granule_list = []
     # verify inputs
     assert product in _products
+    # Release-06+ ATL15 granules include a temporal cadence
+    # e.g. ATL15_GL_0332_3mo_1km_006_03.nc
+    cadence = has_cadence(product, kwargs["release"])
     # gridded land ice products
     # for each ATL14/15 parameter
     for r in cmr_regions(kwargs["regions"]):
         for s in cmr_resolutions(kwargs["resolutions"]):
-            pattern = f"{product}_{r}_????_{s}_*"
-            # append the granule pattern
-            readable_granule_list.append(pattern)
+            # convert resolution to naming convention for release
+            s = atl15_resolution(s, kwargs["release"])
+            if cadence:
+                # resolutions are variable length for Release-06+
+                s = "*km" if (s == "????") else s
+                for c in cmr_cadences(kwargs["cadences"]):
+                    pattern = f"{product}_{r}_????_{c}_{s}_*"
+                    readable_granule_list.append(pattern)
+            else:
+                pattern = f"{product}_{r}_????_{s}_*"
+                # append the granule pattern
+                readable_granule_list.append(pattern)
     # return readable granules list
     return readable_granule_list
 
@@ -1174,6 +1276,7 @@ def cmr(
     release: str = None,
     regions: str | list | None = None,
     resolutions: str | list | None = None,
+    cadences: str | list | None = None,
     provider: str = "NSIDC_CPRD",
     endpoint: str = "data",
     request_type: str = r"application/(x-)?netcdf",
@@ -1195,6 +1298,11 @@ def cmr(
         ICESat-2 ATL14/15 region name
     resolutions: str, list or NoneType, default None
         ICESat-2 ATL14/15 spatial resolution
+    cadences: str, list or NoneType, default None
+        ICESat-2 ATL15 temporal cadence for Release-06+
+
+            - ``'1mo'``: monthly
+            - ``'3mo'``: quarterly
     provider: str, default 'NSIDC_CPRD'
         CMR data provider
     endpoint: str, default 'data'
@@ -1258,11 +1366,15 @@ def cmr(
     CMR_KEYS.append("&options[readable_granule_name][pattern]=true")
     CMR_KEYS.append("&options[spatial][or]=true")
     # set as subregions for Release-3+ for merging into single dataset
-    if (int(release) > 2) and (regions == "AA"):
+    if (release is not None) and (int(release) > 2) and (regions == "AA"):
         regions = ["A1", "A2", "A3", "A4"]
     # get the list of readable granules
     readable_granule_list = cmr_readable_granules(
-        product, regions=regions, resolutions=resolutions
+        product,
+        regions=regions,
+        resolutions=resolutions,
+        cadences=cadences,
+        release=release,
     )
     for gran in readable_granule_list:
         CMR_KEYS.append(f"&readable_granule_name[]={gran}")
@@ -1326,10 +1438,12 @@ def query_resources(**kwargs):
 
         - ``ATL14`` : land ice height
         - ``ATL15`` : land ice height change
-    release: str, default '004'
+    release: str, default '006'
         ICESat-2 data release
-    version: str, default '01'
-        ICESat-2 data version
+    version: str or NoneType, default None
+        ICESat-2 data version (default: latest for the release)
+    cycles: tuple or NoneType, default None
+        start and end cycle for unreleased or local granules
     region: str, default 'AA'
         ICESat-2 ATL14/15 region name
 
@@ -1345,10 +1459,16 @@ def query_resources(**kwargs):
 
         - ``100m`` : 100 meters horizontal
         - ``01km`` : 1 kilometer horizontal
+        - ``1km`` : 1 kilometer horizontal (Release-06+ Quarterly)
+        - ``2.5km`` : 1 kilometer horizontal (Release-06+ Monthly)
         - ``10km`` : 10 kilometers horizontal
         - ``20km`` : 20 kilometers horizontal
         - ``40km`` : 40 kilometers horizontal
+    cadence: str or NoneType, default None
+        ICESat-2 ATL15 temporal cadence (Release-06+)
 
+        - ``1mo`` : monthly
+        - ``3mo`` : quarterly
     format: str, default 'nc'
         Data format for ICESat-2 granules
 
@@ -1364,12 +1484,33 @@ def query_resources(**kwargs):
     kwargs.setdefault("bucket", "is2view")
     kwargs.setdefault("directory", None)
     kwargs.setdefault("product", "ATL15")
-    kwargs.setdefault("release", "004")
-    kwargs.setdefault("version", "01")
+    kwargs.setdefault("release", "006")
+    kwargs.setdefault("version", None)
     kwargs.setdefault("cycles", None)
     kwargs.setdefault("region", "AA")
     kwargs.setdefault("resolution", "01km")
+    kwargs.setdefault("cadence", None)
     kwargs.setdefault("format", "nc")
+    # check if product and release use a temporal cadence
+    product_with_cadence = has_cadence(kwargs["product"], kwargs["release"])
+    # convert resolution to naming convention for release
+    if kwargs["product"] == "ATL15":
+        kwargs["resolution"] = atl15_resolution(
+            kwargs["resolution"], kwargs["release"]
+        )
+    if product_with_cadence:
+        # default to the quarterly ATL15 product
+        if kwargs["cadence"] is None:
+            kwargs["cadence"] = "3mo"
+        assert kwargs["cadence"] in _atl15_cadences
+        valid = _atl15_cadence_resolutions[kwargs["cadence"]]
+        assert kwargs["resolution"] in valid, (
+            f"{kwargs['resolution']} not available at {kwargs['cadence']} "
+            f"cadence (available: {', '.join(valid)})"
+        )
+    else:
+        # temporal cadence is not part of the granule name
+        kwargs["cadence"] = None
 
     # CMR providers
     provider = {}
@@ -1390,7 +1531,9 @@ def query_resources(**kwargs):
     request_type["nsidc-https"] = r"application/(x-)?netcdf"
     request_type["atlas-local"] = r"application/(x-)?netcdf"
     # convert region variable to list
-    if (int(kwargs["release"]) > 2) and (kwargs["region"].upper() == "AA"):
+    if isinstance(kwargs["region"], list):
+        pass
+    elif (int(kwargs["release"]) > 2) and (kwargs["region"].upper() == "AA"):
         # set Antarctic sub-regions for Release-3+
         kwargs["region"] = ["A1", "A2", "A3", "A4"]
     elif kwargs["region"].lower() == "north":
@@ -1419,6 +1562,7 @@ def query_resources(**kwargs):
             release=kwargs["release"],
             regions=kwargs["region"],
             resolutions=kwargs["resolution"],
+            cadences=kwargs["cadence"],
             provider=provider[kwargs["asset"]],
             endpoint=endpoint[kwargs["asset"]],
             request_type=request_type[kwargs["asset"]],
@@ -1491,9 +1635,19 @@ def query_resources(**kwargs):
         # 2: region identification
         # 3-4: start and end cycle
         # 5: horizontal spatial resolution
+        # (Release-06+ ATL15: temporal cadence and spatial resolution)
         # 6: data release
         # 7: data version
         file_format = "{0}_{1}_{2:02d}{3:02d}_{4}_{5:03d}_{6:02d}.{7}"
+        # temporal cadence and spatial resolution
+        if product_with_cadence:
+            resolution = f"{kwargs['cadence']}_{kwargs['resolution']}"
+        else:
+            resolution = kwargs["resolution"]
+        # use default data version for release
+        if kwargs["version"] is None:
+            versions = {"005": "02", "006": "03"}
+            kwargs["version"] = versions.get(kwargs["release"], "01")
         # use default start and end cycle
         if kwargs["cycles"] is None:
             # start and end cycle for releases
@@ -1502,6 +1656,8 @@ def query_resources(**kwargs):
             cycles["002"] = (3, 14)
             cycles["003"] = (3, 18)
             cycles["004"] = (3, 21)
+            cycles["005"] = (3, 29)
+            cycles["006"] = (3, 32)
             kwargs["cycles"] = cycles[kwargs["release"]]
         # for each requested region
         for region in kwargs["region"]:
@@ -1511,7 +1667,7 @@ def query_resources(**kwargs):
                 region,
                 int(kwargs["cycles"][0]),
                 int(kwargs["cycles"][1]),
-                kwargs["resolution"],
+                resolution,
                 int(kwargs["release"]),
                 int(kwargs["version"]),
                 kwargs["format"],

@@ -9,7 +9,7 @@ Add Contextual Layers
 
 - `ArcticDEM <https://www.pgc.umn.edu/data/arcticdem>`_ (NSIDC Sea Ice Polar Stereographic North, `EPSG:3413 <https://epsg.io/3413>`_)
 
-   Imagery data provided by `Esri Polar/ArcticDEM ImageServer <https://elevation2.arcgis.com/arcgis/rest/services/Polar/ArcticDEM/ImageServer>`_
+   Imagery data provided by `Esri Polar/ArcticDEM ImageServer <https://di-pgc.img.arcgis.com/arcgis/rest/services/arcticdem_latest/ImageServer>`_
 
 .. code-block:: python
 
@@ -17,7 +17,7 @@ Add Contextual Layers
 
 - `Reference Elevation Model of Antarctica <https://www.pgc.umn.edu/data/rema>`_ (Antarctic Polar Stereographic, `EPSG:3031 <https://epsg.io/3031>`_)
 
-   Imagery data provided by `Esri Polar/AntarcticDEM ImageServer <https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer>`_
+   Imagery data provided by `Esri Polar/REMA ImageServer <https://di-pgc.img.arcgis.com/arcgis/rest/services/rema_latest/ImageServer>`_
 
 .. code-block:: python
 
