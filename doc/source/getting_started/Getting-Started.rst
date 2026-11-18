@@ -15,6 +15,7 @@ These products are available for `regions around the Arctic and for the Antarcti
     :align: center
 
     digraph {
+        bgcolor="transparent";
         S [label="Select high-quality ATL11 data"
             fontname="Lato"
             fontsize=11

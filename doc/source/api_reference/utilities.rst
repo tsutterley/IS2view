@@ -62,6 +62,12 @@ General Methods
 
 .. autofunction:: IS2view.utilities.cmr_resolutions
 
+.. autofunction:: IS2view.utilities.cmr_cadences
+
+.. autofunction:: IS2view.utilities.has_cadence
+
+.. autofunction:: IS2view.utilities.atl15_resolution
+
 .. autofunction:: IS2view.utilities.cmr_readable_granules
 
 .. autofunction:: IS2view.utilities.cmr_filter_json

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 tools.py
-Written by Tyler Sutterley (01/2025)
+Written by Tyler Sutterley (11/2026)
 User interface tools for Jupyter Notebooks
 
 PYTHON DEPENDENCIES:
@@ -17,6 +17,9 @@ PYTHON DEPENDENCIES:
         https://matplotlib.org/cmocean/
 
 UPDATE HISTORY:
+    Updated 11/2026: added options for ATL15 Release-06 data
+        added widget for ATL15 temporal cadence (monthly or quarterly)
+        set resolutions and dhdt groups for Release-06 naming conventions
     Updated 01/2025: added optional cmocean colormaps to dropdown menu
         updated the default group list to include lags for release 004
     Updated 06/2024: use wrapper to importlib for optional dependencies
@@ -34,7 +37,7 @@ import os
 import copy
 import logging
 import numpy as np
-from IS2view.utilities import import_dependency
+from IS2view.utilities import import_dependency, _atl15_cadence_resolutions
 
 # attempt imports
 ipywidgets = import_dependency("ipywidgets")
@@ -88,10 +91,10 @@ class widgets:
         self.directory.layout.display = "none"
 
         # dropdown menu for setting ATL14/15 release
-        release_list = ["001", "002", "003", "004", "005"]
+        release_list = ["001", "002", "003", "004", "005", "006"]
         self.release = ipywidgets.Dropdown(
             options=release_list,
-            value="005",
+            value="006",
             description="Release:",
             description_tooltip=(
                 "Release: ATL14/15 data release\n\t"
@@ -99,7 +102,8 @@ class widgets:
                 "002: Release-02\n\t"
                 "003: Release-03\n\t"
                 "004: Release-04\n\t"
-                "005: Release-05"
+                "005: Release-05\n\t"
+                "006: Release-06"
             ),
             disabled=False,
             style=self.style,
@@ -141,29 +145,32 @@ class widgets:
             style=self.style,
         )
 
-        # dropdown menu for setting ATL15 resolution
-        resolution_list = ["01km", "10km", "20km", "40km"]
-        self.resolution = ipywidgets.Dropdown(
-            options=resolution_list,
-            description="Resolution:",
+        # dropdown menu for setting ATL15 temporal cadence (Release-06+)
+        cadence_list = ["3mo", "1mo"]
+        self.cadence = ipywidgets.Dropdown(
+            options=cadence_list,
+            value="3mo",
+            description="Cadence:",
             description_tooltip=(
-                "Resolution: ATL15 resolution\n\t"
-                "01km: 1 kilometer horizontal\n\t"
-                "10km: 10 kilometers horizontal\n\t"
-                "20km: 20 kilometers horizontal\n\t"
-                "40km: 40 kilometers horizontal"
+                "Cadence: ATL15 temporal resolution\n\t"
+                "3mo: quarterly\n\t"
+                "1mo: monthly"
             ),
             disabled=False,
             style=self.style,
         )
 
+        # dropdown menu for setting ATL15 resolution
+        self.resolution = ipywidgets.Dropdown(
+            options=self._resolution_list(),
+            description="Resolution:",
+            disabled=False,
+            style=self.style,
+        )
+
         # dropdown menu for selecting group to read from file
-        group_list = ["delta_h", "dhdt_lag1"]
-        # extend possible time lags to 16 years post-launch
-        for timelag in range(4, 68, 4):
-            group_list.append(f"dhdt_lag{timelag:d}")
         self.group = ipywidgets.Dropdown(
-            options=group_list,
+            options=self._group_list(),
             description="Group:",
             description_tooltip="Group: ATL15 data group to read from file",
             disabled=False,
@@ -227,7 +234,8 @@ class widgets:
         # watch widgets for changes
         self.asset.observe(self.set_directory_visibility)
         self.asset.observe(self.set_format_visibility)
-        self.release.observe(self.set_groups)
+        self.release.observe(self.set_groups, names="value")
+        self.cadence.observe(self.set_groups, names="value")
         self.dynamic.observe(self.set_dynamic)
         # self.group.observe(self.set_variables)
         # self.group.observe(self.set_time_steps)
@@ -352,6 +360,9 @@ class widgets:
             style=self.style,
         )
 
+        # set the initial cadence, resolutions and groups for release
+        self.set_groups()
+
     @property
     def projection(self):
         """return string for map projection based on region"""
@@ -442,6 +453,44 @@ class widgets:
             # set the format back to the default
             self.format.value = "nc"
 
+    @property
+    def _has_cadence(self):
+        """check if the release uses Release-06+ temporal cadences"""
+        return int(self.release.value) >= 6
+
+    def _resolution_list(self):
+        """list of ATL15 resolutions for the release and cadence"""
+        if self._has_cadence:
+            return list(_atl15_cadence_resolutions[self.cadence.value])
+        return ["01km", "10km", "20km", "40km"]
+
+    def _group_list(self):
+        """list of ATL15 groups for the release and cadence"""
+        group_list = ["delta_h"]
+        if self._has_cadence:
+            # Release-06 onward are in month groups
+            if self.cadence.value == "1mo":
+                group_list.append("dhdt_001mo")
+            group_list.extend(["dhdt_003mo", "dhdt_006mo"])
+            # extend possible annual rates to 16 years post-launch
+            for months in range(12, 204, 12):
+                group_list.append(f"dhdt_{months:03d}mo")
+        else:
+            # Release-01 to 05 are in quarterly lag groups
+            group_list.append("dhdt_lag1")
+            # extend possible time lags to 16 years post-launch
+            for timelag in range(4, 68, 4):
+                group_list.append(f"dhdt_lag{timelag:d}")
+        return group_list
+
+    @staticmethod
+    def _set_options(widget, options):
+        """set dropdown options while retaining a valid value"""
+        value = widget.value
+        widget.options = options
+        if value in options:
+            widget.value = value
+
     def set_atl14_defaults(self, *args, **kwargs):
         """sets the default widget parameters for ATL14 variables"""
         # use dynamic normalization
@@ -450,25 +499,24 @@ class widgets:
     def set_atl15_defaults(self, *args, **kwargs):
         """sets the default widget parameters for ATL15 variables"""
         group = copy.copy(self.group.value)
-        variables = {}
-        variables["delta_h"] = "delta_h"
-        variables["dhdt_lag1"] = "dhdt"
-        # set annual time lags
-        # extend possible time lags to 16 years post-launch
-        for timelag in range(4, 68, 4):
-            variables[f"dhdt_lag{timelag:d}"] = "dhdt"
         # set default variable for group
-        self.variable.value = variables[group]
+        variable = "dhdt" if group.startswith("dhdt") else "delta_h"
+        if variable in self.variable.options:
+            self.variable.value = variable
 
     def set_groups(self, *args):
         """sets the list of available groups for a release"""
-        group_list = ["delta_h", "dhdt_lag1"]
-        # append additional dhdt groups
-        # extend possible time lags to 16 years post-launch
-        for timelag in range(4, 68, 4):
-            group_list.append(f"dhdt_lag{timelag:d}")
+        # show the cadence widget for Release-06+
+        self.cadence.layout.display = (
+            "inline-flex" if self._has_cadence else "none"
+        )
+        # set resolution list for release and cadence
+        self._set_options(self.resolution, self._resolution_list())
+        self.resolution.description_tooltip = (
+            "Resolution: ATL15 horizontal spatial resolution\n\t"
+        )
         # set group list
-        self.group.options = group_list
+        self._set_options(self.group, self._group_list())
         # change regions for Antarctica for Release-03+
         if int(self.release.value) > 2:
             region_list = [
@@ -568,8 +616,18 @@ class widgets:
         try:
             # convert time to units
             self.time = list(epoch + self.time_vars / 365.25)
-            self.timestep.max = self.time[-1]
-            self.timestep.min = self.time[0]
+            # set step from the time spacing (monthly or quarterly)
+            if len(self.time) > 1:
+                step = np.median(np.diff(self.time))
+                # round to nearest month
+                self.timestep.step = max(1, np.round(12.0 * step)) / 12.0
+            # set limits in an order that keeps min <= max
+            if self.time[0] > self.timestep.max:
+                self.timestep.max = self.time[-1]
+                self.timestep.min = self.time[0]
+            else:
+                self.timestep.min = self.time[0]
+                self.timestep.max = self.time[-1]
             self.timestep.value = self.time[0]
         except Exception as exc:
             self.time = []
@@ -582,8 +640,10 @@ class widgets:
         self.timelag.min = 1
         # try setting the max lag and value
         try:
-            self.timelag.value = self.time.index(self.timestep.value) + 1
             self.timelag.max = len(self.time)
+            # find the nearest time step to the slider value
+            dt = np.abs(np.array(self.time) - self.timestep.value)
+            self.timelag.value = int(np.argmin(dt)) + 1
         except Exception as exc:
             self.timelag.value = 1
             self.timelag.max = 1

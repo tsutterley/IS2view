@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 api.py
-Written by Tyler Sutterley (06/2026)
+Written by Tyler Sutterley (11/2026)
 Plotting tools for visualizing rioxarray variables on leaflet maps
 
 PYTHON DEPENDENCIES:
@@ -28,6 +28,12 @@ PYTHON DEPENDENCIES:
         https://xyzservices.readthedocs.io/en/stable/
 
 UPDATE HISTORY:
+    Updated 11/2026: fix links to use the latest PGC image service layers
+        update image layer from map pixel bounds with a traitlets observer
+        render the image layer directly at the map resolution with pillow
+        add option to not have zoom controls automatically placed on maps
+        load the selected variable and time slice into memory once
+        deprecation updates for matplotlib colormaps and numpy percentiles
     Updated 06/2026: verify that area is conserved between calls if using option
     Updated 02/2026: add conserve and all_touched options to extract function
     Updated 01/2025: added more zoom levels and update max_zoom
@@ -57,7 +63,6 @@ import re
 import copy
 import json
 import base64
-import asyncio
 import logging
 import numpy as np
 import collections.abc
@@ -71,7 +76,10 @@ ipywidgets = import_dependency("ipywidgets")
 ipyleaflet = import_dependency("ipyleaflet")
 owslib = import_dependency("owslib")
 owslib.wms = import_dependency("owslib.wms")
+PIL = import_dependency("PIL")
+PIL.Image = import_dependency("PIL.Image")
 rio = import_dependency("rasterio")
+rio.enums = import_dependency("rasterio.enums")
 rio.transform = import_dependency("rasterio.transform")
 rio.warp = import_dependency("rasterio.warp")
 xr = import_dependency("xarray")
@@ -163,13 +171,15 @@ pgc_attribution = """Esri, PGC, UMN, NSF, NGA, DigitalGlobe"""
 # define optional background ipyleaflet image service layers
 layers = Bunch()
 try:
+    # revision can be "latest" or "dev"
+    revision = "latest"
     # ArcticDEM
     layers.ArcticDEM = ipyleaflet.ImageService(
         name="ArcticDEM",
         attribution=pgc_attribution,
         format="jpgpng",
         transparent=True,
-        url="https://elevation2.arcgis.com/arcgis/rest/services/Polar/ArcticDEM/ImageServer",
+        url=f"https://di-pgc.img.arcgis.com/arcgis/rest/services/arcticdem_{revision}/ImageServer",
         crs=projections["EPSG:3413"],
     )
     # Reference Elevation Map of Antarctica (REMA)
@@ -178,7 +188,7 @@ try:
         attribution=pgc_attribution,
         format="jpgpng",
         transparent=True,
-        url="https://elevation2.arcgis.com/arcgis/rest/services/Polar/AntarcticDEM/ImageServer",
+        url=f"https://di-pgc.img.arcgis.com/arcgis/rest/services/rema_{revision}/ImageServer",
         crs=projections["EPSG:3031"],
     )
 except (NameError, AttributeError):
@@ -255,6 +265,8 @@ class Leaflet:
         Layout for the ``ipyleaflet.Map``
     attribution : bool, default False
         Include layer attributes on leaflet map
+    zoom_control : bool, default True
+        Include zoom controls on map
     scale_control : bool, default False
         Include spatial scale bar to map
     cursor_control : bool, default True
@@ -295,6 +307,7 @@ class Leaflet:
         kwargs.setdefault("map", None)
         kwargs.setdefault("layout", _default_layout)
         kwargs.setdefault("attribution", False)
+        kwargs.setdefault("zoom_control", True)
         kwargs.setdefault("full_screen_control", False)
         kwargs.setdefault("scale_control", False)
         kwargs.setdefault("cursor_control", True)
@@ -315,6 +328,7 @@ class Leaflet:
                 zoom=kwargs["zoom"],
                 max_zoom=15,
                 attribution_control=kwargs["attribution"],
+                zoom_control=kwargs["zoom_control"],
                 basemap=kwargs["basemap"],
                 crs=projections["EPSG:3413"],
                 layout=kwargs["layout"],
@@ -329,6 +343,7 @@ class Leaflet:
                 zoom=kwargs["zoom"],
                 max_zoom=15,
                 attribution_control=kwargs["attribution"],
+                zoom_control=kwargs["zoom_control"],
                 basemap=kwargs["basemap"],
                 crs=projections["EPSG:3031"],
                 layout=kwargs["layout"],
@@ -709,29 +724,16 @@ class LeafletMap(HasTraits):
     @observe("bounds")
     def boundary_change(self, change):
         """Update image on boundary change"""
-        # add image object to map
-        if self._image is not None:
-            # attempt to remove layer
-            self.remove(self._image)
-            # create new image service layer
-            self._image = ipyleaflet.ImageService(
-                name=self._variable,
-                crs=self.crs,
-                interactive=True,
-                update_interval=100,
-                endpoint="local",
-            )
-        # add click handler for popups
-        if self.enable_popups:
-            self._image.on_click(self.handle_click)
-        # set the image url
-        self.set_image_url()
-        self.add(self._image)
+        # redraw the existing image service layer
+        if (self._image is not None) and not self._hold_redraw:
+            self.redraw()
 
     def __init__(self, ds):
         # initialize map
         self.map = None
         self.crs = None
+        self._pixel_bounds_observer = None
+        self._hold_redraw = False
         self.left, self.top = (None, None)
         self.right, self.bottom = (None, None)
         self.sw = {}
@@ -795,7 +797,10 @@ class LeafletMap(HasTraits):
         self.map = m
         crs = m.crs["name"]
         self.crs = projections[crs]
-        (self.left, self.top), (self.right, self.bottom) = self.map.pixel_bounds
+        # attempt to get the coordinate reference system of the dataset
+        self.get_crs()
+        # get the current pixel boundaries and watch for map changes
+        self.observe_pixel_bounds()
         # enable contextual popups
         self.enable_popups = bool(kwargs["enable_popups"])
         # reduce to variable and lag
@@ -813,11 +818,9 @@ class LeafletMap(HasTraits):
         else:
             self.norm = copy.copy(kwargs["norm"])
         # get colormap
-        self.cmap = copy.copy(cm.get_cmap(kwargs["cmap"]))
+        self.cmap = copy.copy(plt.get_cmap(kwargs["cmap"]))
         # get opacity
         self.opacity = float(kwargs["opacity"])
-        # wait for changes
-        asyncio.ensure_future(self.async_wait_for_bounds())
         self._image = ipyleaflet.ImageService(
             name=self._variable,
             crs=self.crs,
@@ -828,8 +831,10 @@ class LeafletMap(HasTraits):
         # add click handler for popups
         if self.enable_popups:
             self._image.on_click(self.handle_click)
-        # set the image url
-        self.set_image_url()
+        # set the image url if the map has been displayed
+        # (otherwise set when the frontend reports the pixel bounds)
+        if self.has_pixel_bounds:
+            self.set_image_url()
         # add image object to map
         self.add(self._image)
         # add colorbar
@@ -844,26 +849,62 @@ class LeafletMap(HasTraits):
                 position=self.colorbar_position,
             )
 
-    def wait_for_change(self, widget, value):
-        future = asyncio.Future()
+    def set_pixel_bounds(self, pixel_bounds):
+        """
+        Set the pixel boundaries of the leaflet map
 
-        def get_value(change):
-            future.set_result(change.new)
-            widget.unobserve(get_value, value)
+        Parameters
+        ----------
+        pixel_bounds : tuple
+            ``((left, top), (right, bottom))`` from the leaflet map
 
-        widget.observe(get_value, value)
-        return future
+        Returns
+        -------
+        valid : bool
+            pixel boundaries were available from the map
+        """
+        # map has not yet been displayed in the frontend
+        if not pixel_bounds or len(pixel_bounds) != 2:
+            return False
+        (self.left, self.top), (self.right, self.bottom) = pixel_bounds
+        return True
 
-    async def async_wait_for_bounds(self):
-        if len(self.map.bounds) == 0:
-            await self.wait_for_change(self.map, "bounds")
-        # check that bounds are close
-        while True:
+    @property
+    def has_pixel_bounds(self):
+        """check if the pixel boundaries of the map have been set"""
+        return None not in (self.left, self.top, self.right, self.bottom)
+
+    def observe_pixel_bounds(self, names="pixel_bounds"):
+        """
+        Get the current pixel boundaries of the leaflet map and
+        update the image layer whenever the map is panned or zoomed
+        """
+        # remove any observer from a previous plot call
+        self.unobserve_pixel_bounds()
+        # get the current pixel boundaries (if displayed)
+        self.set_pixel_bounds(self.map.pixel_bounds)
+        # frontend sends map center, zoom and boundaries in a single message
+        # all values (including the zoom level) should be current
+        # when the pixel_bounds variable is finally updated
+        self._pixel_bounds_observer = self.pixel_bounds_change
+        self.map.observe(self._pixel_bounds_observer, names=names)
+
+    def unobserve_pixel_bounds(self, names="pixel_bounds"):
+        """Stop updating the image layer on map changes"""
+        if self._pixel_bounds_observer is not None:
+            try:
+                self.map.unobserve(self._pixel_bounds_observer, names=names)
+            except ValueError:
+                pass
+            self._pixel_bounds_observer = None
+
+    def pixel_bounds_change(self, change):
+        """Update pixel boundaries and image on map changes"""
+        if not self.set_pixel_bounds(change["new"]):
+            return
+        # update the geographic bounds (redraws image on change)
+        if self._image is not None:
             self.get_bounds()
-            await self.wait_for_change(self.map, "bounds")
-            if np.isclose(self.bounds, self.map.bounds).all():
-                break
-        # will update map
 
     def add(self, obj):
         """wrapper function for adding layers and controls to leaflet maps"""
@@ -899,6 +940,8 @@ class LeafletMap(HasTraits):
 
     def reset(self):
         """remove features from leaflet map"""
+        # stop updating the image layer on map changes
+        self.unobserve_pixel_bounds()
         for layer in self.map.layers:
             if (layer._model_name == "LeafletImageServiceModel") and (
                 layer.endpoint == "local"
@@ -920,7 +963,6 @@ class LeafletMap(HasTraits):
     def get_bbox(self):
         """get the bounding box of the leaflet map in projected coordinates"""
         # get SW and NE corners in map coordinates
-        (self.left, self.top), (self.right, self.bottom) = self.map.pixel_bounds
         self.sw = dict(
             x=(self.map.crs["origin"][0] + self.left * self.resolution),
             y=(self.map.crs["origin"][1] - self.bottom * self.resolution),
@@ -934,6 +976,8 @@ class LeafletMap(HasTraits):
     # get map bounds in geographic coordinates
     def get_bounds(self):
         """get the bounds of the leaflet map in geographical coordinates"""
+        if not self.has_pixel_bounds:
+            return
         self.get_bbox()
         lon, lat = rio.warp.transform(
             self.crs["name"],
@@ -987,10 +1031,11 @@ class LeafletMap(HasTraits):
         kwargs.setdefault("vmax", None)
         # set colorbar limits to 2-98 percentile
         # if not using a defined plot range
-        clim = (
-            self._ds_selected.chunk(dict(y=-1, x=-1))
-            .quantile((0.02, 0.98))
-            .values
+        # compute with numpy rather than dask: dask<2025 passes the
+        # ``interpolation`` keyword that was removed in numpy 2.4
+        clim = np.nanquantile(
+            np.asarray(self._ds_selected.values, dtype=np.float64),
+            (0.02, 0.98),
         )
         # set minimum for normalization
         fmin = np.finfo(np.float64).min
@@ -1022,108 +1067,85 @@ class LeafletMap(HasTraits):
             self.vmax = 5
             self._dynamic = False
 
-    def clip_image(self, ds):
-        """clip or warp xarray image to bounds of leaflet map"""
+    def warp_image(self, ds):
+        """
+        Warp xarray image to the pixel grid of the leaflet map
+
+        Parameters
+        ----------
+        ds : xarray.DataArray
+            two-dimensional image to warp
+
+        Returns
+        -------
+        image : xarray.DataArray
+            image on the map pixel grid (north up) with NaN where invalid
+        """
         self.get_bbox()
-        # attempt to get the coordinate reference system of the dataset
-        self.get_crs()
-        # convert map bounds to coordinate reference system of image
-        minx, miny, maxx, maxy = rio.warp.transform_bounds(
-            self.crs["name"],
-            self._ds.rio.crs,
-            self.sw["x"],
-            self.sw["y"],
-            self.ne["x"],
-            self.ne["y"],
+        # size of the leaflet map in pixels
+        width = int(np.round(self.right - self.left))
+        height = int(np.round(self.bottom - self.top))
+        # affine transform of the map pixel grid (upper left corner)
+        dst_transform = rio.transform.from_origin(
+            self.sw["x"], self.ne["y"], self.resolution, self.resolution
         )
-        # extent of the leaflet map
-        self.extent = np.array([minx, maxx, miny, maxy])
-        # compare data resolution and leaflet map resolution
-        resolution = np.abs(ds.x[1] - ds.x[0]).values
-        if resolution > self.resolution:
-            # pad input image to map bounds
-            padded = ds.rio.pad_box(minx=minx, maxx=maxx, miny=miny, maxy=maxy)
-            # get affine transform of padded image
-            pad_transform = padded.rio.transform()
-            north = int((maxy - pad_transform.f) // pad_transform.e)
-            east = int((maxx - pad_transform.c) // pad_transform.a) + 1
-            south = int((miny - pad_transform.f) // pad_transform.e) + 1
-            west = int((minx - pad_transform.c) // pad_transform.a)
-            # clip image to map bounds
-            return padded.isel(x=slice(west, east), y=slice(north, south))
-        else:
-            # warp image to map bounds and resolution
-            # input and output affine transformations
-            src_transform = ds.rio.transform()
-            dst_transform = rio.transform.from_origin(
-                minx, maxy, self.resolution, self.resolution
-            )
-            # allocate for output warped image
-            dst_width = int((maxx - minx) // self.resolution)
-            dst_height = int((maxy - miny) // self.resolution)
-            dst_data = np.zeros((dst_height, dst_width), dtype=ds.dtype.type)
-            # warp image to output resolution
-            rio.warp.reproject(
-                source=ds.values,
-                destination=dst_data,
-                src_transform=src_transform,
-                src_crs=self._ds.rio.crs,
-                src_nodata=np.nan,
-                dst_transform=dst_transform,
-                dst_crs=self.crs["name"],
-                dst_resolution=(self.resolution, self.resolution),
-            )
-            # calculate centered coordinates
-            transform = dst_transform * dst_transform.translation(0.5, 0.5)
-            x_coords, _ = transform * (
-                np.arange(dst_width),
-                np.zeros(dst_width),
-            )
-            _, y_coords = transform * (
-                np.zeros(dst_height),
-                np.arange(dst_height),
-            )
-            # return DataAarray with warped image
-            return xr.DataArray(
-                name=ds.name,
-                data=dst_data,
-                coords=dict(y=y_coords, x=x_coords),
-                dims=copy.deepcopy(ds.dims),
-                attrs=copy.deepcopy(ds.attrs),
-            )
+        # nearest neighbor resampling to the map grid
+        image = np.full((height, width), np.nan, dtype=np.float32)
+        rio.warp.reproject(
+            source=np.asarray(ds.values, dtype=np.float32),
+            destination=image,
+            src_transform=ds.rio.transform(),
+            src_crs=self._ds.rio.crs,
+            src_nodata=np.nan,
+            dst_transform=dst_transform,
+            dst_crs=self.crs["name"],
+            dst_nodata=np.nan,
+            resampling=rio.enums.Resampling.nearest,
+        )
+        # extent of the leaflet map in map coordinates
+        self.extent = np.array(
+            [self.sw["x"], self.ne["x"], self.sw["y"], self.ne["y"]]
+        )
+        # pixel-centered coordinates of the map grid
+        x = self.sw["x"] + self.resolution * (np.arange(width) + 0.5)
+        y = self.ne["y"] - self.resolution * (np.arange(height) + 0.5)
+        # return DataArray with warped image
+        return xr.DataArray(
+            name=ds.name,
+            data=image,
+            coords=dict(y=y, x=x),
+            dims=("y", "x"),
+            attrs=copy.deepcopy(ds.attrs),
+        )
 
     def get_image_url(self):
         """create the image url for the imageservice"""
-        fig, ax = plt.subplots(1, figsize=(15, 8))
-        fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-        visible = self.clip_image(self._ds_selected)
-        visible.plot.imshow(
-            ax=ax,
-            norm=self.norm,
-            interpolation="nearest",
-            cmap=self.cmap,
+        # warp the selected data to the map pixel grid
+        image = self.warp_image(self._ds_selected).values
+        # apply normalization and colormap (invalid points are transparent)
+        rgba = self.cmap(
+            self.norm(np.ma.masked_invalid(image)),
             alpha=self.opacity,
-            add_colorbar=False,
-            add_labels=False,
+            bytes=True,
         )
-        # set image extent
-        ax.set_xlim(self.extent[0], self.extent[1])
-        ax.set_ylim(self.extent[2], self.extent[3])
-        ax.axis("tight")
-        ax.axis("off")
         # save as in-memory png
         png = io.BytesIO()
-        plt.savefig(png, format="png", transparent=True)
-        plt.close()
-        png.seek(0)
+        PIL.Image.fromarray(rgba, mode="RGBA").save(png, format="png")
         # encode to base64 and get url
-        data = base64.b64encode(png.read()).decode("ascii")
+        data = base64.b64encode(png.getvalue()).decode("ascii")
         self.url = "data:image/png;base64," + data
         return self
 
     def set_image_url(self, *args, **kwargs):
         """set the url for the imageservice"""
-        self.get_bounds()
+        if not self.has_pixel_bounds:
+            return
+        # update bounds without triggering a redraw of the layer
+        self._hold_redraw = True
+        try:
+            self.get_bounds()
+        finally:
+            self._hold_redraw = False
         self.get_image_url()
         self._image.url = self.url
 
@@ -1135,7 +1157,7 @@ class LeafletMap(HasTraits):
         try:
             self.get_image_url()
         except Exception as exc:
-            pass
+            logging.warning(f"Could not redraw image layer: {exc}")
         else:
             # update image url
             self._image.url = self.url
@@ -1205,6 +1227,8 @@ class LeafletMap(HasTraits):
             self._ds_selected = self._ds[self._variable].sel(band=1)
         else:
             self._ds_selected = self._ds[self._variable]
+        # load into memory once (rather than reading on each redraw)
+        self._ds_selected = self._ds_selected.load()
 
     def set_variable(self, sender):
         """update the plotted variable"""
@@ -1231,10 +1255,8 @@ class LeafletMap(HasTraits):
             self.lag = sender["new"] - 1
         else:
             return
-        # try to update the selected dataset
-        self._ds_selected = self._ds[self._variable].sel(
-            time=self._ds.time[self.lag]
-        )
+        # update the selected dataset
+        self.set_dataset()
         # check if dynamic normalization is enabled
         if self._dynamic:
             self.get_norm_bounds()
@@ -1285,11 +1307,11 @@ class LeafletMap(HasTraits):
         if isinstance(sender["new"], str):
             cmap_name = self.cmap.name
             cmap_reverse_flag = "_r" if cmap_name.endswith("_r") else ""
-            self.cmap = cm.get_cmap(sender["new"] + cmap_reverse_flag)
+            self.cmap = plt.get_cmap(sender["new"] + cmap_reverse_flag)
         elif isinstance(sender["new"], bool):
             cmap_name = self.cmap.name.strip("_r")
             cmap_reverse_flag = "_r" if sender["new"] else ""
-            self.cmap = cm.get_cmap(cmap_name + cmap_reverse_flag)
+            self.cmap = plt.get_cmap(cmap_name + cmap_reverse_flag)
         else:
             return
         # try to redraw the selected dataset
@@ -1354,7 +1376,7 @@ class LeafletMap(HasTraits):
         if self._colorbar is not None:
             self.remove(self._colorbar)
         # create matplotlib colorbar
-        _, ax = plt.subplots(figsize=(kwargs["width"], kwargs["height"]))
+        fig, ax = plt.subplots(figsize=(kwargs["width"], kwargs["height"]))
         cbar = matplotlib.colorbar.ColorbarBase(
             ax,
             cmap=kwargs["cmap"],
@@ -1382,7 +1404,7 @@ class LeafletMap(HasTraits):
         )
         # add colorbar
         self.add(self._colorbar)
-        plt.close()
+        plt.close(fig)
 
     # save the current map as an image
     def imshow(self, ax=None, **kwargs):
@@ -1403,8 +1425,8 @@ class LeafletMap(HasTraits):
             r"\s+", " ", self._ds[self._variable].attrs["long_name"]
         )
         units = self._ds[self._variable].attrs["units"][0]
-        # clip image to map bounds
-        visible = self.clip_image(self._ds_selected)
+        # warp image to map bounds and resolution
+        visible = self.warp_image(self._ds_selected)
         # color bar keywords
         cbar_kwargs = dict(
             label=f"{longname} [{units}]",
@@ -1815,7 +1837,7 @@ class TimeSeries(HasTraits):
             return self
         # get colormap for each time point
         if "cmap" in kwargs.keys():
-            cmap = copy.copy(plt.cm.get_cmap(kwargs["cmap"]))
+            cmap = copy.copy(plt.get_cmap(kwargs["cmap"]))
             # create iterable plot colors for color map
             plot_colors = iter(cmap(np.linspace(0, 1, len(self._ds.time))))
             kwargs.pop("cmap")
