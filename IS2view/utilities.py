@@ -12,6 +12,7 @@ PYTHON DEPENDENCIES:
 
 UPDATE HISTORY:
     Updated 11/2026: add ATL15 Release-06 naming scheme with temporal cadence
+        add optional tqdm progress bars for file transfers
     Updated 11/2024: change default request type to application/netcdf
     Updated 10/2024: update CMR search utility to replace deprecated scrolling
         https://cmr.earthdata.nasa.gov/search/site/docs/search/api.html
@@ -264,6 +265,122 @@ def get_unix_time(time_string: str, format: str = "%Y-%m-%d %H:%M:%S"):
         pass
     else:
         return calendar.timegm(parsed_time)
+
+
+class NullProgress:
+    """No-op progress bar used when progress bars are disabled"""
+
+    def update(self, n: int = 1):
+        pass
+
+    def close(self):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+
+def progress_bar(
+    total: int | None = None,
+    description: str | None = None,
+    enabled: bool = True,
+    **kwargs,
+):
+    """
+    Create a ``tqdm`` progress bar for tracking file transfers
+
+    Parameters
+    ----------
+    total: int or NoneType, default None
+        Total number of bytes to transfer
+    description: str or NoneType, default None
+        Prefix for the progress bar
+    enabled: bool, default True
+        Display the progress bar
+    **kwargs: dict
+        Additional keyword arguments for ``tqdm.tqdm``
+
+    Returns
+    -------
+    pb: obj
+        Progress bar with ``update`` and ``close`` methods
+    """
+    if not enabled or not dependency_available("tqdm"):
+        return NullProgress()
+    # attempt to import tqdm
+    tqdm = import_dependency("tqdm")
+    # set default keyword arguments for file transfers
+    kwargs.setdefault("unit", "B")
+    kwargs.setdefault("unit_scale", True)
+    kwargs.setdefault("unit_divisor", 1024)
+    kwargs.setdefault("leave", True)
+    pb = tqdm.tqdm(total=total, desc=description, **kwargs)
+    return pb
+
+
+def content_length(response) -> int | None:
+    """
+    Get the content length in bytes from a ``http`` response
+
+    Parameters
+    ----------
+    response: obj
+        ``http`` response object
+
+    Returns
+    -------
+    length: int or NoneType
+        Content length in bytes (if provided)
+    """
+    try:
+        length = int(response.headers.get("content-length"))
+    except (AttributeError, TypeError, ValueError):
+        return None
+    else:
+        return length if (length > 0) else None
+
+
+def copyfileobj(
+    fsrc: object,
+    fdst: object,
+    length: int = 16384,
+    callback: object = None,
+):
+    """
+    Copy the contents of a file-like object in chunks
+
+    see ``shutil.copyfileobj`` for more information
+
+    Parameters
+    ----------
+    fsrc: obj
+        Source file-like object
+    fdst: obj
+        Destination file-like object
+    length: int, default 16384
+        Chunk size for transfer encoding
+    callback: obj or NoneType, default None
+        Function called with the number of bytes in each chunk
+    """
+    # default buffer size for copying file-like objects
+    if not length:
+        length = shutil.COPY_BUFSIZE
+    # localize variable access to minimize overhead.
+    fsrc_read = fsrc.read
+    fdst_write = fdst.write
+    # copy the contents of the source file-like object
+    # to the destination in chunks
+    while True:
+        buffer = fsrc_read(length)
+        if not buffer:
+            break
+        fdst_write(buffer)
+        # call the callback function
+        if callback is not None:
+            callback(len(buffer))
 
 
 # NASA on-prem DAAC providers
@@ -877,6 +994,7 @@ def from_nsidc(
     chunk: int = 16384,
     verbose: bool = False,
     fid=sys.stdout,
+    progress: bool = False,
     mode: oct = 0o775,
 ):
     """
@@ -906,6 +1024,8 @@ def from_nsidc(
         print file transfer information
     fid: obj, default sys.stdout
         open file object to print if verbose
+    progress: bool, default False
+        Display a progress bar for the file transfer
     mode: oct, default 0o775
         permissions mode of output local file
 
@@ -937,7 +1057,9 @@ def from_nsidc(
     else:
         # copy remote file contents to bytesIO object
         remote_buffer = io.BytesIO()
-        shutil.copyfileobj(response, remote_buffer, chunk)
+        total = content_length(response)
+        with progress_bar(total, HOST[-1], enabled=progress) as pb:
+            copyfileobj(response, remote_buffer, chunk, callback=pb.update)
         remote_buffer.seek(0)
         # save file basename with bytesIO object
         remote_buffer.filename = HOST[-1]
@@ -1469,6 +1591,8 @@ def query_resources(**kwargs):
 
         - ``1mo`` : monthly
         - ``3mo`` : quarterly
+    progress: bool, default False
+        Display a progress bar for the file transfer
     format: str, default 'nc'
         Data format for ICESat-2 granules
 
@@ -1491,6 +1615,8 @@ def query_resources(**kwargs):
     kwargs.setdefault("resolution", "01km")
     kwargs.setdefault("cadence", None)
     kwargs.setdefault("format", "nc")
+    # check if displaying a progress bar
+    progress = kwargs.pop("progress", False)
     # check if product and release use a temporal cadence
     product_with_cadence = has_cadence(kwargs["product"], kwargs["release"])
     # convert resolution to naming convention for release
@@ -1596,7 +1722,7 @@ def query_resources(**kwargs):
                 # verify that granule exists locally
                 granule = pathlib.Path(ids[i])
                 if not granule.exists():
-                    from_nsidc(url, local=granule)
+                    from_nsidc(url, local=granule, progress=progress)
                 # append to granules
                 granules.append(granule)
         elif kwargs["asset"] == "atlas-local":
@@ -1610,7 +1736,7 @@ def query_resources(**kwargs):
                 directory = pathlib.Path(kwargs["directory"] or ".")
                 granule = directory.joinpath(ids[i]).expanduser().absolute()
                 if not granule.exists() and (kwargs["format"] == "nc"):
-                    from_nsidc(url, local=granule)
+                    from_nsidc(url, local=granule, progress=progress)
                 elif not granule.exists():
                     raise FileNotFoundError(str(granule))
                 # append to granules

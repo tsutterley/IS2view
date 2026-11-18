@@ -70,7 +70,7 @@ doc = [
     "sphinx-design",
     "sphinx_rtd_theme",
 ]
-all = ["boto3", "bottleneck", "cmocean", "ipywebrtc", "obstore", "owslib", "s3fs", "zarr"]
+all = ["boto3", "bottleneck", "cmocean", "ipywebrtc", "obstore", "owslib", "s3fs", "tqdm", "zarr"]
 dev = ["flake8", "gh", "pytest>=4.6", "pytest-cov", "pytest-xdist"]
 
 [tool.setuptools.packages.find]
@@ -221,6 +221,7 @@ ipywebrtc = "*"
 obstore = "*"
 owslib = "*"
 s3fs = "*"
+tqdm = "*"
 zarr = "*"
 
 [tool.pixi.feature.dev.dependencies]
